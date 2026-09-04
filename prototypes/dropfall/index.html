@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Dropfall — Prototyp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+
+    <div class="hud">
+      <div class="panel panel--res">
+        <div class="res-row"><span class="glyph glyph--amber">&#9670;</span><span id="money">0</span></div>
+        <div class="res-row res-row--sub"><span class="glyph glyph--teal">&#9650;</span><span id="rate">0 /s</span></div>
+      </div>
+
+      <div class="arena-title hidden" id="arenaTitle">ARENA 1 &middot; KAMMER</div>
+
+      <button class="icon-btn" id="settings" title="Einstellungen">&#9881;</button>
+
+      <!-- Lebensleiste, nur w&auml;hrend eines Laufs -->
+      <div class="panel panel--life hidden" id="lifePanel">
+        <div class="life-head">
+          <span class="life-label">LEBEN</span>
+          <span class="life-time" id="lifeTime">6.0 s</span>
+        </div>
+        <div class="life-bar"><div class="life-fill" id="lifeFill"></div></div>
+        <div class="life-foot">
+          <span id="lifeCover">Pegs 0 / 0</span>
+          <span id="lifeDrain">Leerung &times;1.0</span>
+        </div>
+      </div>
+
+      <button class="big-btn" id="mainBtn">SPIELEN</button>
+    </div>
+
+    <div class="tooltip hidden" id="tooltip"></div>
+    <div class="toast hidden" id="toast"></div>
+
+    <!-- ================= Level-Auswahl ================= -->
+    <div class="overlay hidden" id="select">
+      <div class="select-card">
+        <div class="select-left">
+          <h3 class="select-kicker">Spielmodus</h3>
+          <div class="select-mode">Regul&auml;r</div>
+          <p class="select-modedesc">Die Hauptkampagne des Spiels.</p>
+
+          <h3 class="select-kicker">Ziele</h3>
+          <div id="goalList"></div>
+        </div>
+
+        <div class="select-right">
+          <div class="select-title" id="selTitle">Level 1</div>
+          <div class="select-preview">
+            <button class="prev-nav prev-nav--left" id="selPrev">&#8592;</button>
+            <canvas id="selCanvas" width="360" height="440"></canvas>
+            <button class="prev-nav prev-nav--right" id="selNext">&#8594;</button>
+          </div>
+          <div class="select-actions">
+            <button class="big-btn big-btn--inline" id="selClose">Schlie&szlig;en</button>
+            <button class="big-btn big-btn--inline big-btn--go" id="selStart">Start</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= Auswertung nach dem Lauf ================= -->
+    <div class="overlay hidden" id="result">
+      <div class="result-card">
+        <div class="result-main">
+          <h2 class="result-title" id="resTitle">Lauf beendet</h2>
+          <div class="result-badges" id="resBadges"></div>
+          <div class="result-grid" id="resGrid"></div>
+
+          <div class="result-reward">
+            <div class="result-kicker">Gesamtbelohnung</div>
+            <div class="result-reward-box">
+              <div class="reward-item">
+                <span class="reward-icon">&#9670;</span>
+                <span class="reward-value" id="resMoney">0</span>
+              </div>
+              <div class="reward-item">
+                <span class="reward-icon reward-icon--teal">&#9679;</span>
+                <span class="reward-value" id="resPegs">0</span>
+                <span class="reward-label">neue Pegs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-actions">
+            <button class="big-btn big-btn--inline big-btn--go" id="resAgain">Erneut spielen</button>
+            <button class="big-btn big-btn--inline" id="resUpgrades">Upgrades</button>
+          </div>
+        </div>
+
+        <div class="result-side">
+          <h3 class="result-sidetitle">Geld nach Quelle</h3>
+          <div id="resSources"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="modal">
+      <div class="modal-card">
+        <h2>Einstellungen</h2>
+        <p class="modal-sub">Dropfall &mdash; Prototyp v0.3</p>
+        <button class="ghost-btn" id="wipe">Spielstand l&ouml;schen</button>
+        <button class="ghost-btn" id="closeModal">Schlie&szlig;en</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

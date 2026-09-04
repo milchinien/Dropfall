@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Idler Incremental — Prototypen</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #0f1115;
+        color: #eef1f6;
+      }
+      main {
+        width: min(880px, 92vw);
+        padding: 48px 0;
+      }
+      h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        text-align: center;
+        margin: 0 0 8px;
+        letter-spacing: 0.02em;
+      }
+      p.sub {
+        text-align: center;
+        color: #8b93a7;
+        margin: 0 0 40px;
+        font-size: 0.95rem;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+      }
+      a.card {
+        display: block;
+        padding: 28px;
+        border-radius: 16px;
+        background: #171a21;
+        border: 1px solid #262b36;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+      }
+      a.card:hover {
+        transform: translateY(-2px);
+        border-color: #3a4152;
+      }
+      .card h2 {
+        margin: 0 0 8px;
+        font-size: 1.15rem;
+      }
+      .card p {
+        margin: 0 0 16px;
+        color: #a7adbc;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      .card .port {
+        font-size: 0.8rem;
+        color: #5c6376;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Idler Incremental</h1>
+      <p class="sub">Prototyp wählen</p>
+      <div class="cards">
+        <a class="card" href="http://localhost:5274" target="_blank" rel="noopener">
+          <h2>Dropfall</h2>
+          <p>Physik-Maschine: Kugeln, Pegs, Combos. Ziel: niemals stillstehen.</p>
+          <span class="port">localhost:5274</span>
+        </a>
+        <a class="card" href="http://localhost:5275" target="_blank" rel="noopener">
+          <h2>Harmonics</h2>
+          <p>Himmelsmechanik: Konvergenzen von Knoten auf Ringen antizipieren.</p>
+          <span class="port">localhost:5275</span>
+        </a>
+      </div>
+    </main>
+  </body>
+</html>
