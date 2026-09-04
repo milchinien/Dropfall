@@ -15,23 +15,25 @@ import {
 } from "./arenas";
 import {
   BALL_INFO,
-  BUFF_DURATION,
-  BUFF_MULT,
-  FIRE_DURATION,
   FIRE_FALLOFF,
-  FIRE_MAX_STACKS,
   FIRE_TICK,
   FIRE_VALUE_FACTOR,
-  HITS_PER_LEVEL,
-  LIGHTNING_CHANCE,
   LIGHTNING_RANGE,
-  LIGHTNING_TARGETS,
   LIGHTNING_VALUE_FACTOR,
   PULSE_INTERVAL,
-  PULSE_RADIUS,
   PULSE_VALUE_FACTOR,
-  VALUE_PER_LEVEL,
+  ballValue,
+  buffDuration,
+  buffMult,
+  emptyBallLevels,
+  fireDuration,
+  fireStacks,
+  lightningChance,
+  lightningTargets,
+  pulseInterval,
+  pulseRadius,
   type BallKind,
+  type BallLevels,
 } from "./balls";
 import type { Stats } from "./upgrades";
 import {
@@ -70,8 +72,6 @@ interface Ball {
   y: number;
   vx: number;
   vy: number;
-  hits: number;
-  level: number;
   buffT: number;
   pulseT: number;
   trail: number[];
@@ -131,8 +131,8 @@ interface TubeBall {
   dur: number;
 }
 
-/** Woher ein Geldbetrag stammt — Grundlage der Auswertung nach dem Lauf. */
-export type MoneySource =
+/** Woher ein Funkenbetrag stammt — Grundlage der Auswertung nach dem Lauf. */
+export type SparkSource =
   | "white"
   | "pulse"
   | "lightning"
@@ -154,8 +154,8 @@ export interface RunStats {
   burnTicks: number;
   buffsApplied: number;
   drains: number;
-  maxLevel: number;
-  money: Record<MoneySource, number>;
+  /** Im Lauf verdiente Funken je Quelle. */
+  sparks: Record<SparkSource, number>;
 }
 
 export function emptyRunStats(): RunStats {
@@ -171,12 +171,12 @@ export function emptyRunStats(): RunStats {
     burnTicks: 0,
     buffsApplied: 0,
     drains: 0,
-    maxLevel: 0,
-    money: { white: 0, pulse: 0, lightning: 0, fire: 0, burn: 0, bumper: 0, buff: 0 },
+    sparks: { white: 0, pulse: 0, lightning: 0, fire: 0, burn: 0, bumper: 0, buff: 0 },
   };
 }
 
 export interface MachineEvents {
+  /** Verdiente Funken — die Waehrung des laufenden Durchgangs. */
   onGain: (amount: number) => void;
   /** Ein Peg wurde zum allerersten Mal getroffen. */
   onCover: () => void;
@@ -196,6 +196,12 @@ export class Machine {
   runCovered = 0;
   /** Zählwerk des laufenden Durchgangs — Grundlage der Auswertung. */
   runStats: RunStats = emptyRunStats();
+  /**
+   * Die im Lauf gekauften Kugel-Stufen. Sie gehören dem Lauf, nicht der
+   * Maschine: main kauft sie mit Funken und reicht das Objekt hier herein.
+   * Die Maschine liest daraus jeden Frame die aktuelle Mechanik ab.
+   */
+  ballLevels: BallLevels = emptyBallLevels();
   private runHit: boolean[] = [];
 
   private def: ArenaDef = ARENAS[0];
@@ -232,6 +238,11 @@ export class Machine {
 
   get complete(): boolean {
     return this.pegs.length > 0 && this.covered >= this.pegs.length;
+  }
+
+  /** Die im Lauf gekaufte Stufe einer Kugel. */
+  private lvl(kind: BallKind): number {
+    return this.ballLevels[kind] ?? 0;
   }
 
   /**
@@ -378,7 +389,7 @@ export class Machine {
       if (b.kind === "pulse") {
         b.pulseT -= dt;
         if (b.pulseT <= 0) {
-          b.pulseT = PULSE_INTERVAL;
+          b.pulseT = pulseInterval(this.lvl("pulse"));
           this.pulse(b, s);
         }
       }
@@ -431,10 +442,8 @@ export class Machine {
       y: 62,
       vx: (Math.random() - 0.5) * 190,
       vy: 40,
-      hits: 0,
-      level: 0,
       buffT: 0,
-      pulseT: PULSE_INTERVAL,
+      pulseT: pulseInterval(this.lvl("pulse")),
       trail: [],
     });
   }
@@ -446,17 +455,17 @@ export class Machine {
 
     if (b.kind === "buff") {
       // Die Buff-Kugel macht kein Geld, sie hinterlässt nur einen Effekt.
-      p.buffT = BUFF_DURATION;
+      p.buffT = buffDuration(this.lvl("buff"));
       this.runStats.buffsApplied++;
       return;
     }
 
     this.runStats.directHits++;
-    this.award(b, p, s, 1, p.x, p.y, b.kind as MoneySource);
+    this.award(b, p, s, 1, p.x, p.y, b.kind as SparkSource);
 
     if (b.kind === "fire") this.ignite(p);
 
-    if (b.kind === "lightning" && Math.random() < LIGHTNING_CHANCE) {
+    if (b.kind === "lightning" && Math.random() < lightningChance(this.lvl("lightning"))) {
       this.strike(b, p, s);
     }
   }
@@ -486,19 +495,24 @@ export class Machine {
   }
 
   private ignite(p: Peg): void {
+    const l = this.lvl("fire");
     if (p.fireT <= 0) this.runStats.ignites++;
-    p.fireT = FIRE_DURATION;
+    p.fireT = fireDuration(l);
     if (p.fireTick <= 0) p.fireTick = FIRE_TICK;
-    p.fireStacks = Math.min(FIRE_MAX_STACKS, p.fireStacks + 1);
+    p.fireStacks = Math.min(fireStacks(l), p.fireStacks + 1);
   }
 
   private burnTick(p: Peg, s: Stats): void {
     const stacks = Math.max(1, p.fireStacks);
     let v =
-      s.bounceValue * FIRE_VALUE_FACTOR * Math.pow(FIRE_FALLOFF, stacks - 1) * stacks;
-    if (p.buffT > 0) v *= BUFF_MULT;
+      s.bounceValue *
+      FIRE_VALUE_FACTOR *
+      Math.pow(FIRE_FALLOFF, stacks - 1) *
+      stacks *
+      ballValue("fire", this.lvl("fire"));
+    if (p.buffT > 0) v *= buffMult(this.lvl("buff"));
     this.runStats.burnTicks++;
-    this.runStats.money.burn += v;
+    this.runStats.sparks.burn += v;
     this.ev.onGain(v);
     this.pushFloat(p.x, p.y, v, PEG_COLOR_FIRE);
   }
@@ -508,13 +522,13 @@ export class Machine {
     for (const p of this.pegs) {
       if (p === from) continue;
       if (Math.hypot(p.x - from.x, p.y - from.y) <= LIGHTNING_RANGE) targets.push(p);
-      if (targets.length >= LIGHTNING_TARGETS * 3) break;
+      if (targets.length >= lightningTargets(this.lvl("lightning")) * 3) break;
     }
     targets.sort(
       (a, c) =>
         Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(c.x - from.x, c.y - from.y)
     );
-    const chosen = targets.slice(0, LIGHTNING_TARGETS);
+    const chosen = targets.slice(0, lightningTargets(this.lvl("lightning")));
     if (!chosen.length) return;
 
     for (const p of chosen) {
@@ -532,9 +546,10 @@ export class Machine {
 
   private pulse(b: Ball, s: Stats): void {
     this.runStats.pulses++;
-    this.rings.push({ x: b.x, y: b.y, r: PULSE_RADIUS, t: 0 });
+    const radius = pulseRadius(this.lvl("pulse"));
+    this.rings.push({ x: b.x, y: b.y, r: radius, t: 0 });
     for (const p of this.pegs) {
-      if (Math.hypot(p.x - b.x, p.y - b.y) <= PULSE_RADIUS) {
+      if (Math.hypot(p.x - b.x, p.y - b.y) <= radius) {
         this.touchPeg(p);
         this.runStats.pulseHits++;
         this.award(b, p, s, PULSE_VALUE_FACTOR, p.x, p.y, "pulse");
@@ -544,6 +559,12 @@ export class Machine {
 
   /**
    * Zentrale Wertformel. `peg` darf null sein (Bumper-Kontakt).
+   *
+   * Wert = Grundwert je Abpraller
+   *      × Typfaktor        (Puls, Blitz, Feuer)
+   *      × Kugel-Stufe      (im Lauf gekauft)
+   *      × Weiß-Faktor      (nur weiße Kugel)
+   *      × Buff             (Kugel oder Peg gebufft)
    */
   private award(
     b: Ball,
@@ -552,21 +573,18 @@ export class Machine {
     factor: number,
     x: number,
     y: number,
-    source: MoneySource
+    source: SparkSource
   ): void {
-    b.hits++;
-    if (s.ballLevelEnabled && b.hits % HITS_PER_LEVEL === 0) b.level++;
-    if (b.level > this.runStats.maxLevel) this.runStats.maxLevel = b.level;
-
+    // Die Buff-Kugel verdient nichts, sie verteilt nur ihren Effekt.
     if (b.kind === "buff") return;
 
-    let v = s.bounceValue * factor;
+    let v = s.bounceValue * factor * ballValue(b.kind, this.lvl(b.kind));
     if (b.kind === "white") v *= s.whiteMult;
-    if (s.ballLevelEnabled) v *= 1 + VALUE_PER_LEVEL * b.level;
-    if (b.buffT > 0) v *= BUFF_MULT;
-    if (peg && peg.buffT > 0) v *= BUFF_MULT;
+    const bm = buffMult(this.lvl("buff"));
+    if (b.buffT > 0) v *= bm;
+    if (peg && peg.buffT > 0) v *= bm;
 
-    this.runStats.money[source] += v;
+    this.runStats.sparks[source] += v;
     this.ev.onGain(v);
     this.pushFloat(x, y, v, BALL_INFO[b.kind].top);
   }
@@ -669,8 +687,9 @@ export class Machine {
           b.vy += imp * ny;
         }
 
-        if (a.kind === "buff") b.buffT = BUFF_DURATION;
-        if (b.kind === "buff") a.buffT = BUFF_DURATION;
+        const bd = buffDuration(this.lvl("buff"));
+        if (a.kind === "buff") b.buffT = bd;
+        if (b.kind === "buff") a.buffT = bd;
       }
     }
   }
@@ -972,12 +991,13 @@ export class Machine {
         ctx.fillText(info.glyph, b.x, b.y + 1);
       }
 
-      if (b.level > 0) {
+      const lvl = this.lvl(b.kind);
+      if (lvl > 0) {
         ctx.fillStyle = rgba(C.text, 0.8);
         ctx.font = "800 12px Nunito, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
-        ctx.fillText(`Lv ${b.level}`, b.x, b.y - BALL_R - 5);
+        ctx.fillText(`Lv ${lvl}`, b.x, b.y - BALL_R - 5);
       }
     }
   }

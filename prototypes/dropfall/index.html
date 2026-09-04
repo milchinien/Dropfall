@@ -17,9 +17,14 @@
     <canvas id="stage"></canvas>
 
     <div class="hud">
+      <!-- Waehrungen. Im Lauf zaehlen nur Funken (und Splitter ab Level 5),
+           im Skill Tree nur das Bleibende — die Zeilen schalten sich um. -->
       <div class="panel panel--res">
-        <div class="res-row"><span class="glyph glyph--amber">&#9670;</span><span id="money">0</span></div>
-        <div class="res-row res-row--sub"><span class="glyph glyph--teal">&#9650;</span><span id="rate">0 /s</span></div>
+        <div class="res-row" id="rowMoney"><span class="glyph glyph--amber">&#9670;</span><span id="money">0</span></div>
+        <div class="res-row" id="rowCrowns"><span class="glyph glyph--magenta">&#9819;</span><span id="crowns">0</span></div>
+        <div class="res-row" id="rowShards"><span class="glyph glyph--blue">&#9672;</span><span id="shards">0</span></div>
+        <div class="res-row" id="rowSparks"><span class="glyph glyph--teal">&#10022;</span><span id="sparks">0</span></div>
+        <div class="res-row res-row--sub" id="rowRate"><span class="glyph glyph--teal">&#9650;</span><span id="rate">0 /s</span></div>
       </div>
 
       <div class="arena-title hidden" id="arenaTitle">ARENA 1 &middot; KAMMER</div>
@@ -37,6 +42,15 @@
           <span id="lifeCover">Pegs 0 / 0</span>
           <span id="lifeDrain">Leerung &times;1.0</span>
         </div>
+      </div>
+
+      <!-- Kugel-Upgrades, nur w&auml;hrend eines Laufs. Gekauft wird mit Funken. -->
+      <div class="panel panel--shop hidden" id="shopPanel">
+        <div class="shop-head">
+          <span class="shop-title">KUGEL-UPGRADES</span>
+          <span class="shop-hint">Tasten 1&ndash;5</span>
+        </div>
+        <div id="shopList"></div>
       </div>
 
       <button class="big-btn" id="mainBtn">SPIELEN</button>
@@ -82,17 +96,8 @@
 
           <div class="result-reward">
             <div class="result-kicker">Gesamtbelohnung</div>
-            <div class="result-reward-box">
-              <div class="reward-item">
-                <span class="reward-icon">&#9670;</span>
-                <span class="reward-value" id="resMoney">0</span>
-              </div>
-              <div class="reward-item">
-                <span class="reward-icon reward-icon--teal">&#9679;</span>
-                <span class="reward-value" id="resPegs">0</span>
-                <span class="reward-label">neue Pegs</span>
-              </div>
-            </div>
+            <div class="payout" id="resPayout"></div>
+            <div class="result-reward-box" id="resReward"></div>
           </div>
 
           <div class="result-actions">
@@ -102,7 +107,7 @@
         </div>
 
         <div class="result-side">
-          <h3 class="result-sidetitle">Geld nach Quelle</h3>
+          <h3 class="result-sidetitle">Funken nach Quelle</h3>
           <div id="resSources"></div>
         </div>
       </div>

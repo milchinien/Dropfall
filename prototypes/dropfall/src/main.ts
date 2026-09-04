@@ -5,13 +5,33 @@
    startet man über den Knopf unten rechts einen Arena-Lauf. Es gibt kein
    freies Hin- und Herwechseln mehr — ein Lauf endet, wenn die Lebensleiste
    leer ist.
+
+   Vier Währungen halten die beiden Ebenen auseinander (siehe currency.ts):
+   im Lauf zählen nur Funken, alles Bleibende wird erst danach ausgezahlt.
    ========================================================================= */
 
 import "./style.css";
 import { ARENAS, BUMPER_R, PEG_R, buildPegs, pegCount } from "./arenas";
-import { Machine, type MoneySource } from "./machine";
+import { Machine, type SparkSource } from "./machine";
+import {
+  BALL_INFO,
+  BALL_UPGRADE,
+  MAX_BALL_LEVEL,
+  ballCost,
+  ballValue,
+  emptyBallLevels,
+  type BallKind,
+} from "./balls";
+import {
+  CURRENCY,
+  SHARD_FROM_LEVEL,
+  SHARD_PER_BUMP,
+  computePayout,
+  type Payout,
+  type TreeCurrency,
+} from "./currency";
 import { deriveStats, drainRate, NODES, type Levels } from "./upgrades";
-import { costOf, TreeView, type TreeNodeDef } from "./tree";
+import { costOf, currencyOf, TreeView, type TreeNodeDef } from "./tree";
 import {
   C,
   clamp,
@@ -22,32 +42,38 @@ import {
   shade,
 } from "./theme";
 
-const SAVE_KEY = "dropfall.save.v3";
+const SAVE_KEY = "dropfall.save.v5";
 
 /* --------------------------------------------------------- Zustand --- */
 
 interface SaveData {
   levels: Levels;
   money: number;
+  shards: number;
+  crowns: number;
   total: number;
   arena: number;
   unlocked: number;
-  coverage: string[];
-  bonusOneRun: boolean[];
+  /** Level, die schon einmal in einem einzigen Lauf vollständig waren. */
+  completed: boolean[];
   bonusSurvive: boolean[];
   time: number;
 }
 
 const state = {
   levels: {} as Levels,
+  /** ◆ Geld — wird nach dem Lauf ausgezahlt, kauft die Grundausbauten. */
   money: 0,
+  /** ◈ Splitter — fallen je Peg-Bump an, ab Level SHARD_FROM_LEVEL. */
+  shards: 0,
+  /** ♛ Kronen — genau eine je erstmals abgeschlossenem Level. */
+  crowns: 0,
   total: 0,
   rate: 0,
   /** Aktuell in der Level-Auswahl markierte Arena. */
   arena: 0,
   unlocked: 1,
-  coverage: ARENAS.map(() => ""),
-  bonusOneRun: ARENAS.map(() => false),
+  completed: ARENAS.map(() => false),
   bonusSurvive: ARENAS.map(() => false),
   view: "tree" as "tree" | "run",
 };
@@ -58,40 +84,33 @@ const run = {
   life: 0,
   maxLife: 6,
   elapsed: 0,
-  moneyAtStart: 0,
-  coveredAtStart: 0,
   healed: 0,
+  /** ✦ Funken auf der Hand — die Währung des laufenden Durchgangs. */
+  sparks: 0,
+  /** Alle im Lauf verdienten Funken. Grundlage der Geld-Auszahlung. */
+  sparksGross: 0,
+  /** In diesem Lauf gesammelte Splitter. */
+  shards: 0,
+  /** Zahl der im Lauf gekauften Kugel-Stufen. */
+  upgrades: 0,
+  /** Die gekauften Kugel-Stufen. Wird an die Maschine durchgereicht. */
+  ballLevels: emptyBallLevels(),
 };
-
-/**
- * Die Abdeckung wird mit ihrer Peg-Anzahl gespeichert. Ändert sich das Layout
- * einer Arena, passen die alten Bits nicht mehr zu den neuen Peg-Indizes —
- * dann wird die Abdeckung verworfen statt falsch übernommen.
- */
-const packCoverage = (a: boolean[]) =>
-  `${a.length}:${a.map((b) => (b ? "1" : "0")).join("")}`;
-
-function unpackCoverage(raw: string, expected: number): boolean[] {
-  const sep = raw.indexOf(":");
-  if (sep < 0) return [];
-  if (Number(raw.slice(0, sep)) !== expected) return [];
-  return Array.from(raw.slice(sep + 1), (c) => c === "1");
-}
-
-function coverageOf(index: number): boolean[] {
-  return unpackCoverage(state.coverage[index] ?? "", pegCount(ARENAS[index]));
-}
-
-function coveredCount(index: number): number {
-  return coverageOf(index).filter(Boolean).length;
-}
 
 /* ------------------------------------------------------------- DOM --- */
 
 const canvas = document.getElementById("stage") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
 const elMoney = document.getElementById("money")!;
+const elShards = document.getElementById("shards")!;
+const elCrowns = document.getElementById("crowns")!;
+const elSparks = document.getElementById("sparks")!;
 const elRate = document.getElementById("rate")!;
+const elRowMoney = document.getElementById("rowMoney")!;
+const elRowShards = document.getElementById("rowShards")!;
+const elRowCrowns = document.getElementById("rowCrowns")!;
+const elRowSparks = document.getElementById("rowSparks")!;
+const elRowRate = document.getElementById("rowRate")!;
 const elArenaTitle = document.getElementById("arenaTitle")!;
 const elLifePanel = document.getElementById("lifePanel")!;
 const elLifeTime = document.getElementById("lifeTime")!;
@@ -102,6 +121,9 @@ const elMainBtn = document.getElementById("mainBtn") as HTMLButtonElement;
 const elTooltip = document.getElementById("tooltip")!;
 const elToast = document.getElementById("toast")!;
 const elModal = document.getElementById("modal")!;
+
+const elShop = document.getElementById("shopPanel")!;
+const elShopList = document.getElementById("shopList")!;
 
 const elSelect = document.getElementById("select")!;
 const elSelTitle = document.getElementById("selTitle")!;
@@ -114,8 +136,8 @@ const elResult = document.getElementById("result")!;
 const elResTitle = document.getElementById("resTitle")!;
 const elResBadges = document.getElementById("resBadges")!;
 const elResGrid = document.getElementById("resGrid")!;
-const elResMoney = document.getElementById("resMoney")!;
-const elResPegs = document.getElementById("resPegs")!;
+const elResPayout = document.getElementById("resPayout")!;
+const elResReward = document.getElementById("resReward")!;
 const elResSources = document.getElementById("resSources")!;
 
 /* ---------------------------------------------------------- Spiel --- */
@@ -129,11 +151,14 @@ let gainedThisFrame = 0;
  */
 let stats = deriveStats({});
 
+/** Ab diesem Level fällt bei jedem Bump ein Splitter an. */
+const shardsActive = () => run.arena + 1 >= SHARD_FROM_LEVEL;
+
 const machine = new Machine({
   onGain: (v) => {
     if (!run.active) return;
-    state.money += v;
-    state.total += v;
+    run.sparks += v;
+    run.sparksGross += v;
     gainedThisFrame += v;
   },
   onCover: () => {
@@ -144,17 +169,35 @@ const machine = new Machine({
     const vorher = run.life;
     run.life = Math.min(run.maxLife, run.life + stats.healPerHit);
     run.healed += run.life - vorher;
+
+    // Die blaue Währung hängt am einzelnen Bump, nicht am Ertrag: sie zählt
+    // Kontakte und ist damit die einzige Währung, die eine dichte Arena
+    // unabhängig vom Build belohnt.
+    if (shardsActive()) {
+      run.shards += SHARD_PER_BUMP;
+      state.shards += SHARD_PER_BUMP;
+    }
   },
 });
 
 const debug: Record<string, unknown> = { machine, state, run, lastError: null };
 (window as unknown as Record<string, unknown>).dropfall = debug;
 
+function purse(c: TreeCurrency): number {
+  return c === "money" ? state.money : c === "shard" ? state.shards : state.crowns;
+}
+
+function pay(c: TreeCurrency, amount: number): void {
+  if (c === "money") state.money -= amount;
+  else if (c === "shard") state.shards -= amount;
+  else state.crowns -= amount;
+}
+
 const tree = new TreeView(NODES, {
   getLevel: (id) => state.levels[id] ?? 0,
-  getCurrency: () => state.money,
-  onBuy: (id, cost) => {
-    state.money -= cost;
+  getCurrency: purse,
+  onBuy: (id, cost, cur) => {
+    pay(cur, cost);
     state.levels[id] = (state.levels[id] ?? 0) + 1;
     if (id === "whiteBall") {
       toast("Die <b>wei&szlig;e Kugel</b> geh&ouml;rt dir.<br>Starte unten rechts deinen ersten Lauf.", 8);
@@ -180,11 +223,19 @@ function startRun(): void {
   run.life = stats.maxLife;
   run.elapsed = 0;
   run.healed = 0;
-  run.moneyAtStart = state.money;
+  run.sparks = stats.startSparks;
+  run.sparksGross = 0;
+  run.shards = 0;
+  run.upgrades = 0;
+  run.ballLevels = emptyBallLevels();
 
-  machine.setArena(state.arena, coverageOf(state.arena));
-  run.coveredAtStart = machine.covered;
+  // Ein nicht abgeschlossenes Level startet mit kaltem Feld: die Abdeckung
+  // muss in EINEM Lauf erreicht werden. Ein bereits geschafftes Level bleibt
+  // dauerhaft erleuchtet.
+  machine.setArena(state.arena, state.completed[state.arena]);
+  machine.ballLevels = run.ballLevels;
 
+  buildShop();
   setView("run");
 }
 
@@ -193,42 +244,119 @@ function endRun(): void {
   run.active = false;
 
   const a = ARENAS[run.arena];
-  const neu = machine.covered - run.coveredAtStart;
-  const verdient = state.money - run.moneyAtStart;
-
-  state.coverage[run.arena] = packCoverage(machine.coverage);
-
   const erfolge: Array<{ text: string; haupt: boolean }> = [];
 
-  const abgeschlossen = machine.complete;
-  if (abgeschlossen) {
+  // Levelabschluss zählt nur, wenn das Feld in DIESEM Lauf voll wurde.
+  const geschafft = machine.complete;
+  let krone = false;
+  if (geschafft && !state.completed[run.arena]) {
+    state.completed[run.arena] = true;
+    krone = true;
+    state.crowns++;
+    erfolge.push({ text: `${a.name} abgeschlossen`, haupt: true });
+    erfolge.push({ text: "♛ Krone erhalten", haupt: true });
     const next = run.arena + 1;
     if (next < ARENAS.length && state.unlocked <= next) {
       state.unlocked = next + 1;
       erfolge.push({ text: `Level ${next + 1} · ${ARENAS[next].name} freigeschaltet`, haupt: true });
     }
   }
-  if (
-    machine.runCovered >= machine.pegTotal &&
-    machine.pegTotal > 0 &&
-    !state.bonusOneRun[run.arena]
-  ) {
-    state.bonusOneRun[run.arena] = true;
-    erfolge.push({ text: "Bonus: Ein Zug", haupt: false });
-  }
   if (run.elapsed >= a.bonusSurvive && !state.bonusSurvive[run.arena]) {
     state.bonusSurvive[run.arena] = true;
     erfolge.push({ text: "Bonus: Ausdauer", haupt: false });
   }
 
-  showResult(abgeschlossen, verdient, neu, erfolge);
+  // Geld gibt es ausschließlich hier — im Lauf selbst ist es nicht sichtbar.
+  const payout = computePayout(
+    run.sparksGross,
+    machine.runCovered,
+    run.arena,
+    stats.moneyPerSpark
+  );
+  state.money += payout.total;
+  state.total += payout.total;
+
+  showResult(geschafft, payout, krone, erfolge);
   setView("tree");
   save();
 }
 
+/* ------------------------------------------------- Kugel-Upgrades --- */
+/**
+ * Die Lauf-Leiste. Kugeln steigen nicht mehr von allein auf — jede Stufe
+ * kauft der Spieler hier mit Funken. Die Zeilen werden beim Laufbeginn
+ * einmal gebaut und danach nur noch beschriftet: ein Neuaufbau pro Frame
+ * würde Hover und Klick zerlegen.
+ */
+interface ShopRow {
+  kind: BallKind;
+  el: HTMLButtonElement;
+  lv: HTMLElement;
+  eff: HTMLElement;
+  cost: HTMLElement;
+}
+
+let shopRows: ShopRow[] = [];
+
+function buildShop(): void {
+  elShopList.innerHTML = "";
+  shopRows = stats.kinds.map((kind, i) => {
+    const info = BALL_INFO[kind];
+    const el = document.createElement("button");
+    el.className = "shop-row";
+    el.innerHTML = `
+      <span class="shop-dot" style="background:${info.top}"></span>
+      <span class="shop-info">
+        <span class="shop-name">${info.name}<span class="shop-lv"></span></span>
+        <span class="shop-eff"></span>
+      </span>
+      <span class="shop-cost"></span>
+      <span class="shop-key">${i + 1}</span>`;
+    el.addEventListener("click", () => buyBall(kind));
+    elShopList.append(el);
+    return {
+      kind,
+      el,
+      lv: el.querySelector<HTMLElement>(".shop-lv")!,
+      eff: el.querySelector<HTMLElement>(".shop-eff")!,
+      cost: el.querySelector<HTMLElement>(".shop-cost")!,
+    };
+  });
+  updateShop();
+}
+
+function updateShop(): void {
+  for (const r of shopRows) {
+    const lvl = run.ballLevels[r.kind];
+    const maxed = lvl >= MAX_BALL_LEVEL;
+    const cost = ballCost(r.kind, lvl, stats.upgradeDiscount);
+
+    r.lv.textContent = ` Lv ${lvl}`;
+    const perk = BALL_UPGRADE[r.kind].perk(lvl);
+    const wert =
+      r.kind === "buff" ? "" : `Wert ×${ballValue(r.kind, lvl).toFixed(2)}`;
+    r.eff.textContent = [wert, perk].filter(Boolean).join(" · ");
+    r.cost.textContent = maxed ? "MAX" : `✦ ${fmt(cost)}`;
+    r.el.classList.toggle("is-max", maxed);
+    r.el.classList.toggle("is-ready", !maxed && run.sparks >= cost);
+  }
+}
+
+function buyBall(kind: BallKind): void {
+  if (!run.active) return;
+  const lvl = run.ballLevels[kind];
+  if (lvl >= MAX_BALL_LEVEL) return;
+  const cost = ballCost(kind, lvl, stats.upgradeDiscount);
+  if (run.sparks < cost) return;
+  run.sparks -= cost;
+  run.ballLevels[kind] = lvl + 1;
+  run.upgrades++;
+  updateShop();
+}
+
 /* ------------------------------------------------------- Auswertung --- */
 
-const SOURCE_INFO: Array<{ key: MoneySource; name: string; color: string }> = [
+const SOURCE_INFO: Array<{ key: SparkSource; name: string; color: string }> = [
   { key: "white", name: "Weiße Kugel", color: "#f4f1fa" },
   { key: "pulse", name: "Puls-Kugel", color: "#2ed3ae" },
   { key: "lightning", name: "Blitz-Kugel", color: "#6fa8ff" },
@@ -239,8 +367,8 @@ const SOURCE_INFO: Array<{ key: MoneySource; name: string; color: string }> = [
 
 function showResult(
   abgeschlossen: boolean,
-  verdient: number,
-  neu: number,
+  payout: Payout,
+  krone: boolean,
   erfolge: Array<{ text: string; haupt: boolean }>
 ): void {
   const st = machine.runStats;
@@ -261,34 +389,79 @@ function showResult(
       </div>
     </div>`;
 
+  const kugelFunken =
+    st.sparks.white + st.sparks.pulse + st.sparks.lightning + st.sparks.fire;
+
   const karten: string[] = [
     karte("Laufzeit", `${run.elapsed.toFixed(1)} s`),
-    karte("Pegs getroffen", `${st.pegHits}`, `◆ ${fmt(st.money.white + st.money.pulse + st.money.lightning + st.money.fire)}`),
-    karte("Pegs abgedeckt", `${machine.covered} / ${machine.pegTotal}`, `+${neu}`),
-    karte("Bumper", `${st.bumperHits}`, `◆ ${fmt(st.money.bumper)}`),
+    karte("Pegs getroffen", `${st.pegHits}`, `✦ ${fmt(kugelFunken)}`),
+    karte("Pegs abgedeckt", `${machine.runCovered} / ${machine.pegTotal}`),
+    karte("Funken verdient", `✦ ${fmt(payout.sparks)}`),
+    karte("Kugel-Stufen gekauft", `${run.upgrades}`),
+    karte("Bumper", `${st.bumperHits}`, `✦ ${fmt(st.sparks.bumper)}`),
     karte("Lebenszeit geheilt", `+${run.healed.toFixed(1)} s`),
     karte("Kugeln verloren", `${st.drains}`),
   ];
   if (st.pulses > 0) karten.push(karte("Pulse ausgelöst", `${st.pulses}`, `${st.pulseHits} Pegs`));
   if (st.strikes > 0) karten.push(karte("Blitzeinschläge", `${st.strikes}`, `${st.strikeHits} Pegs`));
-  if (st.ignites > 0) karten.push(karte("Pegs entzündet", `${st.ignites}`, `◆ ${fmt(st.money.burn)}`));
+  if (st.ignites > 0) karten.push(karte("Pegs entzündet", `${st.ignites}`, `✦ ${fmt(st.sparks.burn)}`));
   if (st.buffsApplied > 0) karten.push(karte("Buffs gesetzt", `${st.buffsApplied}`));
-  if (st.maxLevel > 0) karten.push(karte("Höchstes Kugel-Level", `Lv ${st.maxLevel}`));
+  if (run.shards > 0) karten.push(karte("Splitter gesammelt", `◈ ${fmt(run.shards)}`));
 
   elResGrid.innerHTML = karten.join("");
 
-  elResMoney.textContent = fmt(verdient);
-  elResPegs.textContent = `+${neu}`;
+  // Wie aus Funken Geld wurde. Ohne diese Rechnung wäre die Auszahlung eine
+  // Zahl, die aus dem Nichts kommt — und kein Upgrade wäre lesbar.
+  const zeile = (name: string, links: string, rechts: string) => `
+    <div class="pay-row">
+      <span class="pay-name">${name}</span>
+      <span class="pay-in">${links}</span>
+      <span class="pay-out">${rechts}</span>
+    </div>`;
 
-  const gesamt = SOURCE_INFO.reduce((sum, q) => sum + st.money[q.key], 0);
-  const zeilen = SOURCE_INFO.filter((q) => st.money[q.key] > 0).sort(
-    (x, y) => st.money[y.key] - st.money[x.key]
+  elResPayout.innerHTML =
+    zeile(
+      "Funken",
+      `✦ ${fmt(payout.sparks)} × ${(stats.moneyPerSpark * 100).toFixed(0)} %`,
+      `◆ ${fmt(payout.fromSparks)}`
+    ) +
+    zeile(
+      "Abgedeckte Pegs",
+      `${payout.newPegs} × 10`,
+      `◆ ${fmt(payout.fromPegs)}`
+    ) +
+    zeile("Levelfaktor", `Level ${run.arena + 1}`, `×${payout.mult.toFixed(2)}`);
+
+  const belohnung = [
+    `<div class="reward-item">
+       <span class="reward-icon">&#9670;</span>
+       <span class="reward-value">${fmt(payout.total)}</span>
+     </div>`,
+  ];
+  if (run.shards > 0) {
+    belohnung.push(`<div class="reward-item">
+       <span class="reward-icon reward-icon--blue">&#9672;</span>
+       <span class="reward-value">${fmt(run.shards)}</span>
+     </div>`);
+  }
+  if (krone) {
+    belohnung.push(`<div class="reward-item">
+       <span class="reward-icon reward-icon--magenta">&#9819;</span>
+       <span class="reward-value">1</span>
+       <span class="reward-label">Krone</span>
+     </div>`);
+  }
+  elResReward.innerHTML = belohnung.join("");
+
+  const gesamt = SOURCE_INFO.reduce((sum, q) => sum + st.sparks[q.key], 0);
+  const zeilen = SOURCE_INFO.filter((q) => st.sparks[q.key] > 0).sort(
+    (x, y) => st.sparks[y.key] - st.sparks[x.key]
   );
 
   elResSources.innerHTML = zeilen.length
     ? zeilen
         .map((q) => {
-          const v = st.money[q.key];
+          const v = st.sparks[q.key];
           const anteil = gesamt > 0 ? (v / gesamt) * 100 : 0;
           return `
             <div class="src">
@@ -300,7 +473,7 @@ function showResult(
             </div>`;
         })
         .join("")
-    : `<div class="src-empty">In diesem Lauf ist kein Geld angefallen.</div>`;
+    : `<div class="src-empty">In diesem Lauf sind keine Funken angefallen.</div>`;
 
   elResult.classList.remove("hidden");
 }
@@ -329,17 +502,18 @@ function renderSelect(): void {
   elSelNext.disabled = i >= state.unlocked - 1;
 
   const total = pegCount(a);
-  const done = coveredCount(i);
+  const fertig = state.completed[i];
 
   const karte = (
     kind: "main" | "bonus",
     titel: string,
+    mark: string,
     text: string,
     erfuellt: boolean
   ) => `
     <div class="goal goal--${kind}${erfuellt ? " is-done" : ""}">
       <div class="goal-title">${titel}<span class="goal-mark">${
-        erfuellt ? "✔" : kind === "bonus" ? "♛" : ""
+        erfuellt ? "✔" : mark
       }</span></div>
       <div class="goal-body">${text}</div>
     </div>`;
@@ -348,20 +522,30 @@ function renderSelect(): void {
     karte(
       "main",
       "Levelabschluss",
-      `Triff <b>jeden Peg</b> der Arena mindestens einmal.<br><b>${done} / ${total}</b> abgedeckt.`,
-      done >= total && total > 0
-    ) +
-    karte(
-      "bonus",
-      "Ein Zug",
-      `Decke das Level in einem <b>einzigen Lauf</b> vollst&auml;ndig ab.`,
-      state.bonusOneRun[i]
+      "♛",
+      `Triff <b>alle ${total} Pegs</b> in einem <b>einzigen Lauf</b>.<br>` +
+        `Nach jedem Lauf erlischt das Feld wieder &mdash; erst der vollst&auml;ndige ` +
+        `Durchgang l&auml;sst es dauerhaft leuchten.<br>` +
+        (fertig
+          ? `Die <b>Krone</b> f&uuml;r dieses Level hast du bereits.`
+          : `Beim ersten Mal gibt es daf&uuml;r <b>eine Krone</b>.`),
+      fertig
     ) +
     karte(
       "bonus",
       "Ausdauer",
+      "★",
       `Halte einen Lauf <b>${a.bonusSurvive} Sekunden</b> am Leben.`,
       state.bonusSurvive[i]
+    ) +
+    karte(
+      "bonus",
+      "Splitter",
+      "◈",
+      i + 1 >= SHARD_FROM_LEVEL
+        ? `Jeder Peg-Bump bringt hier <b>einen Splitter</b>.`
+        : `Ab <b>Level ${SHARD_FROM_LEVEL}</b> bringt jeder Peg-Bump einen <b>Splitter</b>.`,
+      i + 1 >= SHARD_FROM_LEVEL
     );
 
   drawPreview();
@@ -394,11 +578,10 @@ function drawPreview(): void {
 
   g.translate(FRAME, FRAME);
 
-  const cov = coverageOf(state.arena);
-  buildPegs(a).forEach((p, idx) => {
-    const col = cov[idx] ? C.teal : "#5c5573";
+  const col = state.completed[state.arena] ? C.teal : "#5c5573";
+  for (const p of buildPegs(a)) {
     extrudedCircle(g, p.x, p.y, PEG_R, col, shade(col, -0.42), 3);
-  });
+  }
 
   for (const [fx, fy] of a.bumpers) {
     extrudedCircle(g, fx * a.w, fy * a.h, BUMPER_R, C.amber, C.amberDark, 5);
@@ -451,15 +634,18 @@ function showTooltip(def: TreeNodeDef | null, sx: number, sy: number): void {
   const maxed = lvl >= def.max;
   const unlocked = tree.isUnlocked(def);
   const cost = costOf(def, lvl);
-  const affordable = state.money >= cost;
+  const cur = currencyOf(def);
+  const info = CURRENCY[cur];
+  const affordable = purse(cur) >= cost;
   const missing = tree.missingReq(def);
+  const preis = `<span style="color:${info.color}">${info.glyph}</span> ${fmt(cost)}`;
 
   let footer: string;
   if (maxed) footer = `<div class="tt-cost tt-cost--max">${def.max === 1 ? "FREIGESCHALTET" : "MAX"}</div>`;
   else if (!unlocked) footer = `<div class="tt-cost tt-cost--no">GESPERRT</div>`;
   else if (affordable)
-    footer = `<div class="tt-cost tt-cost--ok">${cost === 0 ? "GRATIS" : `◆ ${fmt(cost)}`} &nbsp;·&nbsp; KAUFEN</div>`;
-  else footer = `<div class="tt-cost tt-cost--no">◆ ${fmt(cost)}</div>`;
+    footer = `<div class="tt-cost tt-cost--ok">${cost === 0 ? "GRATIS" : preis} &nbsp;·&nbsp; KAUFEN</div>`;
+  else footer = `<div class="tt-cost tt-cost--no">${preis}</div>`;
 
   // Immer als Zähler: eine Zahl liest man schneller als "Nicht freigeschaltet".
   // Amber, sobald man etwas besitzt — grau, solange die Stufe bei 0 steht.
@@ -503,15 +689,15 @@ function toast(html: string, seconds = 7): void {
 /* ---------------------------------------------------- Speichern/Laden --- */
 
 function save(): void {
-  if (run.active) state.coverage[run.arena] = packCoverage(machine.coverage);
   const data: SaveData = {
     levels: state.levels,
     money: state.money,
+    shards: state.shards,
+    crowns: state.crowns,
     total: state.total,
     arena: state.arena,
     unlocked: state.unlocked,
-    coverage: state.coverage,
-    bonusOneRun: state.bonusOneRun,
+    completed: state.completed,
     bonusSurvive: state.bonusSurvive,
     time: Date.now(),
   };
@@ -529,11 +715,12 @@ function load(): void {
     const d = JSON.parse(raw) as SaveData;
     state.levels = d.levels ?? {};
     state.money = d.money ?? 0;
+    state.shards = d.shards ?? 0;
+    state.crowns = d.crowns ?? 0;
     state.total = d.total ?? 0;
     state.unlocked = clamp(d.unlocked ?? 1, 1, ARENAS.length);
     state.arena = clamp(d.arena ?? 0, 0, state.unlocked - 1);
-    state.coverage = ARENAS.map((_, i) => d.coverage?.[i] ?? "");
-    state.bonusOneRun = ARENAS.map((_, i) => d.bonusOneRun?.[i] ?? false);
+    state.completed = ARENAS.map((_, i) => d.completed?.[i] ?? false);
     state.bonusSurvive = ARENAS.map((_, i) => d.bonusSurvive?.[i] ?? false);
   } catch {
     /* defekter Spielstand — frisch anfangen */
@@ -589,6 +776,7 @@ function tick(): void {
   }
 
   updateHud();
+  if (run.active) updateShop();
 
   if (toastTimer > 0) {
     toastTimer -= dt;
@@ -635,11 +823,26 @@ function schedule(): void {
   timeoutId = window.setTimeout(run2, 120);
 }
 
+/**
+ * Im Lauf zählen nur Funken, im Baum nur das Bleibende. Geld taucht während
+ * eines Laufs bewusst nirgends auf — es steht erst in der Auswertung fest.
+ */
 function updateHud(): void {
+  const inRun = run.active;
+
+  elRowMoney.classList.toggle("hidden", inRun);
+  elRowCrowns.classList.toggle("hidden", inRun || state.crowns === 0);
+  elRowShards.classList.toggle("hidden", (inRun && !shardsActive()) || (!inRun && state.shards === 0));
+  elRowSparks.classList.toggle("hidden", !inRun);
+  elRowRate.classList.toggle("hidden", !inRun);
+
   elMoney.textContent = fmt(state.money);
+  elCrowns.textContent = fmt(state.crowns);
+  elShards.textContent = inRun ? `+${fmt(run.shards)}` : fmt(state.shards);
+  elSparks.textContent = fmt(run.sparks);
   elRate.textContent = `${fmt(state.rate)} /s`;
 
-  if (run.active) {
+  if (inRun) {
     const k = run.maxLife > 0 ? run.life / run.maxLife : 0;
     elLifeTime.textContent = `${run.life.toFixed(1)} s`;
     elLifeFill.style.width = `${clamp(k, 0, 1) * 100}%`;
@@ -694,6 +897,7 @@ function setView(v: "tree" | "run"): void {
   elMainBtn.textContent = inRun ? "LAUF BEENDEN" : "SPIELEN";
   canvas.style.cursor = inRun ? "default" : "grab";
   elLifePanel.classList.toggle("hidden", !inRun);
+  elShop.classList.toggle("hidden", !inRun);
   elArenaTitle.classList.toggle("hidden", !inRun);
   if (inRun) {
     const a = ARENAS[run.arena];
@@ -744,6 +948,13 @@ window.addEventListener("keydown", (e) => {
   }
   if (e.key === "ArrowLeft" && !elSelect.classList.contains("hidden")) elSelPrev.click();
   if (e.key === "ArrowRight" && !elSelect.classList.contains("hidden")) elSelNext.click();
+
+  // 1 bis 5 kaufen die Kugel-Stufe der entsprechenden Zeile — im Lauf hat man
+  // keine Zeit, mit der Maus eine Leiste abzusuchen.
+  if (run.active && e.key >= "1" && e.key <= "5") {
+    const row = shopRows[Number(e.key) - 1];
+    if (row) buyBall(row.kind);
+  }
 });
 
 window.addEventListener("beforeunload", save);

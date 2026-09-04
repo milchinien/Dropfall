@@ -3,29 +3,28 @@
 
    Aufbau: fuenf Richtungen vom Startknoten.
 
-                       (Strang nach oben - noch offen)
+                  Werkstatt        Auszahlung       (Splitter-Ast)
+                          \        /
+                           Startkapital
                                 |
-                          Kugel-Level
-                               |
-            Mehr Wert          |            Puls-Kugel
-                     \         |          /
-                      \        |         /
+            Mehr Wert           |            Puls-Kugel
+                     \          |          /
+                      \         |         /
                        WEISSE KUGEL (Start, kostenlos)
                       /                   \
                      /                     \
               Drop-Tempo              Abpraller-Wert ---- Feuer-Kugel
-                   \                        \
-                    Blitz-Kugel              Buff-Kugel
+                   \                     \        \
+                    Blitz-Kugel      Buff-Kugel    Heilung -- Koenigsruhe
 
-   Kugel-Level sitzt gerade nach oben, leicht rechts versetzt, und ist der
-   Kopf des geplanten Strangs nach oben — darueber ist bewusst Platz frei.
+   Drei Waehrungen laufen durch diesen Baum (siehe currency.ts):
+     ◆ Geld     — die Grundausbauten, verdient nach jedem Lauf
+     ♛ Kronen   — jede weitere Kugel und die grossen Einzelstuecke
+     ◈ Splitter — der spaete Ast, der die Lauf-Oekonomie selbst verbessert
 
    Die Winkel sind bewusst ungleich und die Kantenlaengen streuen, kein Ast
    spiegelt einen anderen. Ein exakt gespiegeltes Kreuz wirkt technisch und
    tot — Outholds Baum lebt von seiner Unregelmaessigkeit.
-
-   Die vier Kugel-Freischaltungen sind bewusst nur Freischalt-Nodes. Was in
-   ihren Ästen darüber hinaus stehen soll, ist noch nicht festgelegt.
    ========================================================================= */
 
 import type { BallKind } from "./balls";
@@ -55,6 +54,15 @@ const respawn = (l: number) => 2.2 * Math.pow(0.82, l);
 /** Sekunden, die ein Peg-Treffer der Lebensleiste zurückgibt. */
 const healPerHit = (l: number) => 0.1 + 0.04 * l;
 
+/** Funken, mit denen ein Lauf beginnt. */
+const startSparks = (l: number) => 30 * l;
+/** Faktor auf die Kosten aller Kugel-Upgrades im Lauf. */
+const upgradeDiscount = (l: number) => Math.pow(0.92, l);
+/** Geld je verdientem Funken, bevor der Levelfaktor greift. */
+const moneyPerSpark = (l: number) => 0.05 + 0.01 * l;
+/** Zusätzliche Sekunden auf der Lebensleiste. */
+const bonusLife = (l: number) => 6 * l;
+
 export const NODES: TreeNodeDef[] = [
   {
     id: "whiteBall",
@@ -67,7 +75,7 @@ export const NODES: TreeNodeDef[] = [
     baseCost: 0,
     growth: 1,
     desc: () =>
-      `Deine erste Kugel. Sie f&auml;llt durch die Arena, prallt an Pegs ab und macht bei jedem Kontakt Geld.<br><br><b>Ohne sie passiert in der Arena nichts.</b>`,
+      `Deine erste Kugel. Sie f&auml;llt durch die Arena, prallt an Pegs ab und sammelt bei jedem Kontakt <b>Funken</b>.<br><br><b>Ohne sie passiert in der Arena nichts.</b>`,
   },
 
   /* ------------------------------------------- Ast der Standard-Kugel --- */
@@ -84,20 +92,6 @@ export const NODES: TreeNodeDef[] = [
     req: [["whiteBall", 1]],
     desc: (l) =>
       `Die wei&szlig;e Kugel ist pro Kontakt <b>35 %</b> mehr wert. Wirkt nur auf sie.<br><br>Faktor: <b>${whiteFactor(l).toFixed(2)}x</b>`,
-  },
-  {
-    id: "ballLevel",
-    title: "Kugel-Level",
-    icon: "▲",
-    color: "teal",
-    x: 34,
-    y: -172,
-    max: 1,
-    baseCost: 260,
-    growth: 1,
-    req: [["whiteBall", 1]],
-    desc: () =>
-      `Schaltet <b>Kugel-Level</b> frei. Jede Kugel steigt alle <b>5 Treffer</b> um eine Stufe und wird pro Stufe <b>10 %</b> wertvoller.<br><br>Das Level gilt nur f&uuml;r den aktuellen Lauf &mdash; geht die Kugel in den Abfluss, f&auml;ngt sie wieder bei Stufe 0 an.`,
   },
 
   /* ------------------------------------------------ Wert je Abpraller --- */
@@ -132,7 +126,7 @@ export const NODES: TreeNodeDef[] = [
       `Eine verlorene Kugel kehrt schneller in die Arena zur&uuml;ck.<br><br>Verz&ouml;gerung: <b>${respawn(l).toFixed(2)} s</b>`,
   },
 
-  /* ------------------------------------------------- Weitere Kugeln --- */
+  /* ---------------------------------- Weitere Kugeln — kosten Kronen --- */
   {
     id: "pulseBall",
     title: "Puls-Kugel",
@@ -141,11 +135,12 @@ export const NODES: TreeNodeDef[] = [
     x: 176,
     y: -96,
     max: 1,
-    baseCost: 420,
+    baseCost: 1,
     growth: 1,
+    currency: "crown",
     req: [["whiteBall", 1]],
     desc: () =>
-      `Eine zweite Kugel betritt die Arena. Sie l&ouml;st alle <b>2.6 s</b> einen Puls aus, der <b>alle Pegs im Umkreis</b> gleichzeitig trifft und daf&uuml;r zahlt.<br><br>Trifft viele Pegs auf einmal &mdash; der schnellste Weg, eine Arena abzudecken.`,
+      `Eine zweite Kugel betritt die Arena. Sie l&ouml;st in festem Takt einen Puls aus, der <b>alle Pegs im Umkreis</b> gleichzeitig trifft und daf&uuml;r zahlt.<br><br>Ihre Lauf-Upgrades verk&uuml;rzen den Takt und vergr&ouml;&szlig;ern den Radius.`,
   },
   {
     id: "lightningBall",
@@ -155,11 +150,12 @@ export const NODES: TreeNodeDef[] = [
     x: -220,
     y: 242,
     max: 1,
-    baseCost: 950,
+    baseCost: 1,
     growth: 1,
+    currency: "crown",
     req: [["dropSpeed", 2]],
     desc: () =>
-      `Eine Kugel, die bei jedem Peg-Kontakt mit <b>22 %</b> Chance Blitze schl&auml;gt. Die Blitze springen auf bis zu <b>4</b> umliegende Pegs &uuml;ber und treffen sie mit.`,
+      `Eine Kugel, die bei jedem Peg-Kontakt mit einer gewissen Chance <b>Blitze</b> schl&auml;gt. Die Blitze springen auf umliegende Pegs &uuml;ber und treffen sie mit.<br><br>Ihre Lauf-Upgrades erh&ouml;hen Chance und Zahl der Ziele.`,
   },
   {
     id: "fireBall",
@@ -169,11 +165,12 @@ export const NODES: TreeNodeDef[] = [
     x: 306,
     y: 28,
     max: 1,
-    baseCost: 1300,
+    baseCost: 1,
     growth: 1,
+    currency: "crown",
     req: [["bounceValue", 2]],
     desc: () =>
-      `Eine Kugel, die jeden ber&uuml;hrten Peg <b>entz&uuml;ndet</b>. Brennende Pegs zahlen <b>4.5 s</b> lang weiter, auch ohne Kontakt.<br><br>Mehrfaches Entz&uuml;nden stapelt sich, aber mit <b>abnehmendem Effekt</b>.`,
+      `Eine Kugel, die jeden ber&uuml;hrten Peg <b>entz&uuml;ndet</b>. Brennende Pegs zahlen weiter, auch ohne Kontakt.<br><br>Ihre Lauf-Upgrades verl&auml;ngern den Brand und erlauben mehr Stapel.`,
   },
   {
     id: "buffBall",
@@ -183,11 +180,12 @@ export const NODES: TreeNodeDef[] = [
     x: 112,
     y: 232,
     max: 1,
-    baseCost: 2600,
+    baseCost: 1,
     growth: 1,
+    currency: "crown",
     req: [["bounceValue", 3]],
     desc: () =>
-      `Eine Kugel, die <b>selbst kein Geld</b> macht. Stattdessen hinterl&auml;sst sie bei Kontakt f&uuml;r <b>5 s</b> einen Effekt:<br><br>auf einem <b>Peg</b> &mdash; er zahlt doppelt<br>auf einer <b>anderen Kugel</b> &mdash; sie zahlt doppelt`,
+      `Eine Kugel, die <b>selbst nichts</b> einbringt. Stattdessen hinterl&auml;sst sie bei Kontakt einen Effekt:<br><br>auf einem <b>Peg</b> &mdash; er zahlt doppelt<br>auf einer <b>anderen Kugel</b> &mdash; sie zahlt doppelt<br><br>Ihre Lauf-Upgrades verl&auml;ngern und verst&auml;rken den Effekt.`,
   },
 
   /* ------------------------------------------------------- Lebens-Ast --- */
@@ -205,6 +203,68 @@ export const NODES: TreeNodeDef[] = [
     desc: (l) =>
       `Jeder Peg-Treffer gibt der Lebensleiste mehr Zeit zur&uuml;ck.<br><br>Heilung je Treffer: <b>${healPerHit(l).toFixed(2)} s</b>`,
   },
+  {
+    id: "royalLife",
+    title: "K&ouml;nigsruhe",
+    icon: "♛",
+    color: "magenta",
+    x: 452,
+    y: 300,
+    max: 1,
+    baseCost: 1,
+    growth: 1,
+    currency: "crown",
+    req: [["lifeHeal", 2]],
+    desc: (l) =>
+      `Die Lebensleiste startet und fasst <b>6 Sekunden</b> mehr.<br><br>Obergrenze: <b>${MAX_LIFE + bonusLife(l)} s</b>`,
+  },
+
+  /* ------------------------------------------------------ Splitter-Ast --- */
+  {
+    id: "sparkStart",
+    title: "Startkapital",
+    icon: "✦",
+    color: "teal",
+    x: 34,
+    y: -172,
+    max: 5,
+    baseCost: 120,
+    growth: 1.85,
+    currency: "shard",
+    req: [["whiteBall", 1]],
+    desc: (l) =>
+      `Jeder Lauf beginnt mit Funken auf der Hand &mdash; die erste Kugel-Stufe steht damit sofort.<br><br>Startkapital: <b>${startSparks(l)} Funken</b>`,
+  },
+  {
+    id: "workshop",
+    title: "Werkstatt",
+    icon: "⚙",
+    color: "amber",
+    x: -70,
+    y: -262,
+    max: 5,
+    baseCost: 260,
+    growth: 2.0,
+    currency: "shard",
+    req: [["sparkStart", 1]],
+    desc: (l) =>
+      `Alle <b>Kugel-Upgrades im Lauf</b> kosten <b>8 %</b> weniger je Stufe.<br><br>Kosten: <b>${(upgradeDiscount(l) * 100).toFixed(0)} %</b>`,
+  },
+  {
+    id: "payout",
+    title: "Auszahlung",
+    icon: "◆",
+    color: "amber",
+    x: 158,
+    y: -246,
+    max: 5,
+    baseCost: 320,
+    growth: 2.15,
+    currency: "shard",
+    req: [["sparkStart", 2]],
+    desc: (l) =>
+      `Am Laufende wird ein gr&ouml;&szlig;erer Teil der verdienten Funken in Geld umgerechnet.<br><br>Ertrag: <b>${(moneyPerSpark(l) * 100).toFixed(0)} %</b> je Funken`,
+  },
 ];
 
 /* --------------------------------------------- Abgeleitete Spielwerte --- */
@@ -214,12 +274,17 @@ export interface Stats {
   kinds: BallKind[];
   bounceValue: number;
   whiteMult: number;
-  ballLevelEnabled: boolean;
   respawnDelay: number;
   /** Sekunden, die ein Peg-Treffer der Lebensleiste zurückgibt. */
   healPerHit: number;
   /** Maximale Füllung der Lebensleiste in Sekunden. */
   maxLife: number;
+  /** Funken, mit denen ein Lauf startet. */
+  startSparks: number;
+  /** Faktor auf die Kosten der Kugel-Upgrades im Lauf. */
+  upgradeDiscount: number;
+  /** Geld je verdientem Funken (vor dem Levelfaktor). */
+  moneyPerSpark: number;
 }
 
 export function deriveStats(lv: Levels): Stats {
@@ -236,9 +301,11 @@ export function deriveStats(lv: Levels): Stats {
     kinds,
     bounceValue: bounceBase(L("bounceValue")),
     whiteMult: whiteFactor(L("whiteValue")),
-    ballLevelEnabled: L("ballLevel") > 0,
     respawnDelay: respawn(L("dropSpeed")),
     healPerHit: healPerHit(L("lifeHeal")),
-    maxLife: MAX_LIFE,
+    maxLife: MAX_LIFE + bonusLife(L("royalLife")),
+    startSparks: startSparks(L("sparkStart")),
+    upgradeDiscount: upgradeDiscount(L("workshop")),
+    moneyPerSpark: moneyPerSpark(L("payout")),
   };
 }

@@ -8,6 +8,7 @@
      gesperrt   -> graue Outline, "?" statt Icon
    ========================================================================= */
 
+import type { TreeCurrency } from "./currency";
 import {
   C,
   PALETTE,
@@ -34,6 +35,8 @@ export interface TreeNodeDef {
   max: number;
   baseCost: number;
   growth: number;
+  /** Womit der Node bezahlt wird. Ohne Angabe: Geld. */
+  currency?: TreeCurrency;
   /** Beschreibung; bekommt das aktuelle Level. <b>…</b> wird hervorgehoben. */
   desc: (level: number) => string;
   /** Voraussetzungen als [nodeId, minLevel]. */
@@ -43,8 +46,8 @@ export interface TreeNodeDef {
 
 export interface TreeHooks {
   getLevel: (id: string) => number;
-  getCurrency: () => number;
-  onBuy: (id: string, cost: number) => void;
+  getCurrency: (currency: TreeCurrency) => number;
+  onBuy: (id: string, cost: number, currency: TreeCurrency) => void;
   onHover: (def: TreeNodeDef | null, screenX: number, screenY: number) => void;
 }
 
@@ -57,6 +60,10 @@ const CAP_SCALE = 1.28;
 
 export function costOf(def: TreeNodeDef, level: number): number {
   return Math.floor(def.baseCost * Math.pow(def.growth, level));
+}
+
+export function currencyOf(def: TreeNodeDef): TreeCurrency {
+  return def.currency ?? "money";
 }
 
 export class TreeView {
@@ -160,8 +167,9 @@ export class TreeView {
     if (lvl >= def.max) return false;
     if (!this.isUnlocked(def)) return false;
     const cost = costOf(def, lvl);
-    if (this.hooks.getCurrency() < cost) return false;
-    this.hooks.onBuy(def.id, cost);
+    const cur = currencyOf(def);
+    if (this.hooks.getCurrency(cur) < cost) return false;
+    this.hooks.onBuy(def.id, cost, cur);
     this.pulses.push({ id: def.id, t: 0 });
     return true;
   }
@@ -235,7 +243,9 @@ export class TreeView {
     const half = s / 2;
     const pal = PALETTE[def.color];
     const affordable =
-      unlocked && !maxed && this.hooks.getCurrency() >= costOf(def, lvl);
+      unlocked &&
+      !maxed &&
+      this.hooks.getCurrency(currencyOf(def)) >= costOf(def, lvl);
     const isHover = this.hovered === def;
 
     const x = def.x - half;
