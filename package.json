@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n root,dropfall,harmonics -c \"blue,green,magenta\" \"vite --port 5273 --strictPort\" \"pnpm --filter dropfall-prototype dev\" \"pnpm --filter harmonics-prototype dev\""
+    "dev": "concurrently -k -n root,dropfall -c \"blue,green\" \"vite --port 5273 --strictPort\" \"pnpm --filter dropfall-prototype dev\""
   },
   "devDependencies": {
     "concurrently": "^9.0.1",

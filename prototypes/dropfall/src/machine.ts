@@ -239,7 +239,7 @@ export class Machine {
    *   Level, die bereits einmal vollständig geschafft wurden — dort bleiben
    *   die Pegs dauerhaft an. Sonst startet jeder Lauf mit kaltem Feld.
    */
-  setArena(index: number, preLit = false): void {
+  setArena(index: number, preLit: boolean | boolean[] = false): void {
     const def = ARENAS[clamp(index, 0, ARENAS.length - 1)];
     this.arenaIndex = def.id;
     this.def = def;
@@ -256,12 +256,14 @@ export class Machine {
       buffT: 0,
     }));
 
-    this.coverage = new Array(this.pegs.length).fill(preLit);
+    this.coverage = Array.isArray(preLit)
+      ? this.pegs.map((_, i) => preLit[i] ?? false)
+      : new Array(this.pegs.length).fill(preLit);
     this.runHit = new Array(this.pegs.length).fill(false);
     this.runCovered = 0;
     this.runStats = emptyRunStats();
-    this.covered = preLit ? this.pegs.length : 0;
-    if (preLit) for (const p of this.pegs) p.hit = true;
+    this.covered = this.coverage.filter(Boolean).length;
+    this.pegs.forEach((p, i) => { p.hit = this.coverage[i]; });
 
     this.bumpers = def.bumpers.map(([fx, fy]) => ({
       x: fx * def.w,
