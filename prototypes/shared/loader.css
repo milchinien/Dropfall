@@ -1,0 +1,404 @@
+/* =========================================================================
+   LOADER — konzentrische Ringe, monochrom.
+
+   Ein Bauteil fuer alle Ladezustaende und Fortschrittsanzeigen der
+   Prototypen. Zwei Modi:
+
+     Spinner  (Standard)    — die Ringe drehen endlos, es gibt keinen Wert.
+     Wert     (.ldr--value) — die Ringe stehen still, der breite Innenring
+                              zeichnet `--ldr-value` (0..1) als Bogen.
+
+   Warum ein Bauteil fuer beides: Ladeanzeige und Lebensleiste sollen
+   erkennbar dasselbe Ding sein. Der Unterschied darf nur der sein, ob
+   etwas gemessen wird oder nicht — nicht die Form.
+
+   Monochrom ist die Voreinstellung. Wo die Farbe selbst Information
+   traegt (Lebensleiste im roten Bereich, Funken je Quelle), setzt die
+   aufrufende Stelle `--ldr-color` gezielt um. Alles andere bleibt
+   schwarz auf hell / weiss auf dunkel.
+   ========================================================================= */
+
+.ldr {
+  /* Untergrund unbekannt -> Systemeinstellung. Seiten mit fest dunklem
+     Hintergrund setzen `.ldr--on-dark`, sonst waeren die Ringe dort
+     schwarz auf schwarz, sobald das OS auf hell steht. */
+  --ldr-color: #000;
+  --ldr-value: 1;
+  --ldr-size: 128px;
+  --ldr-title: 16px;
+  --ldr-sub: 14px;
+  --ldr-gap: 12px;
+  --ldr-max: 224px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 32px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ldr {
+    --ldr-color: #fff;
+  }
+}
+
+.ldr--on-dark {
+  --ldr-color: #fff;
+}
+
+.ldr--on-light {
+  --ldr-color: #000;
+}
+
+/* Eingebettet in ein Panel stoert der Rahmen — dort traegt das Layout
+   des Panels den Abstand. */
+.ldr--bare {
+  gap: 0;
+  padding: 0;
+}
+
+.ldr--xs {
+  --ldr-size: 44px;
+  --ldr-title: 12px;
+  --ldr-sub: 11px;
+  --ldr-gap: 4px;
+  --ldr-max: 160px;
+}
+
+.ldr--sm {
+  --ldr-size: 80px;
+  --ldr-title: 14px;
+  --ldr-sub: 12px;
+  --ldr-gap: 8px;
+  --ldr-max: 192px;
+}
+
+.ldr--md {
+  --ldr-size: 128px;
+}
+
+.ldr--lg {
+  --ldr-size: 160px;
+  --ldr-title: 18px;
+  --ldr-sub: 16px;
+  --ldr-gap: 16px;
+  --ldr-max: 256px;
+}
+
+/* ------------------------------------------------------------- Ringe --- */
+
+.ldr__rings {
+  position: relative;
+  flex: none;
+  width: var(--ldr-size);
+  height: var(--ldr-size);
+  animation: ldr-breathe 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ldr__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transform-origin: 50% 50%;
+}
+
+/* Aeusserer Schimmerring — duenn, schnell, fast voll deckend. */
+.ldr__ring--outer {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--ldr-color) 90deg,
+    transparent 180deg
+  );
+  -webkit-mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 35%,
+    #000 37%,
+    #000 39%,
+    transparent 41%
+  );
+  mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 35%,
+    #000 37%,
+    #000 39%,
+    transparent 41%
+  );
+  opacity: 0.8;
+  animation: ldr-spin 3s linear infinite;
+}
+
+/* Hauptring — der breiteste. Im Wert-Modus traegt er den Bogen. */
+.ldr__ring--main {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--ldr-color) 120deg,
+    color-mix(in srgb, var(--ldr-color) 50%, transparent) 240deg,
+    transparent 360deg
+  );
+  -webkit-mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 42%,
+    #000 44%,
+    #000 48%,
+    transparent 50%
+  );
+  mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 42%,
+    #000 44%,
+    #000 48%,
+    transparent 50%
+  );
+  opacity: 0.9;
+  animation: ldr-spin 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Gegenlaeufiger Ring — bricht den Gleichlauf, damit die Drehung nicht
+   wie ein einzelnes starres Rad wirkt. */
+.ldr__ring--counter {
+  background: conic-gradient(
+    from 180deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--ldr-color) 60%, transparent) 45deg,
+    transparent 90deg
+  );
+  -webkit-mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 52%,
+    #000 54%,
+    #000 56%,
+    transparent 58%
+  );
+  mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 52%,
+    #000 54%,
+    #000 56%,
+    transparent 58%
+  );
+  opacity: 0.35;
+  animation: ldr-spin-rev 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Aeusserster Akzent — haarfein, laeuft als einzelner Funke um. */
+.ldr__ring--accent {
+  background: conic-gradient(
+    from 270deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--ldr-color) 40%, transparent) 20deg,
+    transparent 40deg
+  );
+  -webkit-mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 61%,
+    #000 62%,
+    #000 63%,
+    transparent 64%
+  );
+  mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 61%,
+    #000 62%,
+    #000 63%,
+    transparent 64%
+  );
+  opacity: 0.5;
+  animation: ldr-spin 3.5s linear infinite;
+}
+
+/* -------------------------------------------------------- Wert-Modus --- */
+
+/* Ein rotierender Bogen waere als Messwert nicht lesbar: man findet den
+   Anfang nicht. Im Wert-Modus steht deshalb alles still, und die drei
+   Zierringe werden zu ruhigen vollen Konturen. */
+.ldr--value .ldr__rings,
+.ldr--value .ldr__ring {
+  animation: none;
+}
+
+.ldr--value .ldr__ring--outer,
+.ldr--value .ldr__ring--counter,
+.ldr--value .ldr__ring--accent {
+  background: var(--ldr-color);
+  opacity: 0.22;
+}
+
+/* Der Bogen beginnt oben und laeuft im Uhrzeigersinn. Hinter ihm bleibt
+   die Bahn als schwacher Rest stehen, sonst waere bei kleinen Werten
+   nicht zu sehen, wovon der Bogen ein Teil ist. */
+.ldr--value .ldr__ring--main {
+  background: conic-gradient(
+    from 0deg,
+    var(--ldr-color) 0deg,
+    var(--ldr-color) calc(var(--ldr-value) * 360deg),
+    color-mix(in srgb, var(--ldr-color) 14%, transparent)
+      calc(var(--ldr-value) * 360deg),
+    color-mix(in srgb, var(--ldr-color) 14%, transparent) 360deg
+  );
+  /* Breiter als im Spinner: als Messwert muss der Bogen auf einen Blick
+     abzulesen sein, auch bei 44 px Ringgroesse. */
+  -webkit-mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 38%,
+    #000 40%,
+    #000 52%,
+    transparent 54%
+  );
+  mask: radial-gradient(
+    circle at 50% 50%,
+    transparent 38%,
+    #000 40%,
+    #000 52%,
+    transparent 54%
+  );
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------- Mitte --- */
+
+.ldr__center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: color-mix(in srgb, var(--ldr-color) 90%, transparent);
+  font-size: calc(var(--ldr-size) * 0.2);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------- Text --- */
+
+.ldr__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ldr-gap);
+  max-width: var(--ldr-max);
+  text-align: center;
+  animation: ldr-enter 1s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+
+.ldr__title {
+  margin: 0;
+  font-size: var(--ldr-title);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: color-mix(in srgb, var(--ldr-color) 90%, transparent);
+  -webkit-font-smoothing: antialiased;
+  animation: ldr-enter 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both;
+}
+
+.ldr__subtitle {
+  margin: 0;
+  font-size: var(--ldr-sub);
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--ldr-color) 60%, transparent);
+  -webkit-font-smoothing: antialiased;
+  animation: ldr-enter 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.8s both;
+}
+
+/* Das Atmen sitzt auf dem inneren span, nicht auf Titel/Untertitel
+   selbst — sonst wuerde es mit deren Einblenden um dieselbe Eigenschaft
+   streiten. */
+.ldr__title > span {
+  display: inline-block;
+  animation: ldr-pulse-strong 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ldr__subtitle > span {
+  display: inline-block;
+  animation: ldr-pulse-soft 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* --------------------------------------------------------- Keyframes --- */
+
+@keyframes ldr-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ldr-spin-rev {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes ldr-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes ldr-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ldr-pulse-strong {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes ldr-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Ohne Bewegung bleibt der Ring als ruhige Kontur stehen — er ist dann
+   nur noch Zeichen, nicht mehr Fortschritt. Der Wert-Modus verliert
+   dabei nichts, er bewegt sich ohnehin nicht. */
+@media (prefers-reduced-motion: reduce) {
+  .ldr__rings,
+  .ldr__ring,
+  .ldr__text,
+  .ldr__title,
+  .ldr__subtitle,
+  .ldr__title > span,
+  .ldr__subtitle > span {
+    animation: none;
+  }
+
+  .ldr:not(.ldr--value) .ldr__ring--outer,
+  .ldr:not(.ldr--value) .ldr__ring--main,
+  .ldr:not(.ldr--value) .ldr__ring--counter,
+  .ldr:not(.ldr--value) .ldr__ring--accent {
+    background: var(--ldr-color);
+  }
+}

@@ -10,20 +10,38 @@
       href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
-    <style id="miwale-loader-style">#miwale-loader{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:radial-gradient(circle at 50% 22%,#12536b 0,#082c3b 42%,#03151e 100%);color:#edf9fc;font-family:"Segoe UI",system-ui,sans-serif;transition:opacity .45s ease,visibility .45s ease}#miwale-loader.mw-done{opacity:0;visibility:hidden;pointer-events:none}.mw-loader-inner{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}.mw-loader-mark{font-size:clamp(42px,8vw,76px);font-weight:800;letter-spacing:-.07em;line-height:1}.mw-loader-mark span{color:#7fe0ee}.mw-loader-wave{position:relative;width:190px;height:3px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.14)}.mw-loader-wave::after{content:"";position:absolute;inset:0;width:45%;border-radius:inherit;background:linear-gradient(90deg,transparent,#7fe0ee,#fff);animation:mw-load 1.15s ease-in-out infinite}.mw-loader-copy{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,249,252,.65)}@keyframes mw-load{from{transform:translateX(-110%)}to{transform:translateX(330%)}}@media(prefers-reduced-motion:reduce){.mw-loader-wave::after{animation:none;width:100%;background:#7fe0ee}#miwale-loader{transition:none}}</style>
+    <!-- Der Ring des Ladeschirms kommt aus dem gemeinsamen Loader-Bauteil.
+         Es haengt als <link> im <head> und nicht am Modul, weil der
+         Ladeschirm sichtbar sein muss, bevor das Skript ueberhaupt
+         geladen ist. -->
+    <link rel="stylesheet" href="../shared/loader.css" />
+    <style id="miwale-loader-style">#miwale-loader{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:radial-gradient(circle at 50% 22%,#12536b 0,#082c3b 42%,#03151e 100%);color:#edf9fc;font-family:"Segoe UI",system-ui,sans-serif;transition:opacity .45s ease,visibility .45s ease}#miwale-loader.mw-done{opacity:0;visibility:hidden;pointer-events:none}.mw-loader-inner{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}.mw-loader-mark{font-size:clamp(42px,8vw,76px);font-weight:800;letter-spacing:-.07em;line-height:1}.mw-loader-mark span{color:#7fe0ee}.mw-loader-copy{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,249,252,.65)}@media(prefers-reduced-motion:reduce){#miwale-loader{transition:none}}</style>
   </head>
   <body>
-    <div id="miwale-loader" role="status" aria-label="Spiel wird geladen"><div class="mw-loader-inner"><div class="mw-loader-mark">mi<span>wa</span>le</div><div class="mw-loader-wave" aria-hidden="true"></div><div class="mw-loader-copy">Spiel wird geladen</div></div></div>
+    <div id="miwale-loader" role="status" aria-label="Spiel wird geladen">
+      <div class="mw-loader-inner">
+        <div class="mw-loader-mark">mi<span>wa</span>le</div>
+        <div class="ldr ldr--md ldr--on-dark ldr--bare">
+          <div class="ldr__rings" aria-hidden="true">
+            <div class="ldr__ring ldr__ring--outer"></div>
+            <div class="ldr__ring ldr__ring--main"></div>
+            <div class="ldr__ring ldr__ring--counter"></div>
+            <div class="ldr__ring ldr__ring--accent"></div>
+          </div>
+        </div>
+        <div class="mw-loader-copy">Spiel wird geladen</div>
+      </div>
+    </div>
     <canvas id="stage"></canvas>
 
     <div class="hud">
       <!-- Waehrungen. Im Lauf zaehlen nur Funken (und Splitter ab Level 5),
            im Skill Tree nur das Bleibende — die Zeilen schalten sich um. -->
       <div class="panel panel--res">
-        <div class="res-row" id="rowMoney"><span class="glyph glyph--amber">&#9670;</span><span id="money">0</span></div>
-        <div class="res-row" id="rowCrowns"><span class="glyph glyph--magenta">&#9819;</span><span id="crowns">0</span></div>
-        <div class="res-row" id="rowShards"><span class="glyph glyph--blue">&#9672;</span><span id="shards">0</span></div>
-        <div class="res-row" id="rowSparks"><span class="glyph glyph--teal">&#10022;</span><span id="sparks">0</span></div>
+        <div class="res-row" id="rowMoney"><img class="currency-icon" src="./assets/currency-icons/money.png" alt="Geld"><span id="money">0</span></div>
+        <div class="res-row" id="rowCrowns"><img class="currency-icon" src="./assets/currency-icons/crown.png" alt="Kronen"><span id="crowns">0</span></div>
+        <div class="res-row" id="rowShards"><img class="currency-icon" src="./assets/currency-icons/shard.png" alt="Splitter"><span id="shards">0</span></div>
+        <div class="res-row" id="rowSparks"><img class="currency-icon" src="./assets/currency-icons/spark.png" alt="Funken"><span id="sparks">0</span></div>
         <div class="res-row res-row--sub" id="rowRate"><span class="glyph glyph--teal">&#9650;</span><span id="rate">0 /s</span></div>
       </div>
 
@@ -31,14 +49,14 @@
 
       <button class="icon-btn" id="settings" title="Einstellungen">&#9881;</button>
 
-      <!-- Lebensleiste, nur w&auml;hrend eines Laufs -->
+      <!-- Lebensanzeige, nur w&auml;hrend eines Laufs. Der Ring ist dasselbe
+           Bauteil wie der Ladeschirm, nur im Wert-Modus; die Restzeit steht
+           in seiner Mitte. Gebaut wird er in main.ts, weil sich sein Wert
+           je Frame &auml;ndert. -->
       <div class="panel panel--life hidden" id="lifePanel">
-        <div class="life-head">
+        <div class="life-ring" id="lifeRing"></div>
+        <div class="life-info">
           <span class="life-label">LEBEN</span>
-          <span class="life-time" id="lifeTime">6.0 s</span>
-        </div>
-        <div class="life-bar"><div class="life-fill" id="lifeFill"></div></div>
-        <div class="life-foot">
           <span id="lifeCover">Pegs 0 / 0</span>
           <span id="lifeDrain">Leerung &times;1.0</span>
         </div>
@@ -67,7 +85,7 @@
           <div class="select-mode">Regul&auml;r</div>
           <p class="select-modedesc">Die Hauptkampagne des Spiels.</p>
 
-          <h3 class="select-kicker">Ziele</h3>
+          <h3 class="select-kicker">Ziele<span class="goal-tally" id="goalTally"></span></h3>
           <div id="goalList"></div>
         </div>
 
@@ -78,6 +96,9 @@
             <canvas id="selCanvas" width="360" height="440"></canvas>
             <button class="prev-nav prev-nav--right" id="selNext">&#8594;</button>
           </div>
+          <!-- Levelleiste: der gleitende Pill zeigt, wo man steht -->
+          <div class="select-tabs" id="selTabs"></div>
+
           <div class="select-actions">
             <button class="big-btn big-btn--inline" id="selClose">Schlie&szlig;en</button>
             <button class="big-btn big-btn--inline big-btn--go" id="selStart">Start</button>

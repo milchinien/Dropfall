@@ -1,16 +1,32 @@
 /* =========================================================================
-   balls.ts — Die Kugeltypen und ihr Ausbau im Lauf.
+   balls.ts — Die Kugeltypen und ihr Ausbau.
 
    Jede freigeschaltete Kugel ist genau einmal im Feld. Geht sie verloren,
-   kehrt sie nach der Rückkehrverzögerung zurück (Upgrade "Drop-Tempo").
-   Die Kugel ist damit eine Einheit, die man besitzt — nicht Munition.
+   kehrt sie nach der Rückkehrverzögerung zurück. Die Kugel ist damit eine
+   Einheit, die man besitzt — nicht Munition.
 
-   Kugeln steigen NICHT mehr von allein auf. Ihre Stufe kauft der Spieler
-   während des Laufs mit Funken. Jede Stufe macht die Kugel wertvoller und
-   verbessert zusätzlich ihre eigene Mechanik — die Puls-Kugel schlägt
-   schneller und weiter, die Blitz-Kugel trifft öfter und mehr Ziele, und so
-   fort. Die Stufen gelten nur für den laufenden Durchgang.
+   ZWEI EBENEN, ZWEI ZEITSKALEN
+
+   Der SKILL TREE bestimmt, was eine Kugel grundsätzlich kann: wie weit ihr
+   Puls greift, wie tief ihre Blitzkette springt, wie viele Pegs gleichzeitig
+   brennen dürfen. Das bleibt über alle Läufe hinweg bestehen und steckt in
+   `Stats` (siehe upgrades.ts).
+
+   Die KUGEL-STUFE im Lauf bestimmt, wie stark sie heute ist. Sie kostet
+   Funken, gilt nur bis zum Laufende und hebt Wert und Grundmechanik jeder
+   Kugel gleichmäßig an.
+
+   Jede Funktion hier bekommt deshalb beides: die Stufe `l` aus dem Lauf und
+   den passenden Ausschnitt der dauerhaften Werte.
    ========================================================================= */
+
+import type {
+  BoltStats,
+  BuffStats,
+  FireStats,
+  PulseStats,
+  Stats,
+} from "./upgrades";
 
 export type BallKind = "white" | "pulse" | "lightning" | "fire" | "buff";
 
@@ -68,6 +84,8 @@ export const PULSE_INTERVAL = 2.6;
 export const PULSE_RADIUS = 92;
 /** Ein Puls trifft viele Pegs gleichzeitig, zahlt pro Peg deshalb anteilig. */
 export const PULSE_VALUE_FACTOR = 0.55;
+/** Sekunden zwischen einem Puls und seinem Nachhall. */
+export const PULSE_ECHO_DELAY = 0.42;
 
 /** Blitz-Kugel: Auslösechance pro Peg-Kontakt, Reichweite, Zahl der Ziele. */
 export const LIGHTNING_CHANCE = 0.22;
@@ -78,9 +96,12 @@ export const LIGHTNING_VALUE_FACTOR = 0.8;
 /** Feuer-Kugel: Brenndauer, Auszahltakt und Abnahme pro zusätzlichem Stapel. */
 export const FIRE_DURATION = 4.5;
 export const FIRE_TICK = 0.5;
-export const FIRE_VALUE_FACTOR = 0.45;
+/** Brand ist Zusatzverdienst; auf Stufe 0 darf er die anderen Kugeln nicht dominieren. */
+export const FIRE_VALUE_FACTOR = 0.35;
 export const FIRE_FALLOFF = 0.6;
 export const FIRE_MAX_STACKS = 4;
+/** Reichweite, in der `Übersprung` einen Nachbarn entzünden kann. */
+export const FIRE_SPREAD_RANGE = 74;
 
 /** Buff-Kugel: Dauer und Stärke des hinterlassenen Effekts. */
 export const BUFF_DURATION = 5;
@@ -98,8 +119,12 @@ export const emptyBallLevels = (): BallLevels => ({
   buff: 0,
 });
 
-/** Obergrenze je Kugel und Lauf. Ohne Deckel entartet ein sehr langer Lauf. */
-export const MAX_BALL_LEVEL = 12;
+/*
+ * Die Obergrenze je Kugel und Lauf steht nicht hier: sie waechst mit
+ * `Meisterschaft` und `Vollendung` und kommt als `Stats.maxBallLevel` aus
+ * upgrades.ts. Ein fester Deckel waere hier falsch — ohne ihn entartet ein
+ * langer Lauf, mit einem festen bleibt jeder spaete Lauf frueh stehen.
+ */
 
 interface BallUpgradeDef {
   /** Kosten der ersten Stufe in Funken. */
@@ -108,7 +133,7 @@ interface BallUpgradeDef {
   /** Wertfaktor der Kugel auf Stufe l. */
   value: (l: number) => number;
   /** Kurzfassung des kugeleigenen Zweiteffekts, für die Lauf-Leiste. */
-  perk: (l: number) => string;
+  perk: (l: number, s: Stats) => string;
 }
 
 /**
@@ -118,35 +143,39 @@ interface BallUpgradeDef {
  */
 export const BALL_UPGRADE: Record<BallKind, BallUpgradeDef> = {
   white: {
-    base: 12,
-    growth: 1.55,
-    value: (l) => 1 + 0.28 * l,
-    perk: () => "",
+    base: 10,
+    growth: 1.5,
+    value: (l) => 1 + 0.3 * l,
+    perk: (_l, s) =>
+      s.white.comboCap > 0 ? `Serie bis ${s.white.comboCap}` : "",
   },
   pulse: {
-    base: 18,
-    growth: 1.58,
-    value: (l) => 1 + 0.2 * l,
-    perk: (l) => `alle ${pulseInterval(l).toFixed(2)} s · Radius ${Math.round(pulseRadius(l))}`,
+    base: 16,
+    growth: 1.52,
+    value: (l) => 1 + 0.22 * l,
+    perk: (l, s) =>
+      `alle ${pulseInterval(l, s.pulse).toFixed(2)} s · Radius ${Math.round(pulseRadius(l, s.pulse))}`,
   },
   lightning: {
-    base: 22,
-    growth: 1.6,
-    value: (l) => 1 + 0.2 * l,
-    perk: (l) =>
-      `${Math.round(lightningChance(l) * 100)} % · ${lightningTargets(l)} Ziele`,
+    base: 20,
+    growth: 1.54,
+    value: (l) => 1 + 0.22 * l,
+    perk: (l, s) =>
+      `${Math.round(lightningChance(l, s.bolt) * 100)} % · ${lightningTargets(l, s.bolt)} Ziele`,
   },
   fire: {
-    base: 22,
-    growth: 1.6,
-    value: (l) => 1 + 0.2 * l,
-    perk: (l) => `${fireDuration(l).toFixed(1)} s Brand · ${fireStacks(l)} Stapel`,
+    base: 20,
+    growth: 1.54,
+    value: (l) => 1 + 0.22 * l,
+    perk: (l, s) =>
+      `${fireDuration(l, s.fire).toFixed(1)} s Brand · ${fireStacks(l)} Stapel`,
   },
   buff: {
-    base: 26,
-    growth: 1.62,
+    base: 24,
+    growth: 1.56,
     value: () => 1,
-    perk: (l) => `${buffDuration(l).toFixed(1)} s · ×${buffMult(l).toFixed(2)}`,
+    perk: (l, s) =>
+      `${buffDuration(l, s.buff).toFixed(1)} s · ×${buffMult(l, s.buff).toFixed(2)}`,
   },
 };
 
@@ -159,16 +188,28 @@ export function ballCost(kind: BallKind, level: number, discount = 1): number {
 export const ballValue = (kind: BallKind, level: number) =>
   BALL_UPGRADE[kind].value(level);
 
-/* ----------------------------------- Stufenabhängige Kugelmechanik --- */
+/* ----------------------------------- Stufenabhängige Kugelmechanik ---
 
-export const pulseInterval = (l: number) => PULSE_INTERVAL * Math.pow(0.94, l);
-export const pulseRadius = (l: number) => PULSE_RADIUS + 7 * l;
+   Jede dieser Funktionen verrechnet die Lauf-Stufe mit dem dauerhaften Wert
+   aus dem Baum. Wo der Baum-Wert die Basiskonstante bereits enthält (Chance,
+   Buff-Multiplikator), steht sie hier nicht noch einmal — sonst zählte sie
+   doppelt.                                                                */
 
-export const lightningChance = (l: number) => Math.min(0.65, LIGHTNING_CHANCE + 0.03 * l);
-export const lightningTargets = (l: number) => LIGHTNING_TARGETS + Math.floor(l / 4);
+export const pulseInterval = (l: number, s: PulseStats) =>
+  PULSE_INTERVAL * Math.pow(0.94, l) * s.tempo;
+export const pulseRadius = (l: number, s: PulseStats) =>
+  PULSE_RADIUS + 7 * l + s.range;
 
-export const fireDuration = (l: number) => FIRE_DURATION + 0.45 * l;
+export const lightningChance = (l: number, s: BoltStats) =>
+  Math.min(0.92, s.chance + 0.03 * l);
+export const lightningTargets = (l: number, s: BoltStats) =>
+  LIGHTNING_TARGETS + Math.floor(l / 4) + s.targets;
+
+export const fireDuration = (l: number, s: FireStats) =>
+  FIRE_DURATION + 0.45 * l + s.duration;
+/** Wie oft ein Peg übereinander brennen darf. Hängt nur an der Lauf-Stufe. */
 export const fireStacks = (l: number) => FIRE_MAX_STACKS + Math.floor(l / 5);
 
-export const buffDuration = (l: number) => BUFF_DURATION + 0.5 * l;
-export const buffMult = (l: number) => BUFF_MULT + 0.12 * l;
+export const buffDuration = (l: number, s: BuffStats) =>
+  BUFF_DURATION + 0.5 * l + s.duration;
+export const buffMult = (l: number, s: BuffStats) => s.mult + 0.12 * l;

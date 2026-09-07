@@ -4,11 +4,13 @@
    Drei Regeln:
      1. Flächen sind flach — keine Verläufe, keine Weichzeichner.
      2. Alles ist extrudiert — Deckfläche + abgedunkelter Sockel.
-     3. Ein langer, harter 45°-Schatten.
+     3. Ein langer 45°-Schatten, der nach hinten ins Nichts auslaeuft.
 
    Der lange Schatten entsteht, indem dieselbe Form vielfach mit wachsendem
    Versatz als Subpfad gesammelt und dann EINMAL gefüllt wird. Ein einzelner
    fill() über überlappende Subpfade deckt gleichmäßig, statt sich aufzudunkeln.
+   Gefüllt wird mit einem Verlauf entlang der Schattenachse: die Kante am
+   Objekt bleibt hart, das ferne Ende verliert sich.
    ========================================================================= */
 
 export const C = {
@@ -54,12 +56,21 @@ export function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
+/*
+ * shade() und mix() geben wieder Hex zurueck, nicht rgb(). Nur so lassen sie
+ * sich ineinander stecken — der Skill Tree blendet Farben ueber mehrere
+ * Stufen ineinander und braucht das Ergebnis jeder Stufe als Eingabe der
+ * naechsten.
+ */
+const toHex = (r: number, g: number, b: number): string =>
+  "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+
 /** amt < 0 dunkelt ab, amt > 0 hellt auf. */
 export function shade(hex: string, amt: number): string {
   const [r, g, b] = hexToRgb(hex);
   const f = (v: number) =>
     Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
-  return `rgb(${f(r)}, ${f(g)}, ${f(b)})`;
+  return toHex(f(r), f(g), f(b));
 }
 
 export function rgba(hex: string, a: number): string {
@@ -71,8 +82,8 @@ export function rgba(hex: string, a: number): string {
 export function mix(a: string, b: string, t: number): string {
   const [r1, g1, b1] = hexToRgb(a);
   const [r2, g2, b2] = hexToRgb(b);
-  const f = (x: number, y: number) => Math.round(x + (y - x) * t);
-  return `rgb(${f(r1, r2)}, ${f(g1, g2)}, ${f(b1, b2)})`;
+  const f = (x: number, y: number) => Math.max(0, Math.min(255, Math.round(x + (y - x) * t)));
+  return toHex(f(r1, r2), f(g1, g2), f(b1, b2));
 }
 
 /* -------------------------------------------------------------- Pfade --- */
@@ -100,21 +111,64 @@ export function roundRectPath(
 
 /* ------------------------------------------------------- Lange Schatten --- */
 
+/** Dieselbe Farbe, aber vollstaendig durchsichtig — das Ende des Verlaufs. */
+export function transparent(color: string): string {
+  const m = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (m) {
+    const [r, g, b] = m[1].split(",").map((v) => parseFloat(v));
+    return `rgba(${r}, ${g}, ${b}, 0)`;
+  }
+  if (color.startsWith("#")) return rgba(color, 0);
+  return "rgba(0, 0, 0, 0)";
+}
+
 /**
  * Sammelt `addPath(dx, dy)` über eine 45°-Diagonale und füllt einmal.
- * Ergebnis: ein solides Schattenband ohne Aufdunkeln an Überlappungen.
+ * Ein einzelner fill() über überlappende Subpfade deckt gleichmäßig, statt
+ * sich an den Überlappungen aufzudunkeln.
+ *
+ * Gefüllt wird mit einem Verlauf ENTLANG der Schattenachse: am Objekt volle
+ * Deckung, am Ende nichts mehr. Ohne ihn bricht der Schatten auf voller
+ * Deckkraft ab, und dieser Abriss liest sich als Kante eines Gegenstands,
+ * der gar nicht da ist. Bis zum Rand des werfenden Objekts bleibt der
+ * Verlauf auf voller Deckung — der Schatten soll direkt am Fuß am
+ * dunkelsten sein, nicht schon auf halber Kraft aus dem Objekt treten.
  */
 export function longShadow(
   ctx: CanvasRenderingContext2D,
   addPath: (dx: number, dy: number) => void,
   length: number,
   color: string = C.shadow,
+  /**
+   * Mittelpunkt des werfenden Objekts und sein Radius in Schattenrichtung.
+   * Ohne Angabe bleibt der Schatten durchgehend deckend.
+   */
+  anchor?: { x: number; y: number; r: number },
   step = 1.5
 ): void {
   if (length <= 0) return;
+
   ctx.beginPath();
   for (let d = step; d <= length; d += step) addPath(d, d);
-  ctx.fillStyle = color;
+
+  if (anchor) {
+    // Die Achse laeuft von der Objektmitte bis zur aeussersten Schattenecke,
+    // damit der Verlauf genau dort bei null ankommt, wo der Schatten endet.
+    const reichweite = length + anchor.r / Math.SQRT2;
+    const achse = reichweite * Math.SQRT2;
+    const g = ctx.createLinearGradient(
+      anchor.x,
+      anchor.y,
+      anchor.x + reichweite,
+      anchor.y + reichweite
+    );
+    g.addColorStop(0, color);
+    g.addColorStop(Math.min(0.9, anchor.r / achse), color);
+    g.addColorStop(1, transparent(color));
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = color;
+  }
   ctx.fill();
 }
 
@@ -128,7 +182,15 @@ export function longShadowRect(
   length: number,
   color: string = C.shadow
 ): void {
-  longShadow(ctx, (dx, dy) => roundRectPath(ctx, x + dx, y + dy, w, h, r), length, color);
+  // Der Radius in Schattenrichtung ist die auf die 45°-Achse projizierte
+  // Ecke — bis dorthin steckt der Schatten noch unter dem Rechteck.
+  longShadow(
+    ctx,
+    (dx, dy) => roundRectPath(ctx, x + dx, y + dy, w, h, r),
+    length,
+    color,
+    { x: x + w / 2, y: y + h / 2, r: (w / 2 + h / 2) / Math.SQRT2 }
+  );
 }
 
 export function longShadowCircle(
@@ -146,12 +208,27 @@ export function longShadowCircle(
       ctx.arc(cx + dx, cy + dy, radius, 0, Math.PI * 2);
     },
     length,
-    color
+    color,
+    { x: cx, y: cy, r: radius }
   );
 }
 
 /* --------------------------------------------------- Extrudierte Formen --- */
 
+/**
+ * Ein Koerper aus Deckflaeche und Seitenwand.
+ *
+ * Die Wand ist NICHT dieselbe Form noch einmal, nur tiefer gesetzt — sie ist
+ * die Spur, die die Deckflaeche auf ihrem Weg nach unten hinterlaesst. Fuer
+ * ein abgerundetes Rechteck ist diese Spur wieder ein abgerundetes Rechteck,
+ * nur um die Wandhoehe laenger. Deshalb genuegt ein Pfad.
+ *
+ * Der Unterschied faellt erst am Kreis auf, und dort dann sofort: eine bloss
+ * nach unten versetzte Kreisscheibe laeuft links und rechts auf null Hoehe
+ * aus. Statt eines Zylinders sieht man eine Sichel, die unter der Scheibe
+ * hervorlugt — flach und schmutzig. Die Spur dagegen ist eine Kapsel und hat
+ * ueber die ganze Breite dieselbe Wandhoehe.
+ */
 export function extrudedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -161,15 +238,25 @@ export function extrudedRect(
   r: number,
   top: string,
   base: string,
-  depth = 6
+  depth = 6,
+  /**
+   * Wie weit die Deckflaeche in ihren Sockel gedrueckt ist, in Pixeln. Der
+   * Sockel bleibt stehen, nur der Deckel faehrt herunter — genau so gibt ein
+   * echter Knopf nach. Negative Werte heben den Deckel an; die Wand waechst
+   * dann mit, der Knopf steigt aus seinem Sockel.
+   */
+  sink = 0
 ): void {
+  const topY = y + sink;
+  const wall = Math.max(0, depth - sink);
+
   ctx.beginPath();
-  roundRectPath(ctx, x, y + depth, w, h, r);
+  roundRectPath(ctx, x, topY, w, h + wall, r);
   ctx.fillStyle = base;
   ctx.fill();
 
   ctx.beginPath();
-  roundRectPath(ctx, x, y, w, h, r);
+  roundRectPath(ctx, x, topY, w, h, r);
   ctx.fillStyle = top;
   ctx.fill();
 }
@@ -181,17 +268,24 @@ export function extrudedCircle(
   radius: number,
   top: string,
   base: string,
-  depth = 6
+  depth = 6,
+  /** Siehe extrudedRect: der Deckel sinkt, der Sockel bleibt. */
+  sink = 0
 ): void {
-  ctx.beginPath();
-  ctx.arc(cx, cy + depth, radius, 0, Math.PI * 2);
-  ctx.fillStyle = base;
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fillStyle = top;
-  ctx.fill();
+  // Ein Kreis ist ein abgerundetes Quadrat mit r = halbe Kantenlaenge —
+  // damit gilt hier dieselbe Spur, und die Wand wird zur Kapsel.
+  extrudedRect(
+    ctx,
+    cx - radius,
+    cy - radius,
+    radius * 2,
+    radius * 2,
+    radius,
+    top,
+    base,
+    depth,
+    sink
+  );
 }
 
 export function outlineRect(
@@ -251,3 +345,21 @@ export function fmtTime(seconds: number): string {
 
 export const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/* ------------------------------------------------------------- Easing --- */
+
+/**
+ * Schiebt `v` um `step` in Richtung `to` und haelt dort an. Anders als eine
+ * exponentielle Annaeherung kommt der Wert wirklich AN — was gebraucht wird,
+ * wenn er ein Fortschritt von 0 bis 1 ist, den eine Kurve weiterverarbeitet.
+ */
+export function approach(v: number, to: number, step: number): number {
+  return v < to ? Math.min(to, v + step) : Math.max(to, v - step);
+}
+
+/** Schnell los, weich aus — der Standard fuer "etwas erscheint". */
+export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+/** Weich an beiden Enden — fuer Formwechsel, die niemand anstossen sieht. */
+export const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;

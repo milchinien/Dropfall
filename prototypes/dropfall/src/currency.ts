@@ -6,9 +6,9 @@
 
      Funken   ✦  waehrend des Laufs pro Kontakt   -> Kugel-Upgrades im Lauf
      Geld     ◆  nach dem Lauf, je nach Leistung  -> Skill Tree
-     Splitter ◈  je einzelnem Peg-Bump (ab Lv 5)  -> spaete Dauer-Upgrades
-     Krone    ♛  einmalig je erstmals geschafftem -> grosse Einzel-Upgrades
-                 Level, danach nie wieder
+     Splitter ◈  je direktem Peg-Bump (ab Lv 3)  -> Upgrades der Lauf-Oekonomie
+     Krone    ♛  einmalig je erfuelltem Level-    -> weitere Kugeln und
+                 Ziel (Meisterschaft, Ausdauer)      grosse Einzelstuecke
 
    Funken sind die einzige Waehrung, die den Lauf NICHT ueberlebt. Alles, was
    man mit ihnen kauft, gilt nur bis zum Laufende — sie sind der Grund, warum
@@ -23,26 +23,33 @@ export type TreeCurrency = Exclude<Currency, "spark">;
 export interface CurrencyInfo {
   name: string;
   glyph: string;
+  /** Projektlokales, zweifarbiges UI-Piktogramm. */
+  icon: string;
   color: string;
   /** CSS-Klasse fuer den Glyph im HUD. */
   css: string;
 }
 
 export const CURRENCY: Record<Currency, CurrencyInfo> = {
-  spark: { name: "Funken", glyph: "✦", color: "#2ed3ae", css: "glyph--teal" },
-  money: { name: "Geld", glyph: "◆", color: "#edb443", css: "glyph--amber" },
-  shard: { name: "Splitter", glyph: "◈", color: "#6fa8ff", css: "glyph--blue" },
-  crown: { name: "Krone", glyph: "♛", color: "#e4348f", css: "glyph--magenta" },
+  spark: { name: "Funken", glyph: "✦", icon: "assets/currency-icons/spark.png", color: "#2ed3ae", css: "glyph--teal" },
+  money: { name: "Geld", glyph: "◆", icon: "assets/currency-icons/money.png", color: "#edb443", css: "glyph--amber" },
+  shard: { name: "Splitter", glyph: "◈", icon: "assets/currency-icons/shard.png", color: "#6fa8ff", css: "glyph--blue" },
+  crown: { name: "Krone", glyph: "♛", icon: "assets/currency-icons/crown.png", color: "#e4348f", css: "glyph--magenta" },
 };
 
 /**
- * Ab diesem Level (1-basiert) faellt bei jedem Peg-Bump ein Splitter an.
- * Davor gibt es die Waehrung schlicht nicht — sie gehoert zur zweiten Haelfte
- * des Spiels und soll die erste nicht mit einer weiteren Zahl belasten.
+ * Ab diesem Level (1-basiert) faellt bei jedem direkten Peg-Bump ein Splitter
+ * an. Davor gibt es die Waehrung schlicht nicht — die ersten beiden Level
+ * sollen mit zwei Zahlen auskommen.
+ *
+ * Frueher stand hier 5, also das damals LETZTE Level: der komplette
+ * Splitter-Ast war bis kurz vor Schluss unerreichbar und danach in wenigen
+ * Laeufen leergekauft. Ab Level 3 hat der Ast die halbe Kampagne Zeit, sich
+ * auszuzahlen.
  */
-export const SHARD_FROM_LEVEL = 5;
+export const SHARD_FROM_LEVEL = 3;
 
-/** Splitter je einzelnem Peg-Kontakt. */
+/** Splitter je direktem Peg-Kontakt (Flaecheneffekte zaehlen nicht). */
 export const SHARD_PER_BUMP = 1;
 
 /* ------------------------------------------------- Auszahlung in Geld --- */
@@ -55,7 +62,20 @@ export const SHARD_PER_BUMP = 1;
  * Beides mal dem Levelfaktor: hoehere Level zahlen spuerbar besser.
  */
 export const MONEY_PER_NEW_PEG = 10;
-export const levelPayoutMult = (arenaIndex: number) => 1 + 0.35 * arenaIndex;
+
+/**
+ * Der Levelfaktor waechst geometrisch, nicht linear: ein neues Level muss ein
+ * spuerbarer Sprung sein, sonst lohnt der Wechsel nicht gegen die vertraute
+ * Arena, in der man die Abdeckung schon im Schlaf schafft.
+ *
+ * Der Schritt ist trotzdem klein gehalten (1.3, nicht 1.55). Ein hoeheres
+ * Level bringt ohnehin schon mehr Pegs, mehr Kontakte und laengere Laeufe —
+ * kommt ein grosser Faktor obendrauf, finanziert ein einziger Lauf im neuen
+ * Level sofort das uebernaechste, und die Kampagne rauscht durch.
+ */
+export const LEVEL_MULT_STEP = 1.3;
+export const levelPayoutMult = (arenaIndex: number) =>
+  Math.pow(LEVEL_MULT_STEP, arenaIndex);
 
 export interface Payout {
   sparks: number;
@@ -70,11 +90,16 @@ export function computePayout(
   sparksGross: number,
   newPegs: number,
   arenaIndex: number,
-  moneyPerSpark: number
+  moneyPerSpark: number,
+  pegBounty: number,
+  payMult: number
 ): Payout {
-  const mult = levelPayoutMult(arenaIndex);
+  // Levelfaktor und Baum-Faktor (`Handelsposten`, `Boerse`) greifen beide auf
+  // die Summe, nicht auf die Einzelposten — sonst rundet jeder Posten fuer
+  // sich ab und der Baum-Faktor verpufft bei kleinen Betraegen.
+  const mult = levelPayoutMult(arenaIndex) * payMult;
   const fromSparks = sparksGross * moneyPerSpark;
-  const fromPegs = newPegs * MONEY_PER_NEW_PEG;
+  const fromPegs = newPegs * pegBounty;
   return {
     sparks: sparksGross,
     fromSparks: Math.floor(fromSparks * mult),

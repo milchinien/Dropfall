@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Idler Incremental — Prototypen</title>
+    <!-- Dasselbe Loader-Bauteil wie in den Prototypen. Als <link>, damit
+         der Ladeschirm ohne Skript sichtbar ist. -->
+    <link rel="stylesheet" href="/prototypes/shared/loader.css" />
     <style>
       :root {
         color-scheme: dark;
@@ -71,9 +74,38 @@
         font-size: 0.8rem;
         color: #5c6376;
       }
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: grid;
+        place-items: center;
+        background: #0f1115;
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+      }
+      #boot.is-done {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
+    <div id="boot">
+      <div class="ldr ldr--md ldr--on-dark">
+        <div class="ldr__rings" aria-hidden="true">
+          <div class="ldr__ring ldr__ring--outer"></div>
+          <div class="ldr__ring ldr__ring--main"></div>
+          <div class="ldr__ring ldr__ring--counter"></div>
+          <div class="ldr__ring ldr__ring--accent"></div>
+        </div>
+        <div class="ldr__text">
+          <p class="ldr__title"><span>Prototypen werden geladen</span></p>
+          <p class="ldr__subtitle"><span>Gleich kannst du wählen</span></p>
+        </div>
+      </div>
+    </div>
+
     <main>
       <h1>Idler Incremental</h1>
       <p class="sub">Prototyp wählen</p>
@@ -85,5 +117,25 @@
         </a>
       </div>
     </main>
+    <!-- Mindeststandzeit, sonst blitzt der Ring nur auf: die Startseite ist
+         praktisch sofort da. -->
+    <script>
+      (() => {
+        const start = performance.now();
+        addEventListener(
+          "load",
+          () => {
+            const boot = document.getElementById("boot");
+            const rest = Math.max(0, 600 - (performance.now() - start));
+            setTimeout(() => {
+              if (!boot) return;
+              boot.classList.add("is-done");
+              setTimeout(() => boot.remove(), 400);
+            }, rest);
+          },
+          { once: true }
+        );
+      })();
+    </script>
   </body>
 </html>

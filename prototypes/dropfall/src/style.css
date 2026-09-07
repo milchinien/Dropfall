@@ -1,6 +1,7 @@
 /* =========================================================================
    DROPFALL — Outhold-Design-System
-   Regeln: flache Flächen, extrudierte Sockel, lange harte 45°-Schatten.
+   Regeln: flache Flächen, extrudierte Sockel, lange 45°-Schatten, die
+   nach hinten ins Nichts auslaufen.
    ========================================================================= */
 
 :root {
@@ -25,6 +26,77 @@
 
   --panel: rgba(15, 11, 24, 0.42);
   --shadow: rgba(14, 10, 22, 0.4);
+
+  /*
+   * AUSLAUFENDE 45-GRAD-SCHATTEN
+   *
+   * Ein einzelner harter box-shadow bricht am Ende auf voller Deckkraft ab,
+   * und dieser Abriss liest sich als Kante eines Gegenstands, der gar nicht
+   * da ist. CSS kann einen Schatten nicht entlang seiner Achse ausblenden —
+   * deshalb besteht er hier aus vielen fast durchsichtigen Lagen, jede etwas
+   * weiter hinten. Direkt am Objekt liegen alle uebereinander und decken
+   * satt; nach hinten faellt Lage um Lage weg, bis nur noch eine uebrig ist
+   * und der Schatten sich verliert.
+   *
+   * Alle laufen nach unten rechts, wie die Sockel der Knoepfe und wie die
+   * Schatten im Canvas (siehe theme.ts). Gleich viele Stufen je Paar, damit
+   * ein Wechsel zwischen zwei Laengen weich uebergeht statt zu springen.
+   */
+  --cast-lage: rgba(10, 7, 17, 0.042);
+  --cast-lage-kurz: rgba(10, 7, 17, 0.06);
+
+  /* Grosse Karten: Level-Auswahl, Auswertung. */
+  --cast-l:
+    4px 4px 0 var(--cast-lage),
+    8px 8px 0 var(--cast-lage),
+    12px 12px 0 var(--cast-lage),
+    16px 16px 0 var(--cast-lage),
+    20px 20px 0 var(--cast-lage),
+    24px 24px 0 var(--cast-lage),
+    28px 28px 0 var(--cast-lage),
+    32px 32px 0 var(--cast-lage),
+    36px 36px 0 var(--cast-lage),
+    40px 40px 0 var(--cast-lage);
+
+  /* Schwebendes Kleinzeug: Tooltip, Toast, Einstellungen. */
+  --cast-m:
+    2.8px 2.8px 0 var(--cast-lage),
+    5.6px 5.6px 0 var(--cast-lage),
+    8.4px 8.4px 0 var(--cast-lage),
+    11.2px 11.2px 0 var(--cast-lage),
+    14px 14px 0 var(--cast-lage),
+    16.8px 16.8px 0 var(--cast-lage),
+    19.6px 19.6px 0 var(--cast-lage),
+    22.4px 22.4px 0 var(--cast-lage),
+    25.2px 25.2px 0 var(--cast-lage),
+    28px 28px 0 var(--cast-lage);
+
+  /* Knoepfe, die auf ihrem Sockel stehen. */
+  --cast-s:
+    2px 2px 0 var(--cast-lage-kurz),
+    4px 4px 0 var(--cast-lage-kurz),
+    6px 6px 0 var(--cast-lage-kurz),
+    8px 8px 0 var(--cast-lage-kurz),
+    10px 10px 0 var(--cast-lage-kurz),
+    12px 12px 0 var(--cast-lage-kurz);
+
+  /* Derselbe Knopf, angehoben: hoeher heisst laengerer Schatten. */
+  --cast-s-hoch:
+    2.6px 2.6px 0 var(--cast-lage-kurz),
+    5.2px 5.2px 0 var(--cast-lage-kurz),
+    7.8px 7.8px 0 var(--cast-lage-kurz),
+    10.4px 10.4px 0 var(--cast-lage-kurz),
+    13.0px 13.0px 0 var(--cast-lage-kurz),
+    15.6px 15.6px 0 var(--cast-lage-kurz);
+
+  /* Derselbe Knopf, heruntergedrueckt: der Schatten rueckt nach. */
+  --cast-s-gedrueckt:
+    0.7px 0.7px 0 var(--cast-lage-kurz),
+    1.4px 1.4px 0 var(--cast-lage-kurz),
+    2.1px 2.1px 0 var(--cast-lage-kurz),
+    2.8px 2.8px 0 var(--cast-lage-kurz),
+    3.5px 3.5px 0 var(--cast-lage-kurz),
+    4.2px 4.2px 0 var(--cast-lage-kurz);
 }
 
 * {
@@ -110,6 +182,28 @@ body {
 .glyph--magenta { color: var(--magenta); }
 .glyph--blue { color: var(--blue); }
 
+.currency-icon,
+.currency-inline {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  vertical-align: -0.28em;
+}
+
+.currency-inline {
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.16em;
+}
+
+.goal-currency-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
 .arena-title {
   position: absolute;
   top: 26px;
@@ -122,20 +216,30 @@ body {
   pointer-events: none;
 }
 
-/* ------------------------------------------------------ Lebensleiste --- */
+/* ------------------------------------------------------- Lebensanzeige --- */
+/* Der Ring kommt aus `prototypes/shared/loader.css`, hier steht nur, wie
+   er im Panel sitzt und welche Farbe er traegt. */
 
 .panel--life {
   left: 22px;
   bottom: 22px;
-  width: 340px;
-  padding: 15px 18px 16px;
+  /* Ring plus Text sind schmaler als die alte Leiste — feste Breite waere
+     jetzt nur noch leerer Kasten. */
+  min-width: 260px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.life-head {
+.life-info {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .life-label {
@@ -145,39 +249,23 @@ body {
   color: var(--muted);
 }
 
-.life-time {
-  font-size: 24px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+.life-ring .ldr {
+  --ldr-size: 92px;
+  /* Teal statt monochrom: die Lebensanzeige ist das einzige Element, das
+     man im Lauf aus dem Augenwinkel liest — sie muss sich von der Arena
+     abheben, nicht mit ihr verschmelzen. */
+  --ldr-color: var(--teal);
 }
 
-.life-bar {
-  height: 12px;
-  border-radius: 6px;
-  background: rgba(244, 241, 250, 0.12);
-  overflow: hidden;
+/* Unter 30 % wechselt die Farbe. Das ist keine Kosmetik: die Zahl in der
+   Mitte liest man im Lauf nicht mehr, den Farbwechsel schon. */
+.life-ring .ldr.is-low {
+  --ldr-color: var(--pink);
 }
 
-.life-fill {
-  height: 100%;
-  width: 100%;
-  border-radius: 6px;
-  background: var(--teal);
-  transition: width 0.08s linear, background 0.3s;
-}
-
-.life-fill.is-low {
-  background: var(--pink);
-}
-
-.life-foot {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
+.life-ring .ldr__center {
+  font-size: 17px;
+  color: var(--text);
 }
 
 /* ------------------------------------------------- Kugel-Upgrades --- */
@@ -212,12 +300,24 @@ body {
   color: var(--muted);
 }
 
+/*
+ * Ein Knopf auf einem Sockel, kein Rechteck mit Rand: die Zeile steht
+ * --lift hoch ueber ihrem Fundament und faellt beim Druck darauf herunter.
+ * Der Sockel ist eine harte Flaeche ohne Verlauf und der Wurfschatten liegt
+ * auf 45 Grad — beides gehoert zum Outhold-Stil oben in dieser Datei.
+ * Der Abstand nach unten traegt --lift mit, sonst stuende die naechste Zeile
+ * im Sockel der vorigen.
+ */
 .shop-row {
+  --lift: 5px;
+  --socket: #100c1c;
+
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  margin-bottom: 7px;
+  margin-bottom: calc(7px + var(--lift));
   padding: 9px 11px;
   font-family: inherit;
   text-align: left;
@@ -226,34 +326,102 @@ body {
   border: 2px solid transparent;
   border-radius: 10px;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, transform 0.06s;
+  box-shadow:
+    0 var(--lift) 0 var(--socket),
+    var(--cast-s);
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    transform 0.07s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.07s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Kaufbar: die Zeile bekommt Kontur. Alles andere bleibt ruhig — im Lauf
-   soll der Blick nur die Zeilen finden, die gerade etwas bringen. */
+/* Kaufbar: die Zeile bekommt Kontur, und ihr Sockel nimmt die Farbe an —
+   der Knopf sieht aus, als waere er aus einem Stueck gegossen. Alles andere
+   bleibt ruhig; im Lauf soll der Blick nur die Zeilen finden, die gerade
+   etwas bringen. */
 .shop-row.is-ready {
+  --socket: var(--teal-dark);
   border-color: var(--teal);
   background: rgba(46, 211, 174, 0.1);
 }
 
+/* Unter dem Zeiger steigt der Knopf einen Hauch weiter aus dem Sockel. */
 .shop-row.is-ready:hover {
   background: rgba(46, 211, 174, 0.18);
+  transform: translateY(-1px);
+  box-shadow:
+    0 calc(var(--lift) + 1px) 0 var(--socket),
+    var(--cast-s-hoch);
 }
 
-.shop-row:active {
-  transform: translateY(2px);
+/*
+ * Der Druck: der Knopf faehrt genau um seine Sockelhoehe herunter und der
+ * Sockel verschwindet unter ihm. Die Wege sind gleich gross, deshalb bleibt
+ * die Unterkante stehen und nur die Oberflaeche sinkt — das ist es, was den
+ * Druck echt wirken laesst.
+ * `.is-pressed` gibt es fuer die Tasten 1-5: im Lauf kauft man ueber die
+ * Tastatur, und der Knopf soll auch dann sichtbar nachgeben.
+ */
+.shop-row:active,
+.shop-row.is-pressed {
+  transform: translateY(var(--lift));
+  box-shadow:
+    0 0 0 var(--socket),
+    var(--cast-s-gedrueckt);
 }
 
+/* Ausgereizt: der Knopf sitzt flach auf, es gibt nichts mehr zu druecken. */
 .shop-row.is-max {
+  --lift: 0px;
   opacity: 0.55;
   cursor: default;
+  box-shadow: none;
 }
 
-.shop-dot {
+.shop-row.is-max:active,
+.shop-row.is-max:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-row {
+    transition: border-color 0.12s, background 0.12s;
+  }
+}
+
+/* Markiert: der Reif in der Arena hat dieselbe Farbe. Die Zeile bestaetigt
+   nur, WELCHE Kugel es getroffen hat — gesetzt wird die Markierung in der
+   Arena, nicht hier. */
+/* Der Amber-Streifen sitzt als eigene Flaeche in der Zeile, nicht als
+   inset-Schatten: die box-shadow-Liste traegt jetzt den Sockel und wuerde
+   ihn sonst ueberschreiben. */
+.shop-row.is-marked {
+  border-color: var(--amber);
+}
+
+.shop-row.is-marked::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--amber);
+}
+
+.shop-row.is-marked .shop-name::after {
+  content: " ◈";
+  color: var(--amber);
+}
+
+.shop-icon {
   flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
 }
 
 .shop-info {
@@ -320,7 +488,7 @@ body {
   background: rgba(26, 20, 40, 0.97);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 26px 26px 0 rgba(10, 7, 17, 0.32);
+  box-shadow: var(--cast-l);
 }
 
 .select-left {
@@ -480,6 +648,80 @@ body {
 }
 
 /* ------------------------------------------------------------ Buttons --- */
+/*
+ * Jeder Knopf der Oberflaeche steht auf einem Sockel — dieselbe Sprache wie
+ * die Zeilen der Kugel-Upgrades und die Knoten im Skill Tree. Vorher waren es
+ * flache Rechtecke mit Rand, die beim Klick um zwei, drei Pixel nach unten
+ * rutschten; das liest sich als Wackeln, nicht als Druck.
+ *
+ * Der Druckweg ist EXAKT die Sockelhoehe. Dadurch bleibt die Unterkante
+ * stehen und nur die Oberflaeche sinkt — genau daran erkennt das Auge einen
+ * Knopf, der nachgibt, statt eines Kastens, der wegrutscht.
+ *
+ * Die Flaeche ist deckend, nicht durchscheinend: durch einen transparenten
+ * Deckel saehe man seinen eigenen Sockel.
+ */
+.icon-btn,
+.big-btn,
+.ghost-btn,
+.prev-nav {
+  --lift: 5px;
+  --socket: #0f0b19;
+  --face: #1b1528;
+
+  font-family: inherit;
+  color: var(--text);
+  background: var(--face);
+  cursor: pointer;
+  box-shadow:
+    0 var(--lift) 0 var(--socket),
+    var(--cast-s);
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    transform 0.07s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.07s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Unter dem Zeiger steigt der Knopf einen Hauch weiter aus dem Sockel. Nur
+   das Heben steht hier — Farbe und Rand bleiben Sache des einzelnen Knopfes,
+   sonst wuerde der gruene Startknopf beim Hover seine Farbe verlieren. */
+.icon-btn:hover:not(:disabled),
+.big-btn:hover:not(:disabled),
+.ghost-btn:hover:not(:disabled),
+.prev-nav:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 calc(var(--lift) + 1px) 0 var(--socket),
+    var(--cast-s-hoch);
+}
+
+.icon-btn:active:not(:disabled),
+.big-btn:active:not(:disabled),
+.ghost-btn:active:not(:disabled),
+.prev-nav:active:not(:disabled) {
+  transform: translateY(var(--lift));
+  box-shadow:
+    0 0 0 var(--socket),
+    var(--cast-s-gedrueckt);
+}
+
+/* Gesperrt heisst: hier gibt es nichts zu druecken. Dann faellt der Sockel
+   weg, und der Knopf liegt flach auf. */
+.prev-nav:disabled {
+  --lift: 0px;
+  box-shadow: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn,
+  .big-btn,
+  .ghost-btn,
+  .prev-nav {
+    transition: border-color 0.12s, background 0.12s;
+  }
+}
 
 .icon-btn {
   position: absolute;
@@ -488,20 +730,13 @@ body {
   width: 46px;
   height: 46px;
   font-size: 22px;
-  color: var(--text);
-  background: transparent;
   border: 2px solid rgba(244, 241, 250, 0.55);
   border-radius: 10px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 0.15s, transform 0.1s;
 }
 
 .icon-btn:hover {
   border-color: var(--text);
-}
-.icon-btn:active {
-  transform: translateY(2px);
+  --face: #241c34;
 }
 
 .big-btn {
@@ -510,24 +745,16 @@ body {
   bottom: 22px;
   min-width: 240px;
   padding: 18px 34px;
-  font-family: inherit;
   font-size: 21px;
   font-weight: 800;
   letter-spacing: 0.09em;
-  color: var(--text);
-  background: transparent;
   border: 2px solid rgba(244, 241, 250, 0.65);
   border-radius: 12px;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.08s, border-color 0.15s;
 }
 
 .big-btn:hover {
-  background: rgba(244, 241, 250, 0.08);
   border-color: var(--text);
-}
-.big-btn:active {
-  transform: translateY(3px);
+  --face: #241c34;
 }
 
 .ghost-btn {
@@ -535,20 +762,16 @@ body {
   width: 100%;
   margin-top: 10px;
   padding: 13px 20px;
-  font-family: inherit;
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  color: var(--text);
-  background: transparent;
   border: 2px solid rgba(244, 241, 250, 0.4);
   border-radius: 10px;
-  cursor: pointer;
 }
 
 .ghost-btn:hover {
   border-color: var(--text);
-  background: rgba(244, 241, 250, 0.07);
+  --face: #241c34;
 }
 
 /* ------------------------------------------------------------ Tooltip --- */
@@ -562,7 +785,7 @@ body {
   border-radius: 12px;
   overflow: hidden;
   pointer-events: none;
-  box-shadow: 18px 18px 0 rgba(10, 7, 17, 0.35);
+  box-shadow: var(--cast-m);
 }
 
 .tt-body {
@@ -656,7 +879,7 @@ body {
   font-weight: 700;
   text-align: center;
   line-height: 1.5;
-  box-shadow: 16px 16px 0 rgba(10, 7, 17, 0.3);
+  box-shadow: var(--cast-m);
   transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
@@ -680,7 +903,7 @@ body {
   padding: 26px;
   background: #14101f;
   border-radius: 14px;
-  box-shadow: 20px 20px 0 rgba(10, 7, 17, 0.3);
+  box-shadow: var(--cast-m);
 }
 
 .modal-card h2 {
@@ -709,7 +932,7 @@ body {
   background: rgba(24, 18, 38, 0.97);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 26px 26px 0 rgba(10, 7, 17, 0.32);
+  box-shadow: var(--cast-l);
 }
 
 .result-main {
@@ -821,13 +1044,14 @@ body {
 
 .reward-item {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
 }
 
 .reward-icon {
-  font-size: 26px;
-  color: var(--amber);
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 
 .reward-icon--teal {
@@ -909,16 +1133,33 @@ body {
   margin-bottom: 20px;
 }
 
+/* Je Quelle ein kleiner Wert-Ring — dasselbe Bauteil wie Ladeschirm und
+   Lebensanzeige, nur klein. Der Anteil steht in der Ringmitte, der
+   absolute Betrag daneben: der Ring allein beantwortet "wie viel vom
+   Ganzen", nicht "wie viel". */
+
 .src {
-  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.src-ring .ldr {
+  --ldr-size: 52px;
+}
+
+.src-ring .ldr__center {
+  font-size: 12px;
+  color: var(--text);
 }
 
 .src-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 5px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 
 .src-name {
@@ -936,22 +1177,113 @@ body {
   color: var(--text);
 }
 
-.src-bar {
-  height: 8px;
-  border-radius: 4px;
-  background: rgba(244, 241, 250, 0.1);
-  overflow: hidden;
-}
-
-.src-fill {
-  height: 100%;
-  border-radius: 4px;
-}
-
 .src-empty {
   font-size: 14px;
   font-weight: 600;
   color: var(--muted);
   text-align: center;
   margin-top: 30px;
+}
+
+/* --- Zielzaehler und gesperrte Level in der Auswahl -------------------- */
+
+.goal-tally {
+  float: right;
+  color: var(--amber);
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.goal--locked {
+  border-color: var(--line);
+  opacity: 0.9;
+}
+.goal--locked .goal-title { color: var(--muted); }
+
+.select-title.is-locked { color: var(--muted); }
+
+.big-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* ============================================================ Tableiste --- */
+/* Ein gleitender Pill statt aufleuchtender Einzelknoepfe: die Bewegung
+   erzaehlt, in welche Richtung der Wechsel geht. */
+
+.smooth-tabs {
+  --tab-accent: var(--teal);
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: rgba(12, 9, 20, 0.5);
+}
+
+.smooth-tabs-pill {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  border-radius: 8px;
+  background: var(--tab-accent);
+  opacity: 0;
+  will-change: transform, width;
+}
+
+.smooth-tabs-pill.is-locked {
+  background: var(--line);
+}
+
+.smooth-tabs-list {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.smooth-tabs-btn {
+  min-width: 0;
+  padding: 9px 8px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+
+.smooth-tabs-btn:hover:not(.is-active) {
+  color: var(--text);
+  background: rgba(244, 241, 250, 0.07);
+}
+
+.smooth-tabs-btn.is-active {
+  color: #16111f;
+}
+
+.smooth-tabs-btn.is-active.is-locked {
+  color: var(--text);
+}
+
+.smooth-tabs-btn:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* Die Levelleiste sitzt unter der Vorschau und traegt die Auswahl der Arena. */
+.select-tabs {
+  margin-top: 16px;
 }
