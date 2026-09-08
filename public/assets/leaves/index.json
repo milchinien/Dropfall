@@ -1,0 +1,12 @@
+{
+  "_hinweis": "Jede hier unter 'bilder' gelistete Id wird als assets/leaves/<id>.png geladen und ersetzt die gerechnete Blattform in src/decor.ts. Leere Liste = alles gezeichnet.",
+  "_ids": ["ahorn", "eiche", "linde", "birke", "buche", "espe"],
+  "_anforderungen": [
+    "quadratisch, Vorschlag 128 x 128, transparenter Grund",
+    "Blatt fuellt die Flaeche aus und sitzt mittig",
+    "Spitze zeigt nach RECHTS - die Drehung kommt aus dem Code",
+    "keinen eigenen Schatten mitzeichnen, den setzt decor.ts",
+    "flach und ohne Verlauf, wie alles andere im Spiel"
+  ],
+  "bilder": []
+}

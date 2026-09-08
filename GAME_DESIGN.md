@@ -294,41 +294,41 @@ Halle Säulen. Das Leere dazwischen ist Absicht.
 
 | # | Name | Charakter | Maße | Pegs | Barren | Rotoren | Frei ab | Tempo | Ausdauer | Zutritt |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Kammer | die Kiste | 320 × 430 | 22 | 0 | 0 | 13 (55 %) | 9 s | 16 s | 0 |
-| 2 | Schacht | der Sturz | 300 × 620 | 24 | 0 | 0 | 15 (60 %) | 10 s | 18 s | 1 |
-| 3 | Kessel | der Bauch | 470 × 560 | 32 | 5 | 0 | 20 (62 %) | 10 s | 24 s | 2 |
-| 4 | Turm | die Etagen | 330 × 880 | 69 | 3 | 0 | 50 (72 %) | 12 s | 36 s | 5 |
-| 5 | Halle | die Weite | 780 × 520 | 73 | 1 | 0 | 55 (75 %) | 13 s | 44 s | 8 |
-| 6 | Kaskade | die Schräge | 600 × 800 | 76 | 8 | 0 | 60 (78 %) | 13 s | 56 s | 12 |
-| 7 | Schlund | die Enge | 440 × 900 | 77 (5 bewegt) | 4 | 2 | 62 (80 %) | 12 s | 68 s | 16 |
-| 8 | Kathedrale | die Höhe | 760 × 840 | 94 (4 bewegt) | 3 | 1 | 78 (82 %) | 12 s | 84 s | 20 |
-| 9 | Mahlwerk | die Bewegung | 950 × 660 | 99 (9 bewegt) | 1 | 2 | 84 (84 %) | 12 s | 100 s | 24 |
-| 10 | Abgrund | der Bruch | 820 × 860 | 104 (6 bewegt) | 5 | 2 | 88 (84 %) | 13 s | 112 s | 28 |
-| 11 | Katakombe | die Kammern | 1150 × 900 | 114 (6 bewegt) | 4 | 2 | 85 (74 %) | 13 s | 120 s | 32 |
-| 12 | Zitadelle | die Schichten | 880 × 860 | 126 (5 bewegt) | 2 | 2 | 108 (85 %) | 14 s | 128 s | 36 |
-| 13 | Irrgarten | der Weg | 1200 × 880 | 128 (6 bewegt) | 5 | 2 | 77 (60 %) | 14 s | 136 s | 39 |
-| 14 | Sternwarte | die Strahlen | 1180 × 880 | 131 (10 bewegt) | 7 | 3 | 112 (85 %) | 15 s | 144 s | 42 |
-| 15 | Kern | die Dichte | 1080 × 880 | 132 (11 bewegt) | 6 | 3 | 113 (85 %) | 15 s | 152 s | 45 |
-| 16 | Krater | die Schüssel | 1150 × 780 | 134 (7 bewegt) | 4 | 2 | 108 (80 %) | 16 s | 160 s | 48 |
-| 17 | Karussell | der Kreis | 1000 × 900 | 136 (18 bewegt) | 2 | 6 | 116 (85 %) | 16 s | 168 s | 51 |
-| 18 | Presse | der Takt | 1250 × 740 | 143 (4 bewegt) | 5 | 2 | 122 (85 %) | 17 s | 176 s | 54 |
-| 19 | Wirbel | der Sog | 1000 × 900 | 146 (9 bewegt) | 3 | 3 | 125 (85 %) | 17 s | 184 s | 56 |
-| 20 | Geflecht | das Kreuz | 1120 × 860 | 148 (7 bewegt) | 2 | 2 | 126 (85 %) | 18 s | 192 s | 58 |
-| 21 | Walzwerk | die Bahn | 1250 × 740 | 149 (38 bewegt) | 5 | 11 | 126 (84 %) | 18 s | 200 s | 60 |
-| 22 | Schmelze | der Zerfall | 1120 × 900 | 164 (10 bewegt) | 25 | 3 | 138 (84 %) | 19 s | 208 s | 62 |
-| 23 | Hochofen | die Glut | 820 × 900 | 178 (6 bewegt) | 33 | 2 | 150 (84 %) | 19 s | 216 s | 64 |
-| 24 | Konstellation | die Inseln | 1250 × 900 | 179 (10 bewegt) | 5 | 3 | 151 (84 %) | 20 s | 224 s | 66 |
-| 25 | Orgel | die Pfeifen | 1000 × 900 | 198 (6 bewegt) | 4 | 2 | 131 (66 %) | 20 s | 232 s | 68 |
-| 26 | Kaleidoskop | die Spiegelung | 1020 × 900 | 202 (15 bewegt) | 5 | 4 | 168 (83 %) | 21 s | 240 s | 70 |
-| 27 | Wabe | die Fülle | 1000 × 880 | 215 (6 bewegt) | 3 | 2 | 179 (83 %) | 21 s | 248 s | 72 |
-| 28 | Dornenfeld | die Spitzen | 1250 × 880 | 239 (6 bewegt) | 22 | 2 | 199 (83 %) | 22 s | 256 s | 74 |
-| 29 | Uhrwerk | der Takt | 1160 × 900 | 254 (23 bewegt) | 3 | 7 | 209 (82 %) | 22 s | 264 s | 76 |
-| 30 | Herzkammer | die Wiederkehr | 1250 × 900 | 255 (10 bewegt) | 6 | 3 | 210 (82 %) | 24 s | 272 s | 78 |
+| 1 | Kammer | die Kiste | 320 × 430 | 20 | 0 | 0 | 11 (55 %) | 9 s | 14 s | 0 |
+| 2 | Schacht | der Sturz | 300 × 620 | 25 | 0 | 0 | 15 (60 %) | 10 s | 15 s | 1 |
+| 3 | Kessel | der Bauch | 470 × 560 | 27 | 5 | 0 | 17 (62 %) | 10 s | 15 s | 2 |
+| 4 | Kaskade | die Schräge | 600 × 800 | 30 | 8 | 0 | 22 (72 %) | 12 s | 22 s | 5 |
+| 5 | Halle | die Weite | 780 × 520 | 31 | 1 | 0 | 24 (75 %) | 13 s | 24 s | 8 |
+| 6 | Turm | die Etagen | 330 × 880 | 35 | 3 | 0 | 28 (78 %) | 13 s | 28 s | 12 |
+| 7 | Schlund | die Enge | 440 × 900 | 38 (5 bewegt) | 4 | 2 | 31 (80 %) | 12 s | 38 s | 16 |
+| 8 | Kathedrale | die Höhe | 760 × 840 | 50 (4 bewegt) | 3 | 1 | 41 (82 %) | 12 s | 46 s | 20 |
+| 9 | Mahlwerk | die Bewegung | 950 × 660 | 67 (9 bewegt) | 1 | 2 | 57 (84 %) | 12 s | 64 s | 24 |
+| 10 | Zitadelle | die Schichten | 880 × 860 | 71 (5 bewegt) | 2 | 2 | 60 (84 %) | 13 s | 68 s | 28 |
+| 11 | Krater | die Schüssel | 1150 × 780 | 74 (7 bewegt) | 4 | 2 | 60 (80 %) | 13 s | 72 s | 32 |
+| 12 | Irrgarten | der Weg | 1200 × 880 | 75 (6 bewegt) | 5 | 2 | 45 (60 %) | 14 s | 90 s | 36 |
+| 13 | Orgel | die Pfeifen | 1000 × 900 | 76 (6 bewegt) | 4 | 2 | 51 (66 %) | 14 s | 94 s | 39 |
+| 14 | Katakombe | die Kammern | 1150 × 900 | 77 (6 bewegt) | 4 | 2 | 57 (74 %) | 15 s | 98 s | 42 |
+| 15 | Kern | die Dichte | 1080 × 880 | 80 (11 bewegt) | 6 | 3 | 68 (85 %) | 15 s | 102 s | 45 |
+| 16 | Geflecht | das Kreuz | 1120 × 860 | 82 (7 bewegt) | 2 | 2 | 70 (85 %) | 16 s | 106 s | 48 |
+| 17 | Sternwarte | die Strahlen | 1180 × 880 | 88 (10 bewegt) | 7 | 3 | 75 (85 %) | 16 s | 110 s | 51 |
+| 18 | Wirbel | der Sog | 1000 × 900 | 89 (9 bewegt) | 3 | 3 | 76 (85 %) | 17 s | 114 s | 54 |
+| 19 | Schmelze | der Zerfall | 1120 × 900 | 96 (10 bewegt) | 25 | 3 | 82 (85 %) | 17 s | 118 s | 56 |
+| 20 | Walzwerk | die Bahn | 1250 × 740 | 97 (38 bewegt) | 5 | 11 | 83 (85 %) | 18 s | 122 s | 58 |
+| 21 | Abgrund | der Bruch | 820 × 860 | 98 (6 bewegt) | 5 | 2 | 83 (84 %) | 18 s | 126 s | 60 |
+| 22 | Kaleidoskop | die Spiegelung | 1020 × 900 | 103 (15 bewegt) | 5 | 4 | 87 (84 %) | 19 s | 130 s | 62 |
+| 23 | Presse | der Takt | 1250 × 740 | 106 (4 bewegt) | 5 | 2 | 90 (84 %) | 19 s | 134 s | 64 |
+| 24 | Karussell | der Kreis | 1000 × 900 | 109 (18 bewegt) | 2 | 6 | 92 (84 %) | 20 s | 138 s | 66 |
+| 25 | Konstellation | die Inseln | 1250 × 900 | 119 (10 bewegt) | 5 | 3 | 99 (83 %) | 20 s | 142 s | 68 |
+| 26 | Uhrwerk | der Takt | 1160 × 900 | 121 (23 bewegt) | 3 | 7 | 101 (83 %) | 21 s | 146 s | 70 |
+| 27 | Hochofen | die Glut | 820 × 900 | 132 (6 bewegt) | 33 | 2 | 110 (83 %) | 21 s | 150 s | 72 |
+| 28 | Dornenfeld | die Spitzen | 1250 × 880 | 161 (6 bewegt) | 21 | 2 | 134 (83 %) | 22 s | 154 s | 74 |
+| 29 | Wabe | die Fülle | 1000 × 880 | 164 (6 bewegt) | 3 | 2 | 135 (82 %) | 22 s | 160 s | 76 |
+| 30 | Herzkammer | die Wiederkehr | 1250 × 900 | 206 (10 bewegt) | 6 | 3 | 169 (82 %) | 24 s | 168 s | 78 |
 
 Die Tabelle erzeugt `tools/arena-table.ts` aus den echten Daten.
 
-**Reihenfolge.** Level 1–8 stehen in erzählter Reihenfolge, vom kleinen Kasten
-bis zur Kathedrale. Ab 9 sind die Räume gleichwertig, und dort entscheidet die
+**Reihenfolge.** Level 1–3 stehen fest: Kiste, Sturz, Kessel — der zahme
+Anfang. Ab 4 sind die Räume gleichwertig, und dort entscheidet die
 gemessene Peg-Zahl über den Platz — so bleibt sie streng monoton, ohne dass
 jedes Motiv auf eine Zahl gepresst werden müsste. Die Herzkammer steht immer
 zuletzt: sie ist der Fächer aus Level 1 auf voller Feldgröße, und der Bogen
@@ -360,16 +360,19 @@ vorherigen Entwurf widerlegt hat:
 1. **Durchlass ab 44 px.** Rechnerisch passt die Kugel (R 9) ab 31 px zwischen
    zwei Pegs (R 6,5). Praktisch bleibt sie bis etwa 40 px hängen, weil sie nie
    senkrecht ankommt. Füllungen halten 44/40 px (Diagonale 46).
-2. **Wand unter 27 px.** Enger als die Kugel ist eine Peg-Kette eine Wand —
-   ein Werkzeug, kein Fehler. Der Kessel hält nur deshalb.
-3. **Kein Abstand zwischen 27 und 43 px** bei parallelen Strichen. Dazwischen
-   ist ein Doppelstrich ein Kanal, in dem die Kugel hin- und herrattert.
-   Doppelstriche sind deshalb massiv (≤ 26 px) oder weit (≥ 70 px).
+2. **Mindestabstand 44 px zwischen allen Pegs, ohne Ausnahme.** Enger gesetzte
+   Ketten waren als Wände gedacht — aber zwischen zwei engen Pegs bleibt die
+   Kugel in der Mulde liegen, und das darf es nicht geben. Die Bereinigung
+   wirft jeden Peg weg, der einem früheren zu nahe kommt.
+3. **Kein Peg näher als 40 px an einer Rampe, 24 px an einem Barren, 32 px an
+   einer Rotorbahn.** Jeder engere Winkel ist eine Klemme.
 4. **Erreichbarkeitskegel.** Von einem Einwurf aus breitet sich die Kugel etwa
    1:1 nach unten aus. Was oben in den Ecken sitzt, erreicht nichts — die
    Bereinigung wirft es weg (`CONE_BASE`, `CONE_SLOPE`).
-5. **Wandabstand 30 px.** Neben einem Peg muss die Kugel noch vorbeikommen,
-   sonst ist er von außen nie zu treffen.
+5. **Randpegs.** Motiv-Pegs halten 30 px Abstand zur Wand, damit die Kugel
+   vorbeikommt. Dazu setzt die Bereinigung entlang beider Wände Randpegs so
+   dicht an die Wand, dass kein Spalt bleibt (`rim`, Vorgabe alle 70 px) —
+   damit an der Seite nichts mehr vorbeifällt.
 6. **Ein Treffer ist ein Aufprall.** Eine Kugel, die in einer Mulde zwischen
    zwei Pegs ruht, wird von der Schwerkraft in jedem der 180 Schritte je
    Sekunde hineingedrückt und wieder herausgeschoben — ohne Schwelle zählte
@@ -378,7 +381,7 @@ vorherigen Entwurf widerlegt hat:
 7. **Ein Peg heilt höchstens alle 0,35 s.** Sonst füllt eine Kugel an einer
    engen Kette die Lebensleiste schneller, als sie leert, und der Lauf endet
    nie.
-8. **Rüttler.** Eine Kugel, die länger als 1,2 s fast stillsteht, bekommt einen
+8. **Rüttler.** Eine Kugel, die länger als 0,8 s fast stillsteht, bekommt einen
    Stoß. Die neuen Motive haben Schalen und Taschen, das alte Dreieck nicht.
 
 ### Barren
@@ -1013,10 +1016,18 @@ Buff-Nachricht.
 `decor.ts` legt zwei Ebenen um das Spiel: Himmel, Sonnenstrahlen und
 liegendes Laub dahinter, die wenigen fallenden Blätter davor.
 
-**Die Strahlen kommen von oben links.** Das ist keine Wahl, sondern eine
-Folge von Stilregel 3: die Schatten fallen 45° nach unten rechts, also steht
-die Sonne dort. Käme das Licht von woanders, stünde die Szene im Widerspruch
-zu jedem Knopf.
+**Das Licht ist parallel und liegt auf der Schattenachse.** Das ist keine
+Wahl, sondern eine Folge von Stilregel 3: die Schatten fallen überall im
+Bild 45° nach unten rechts, unabhängig davon, wo ein Objekt steht — das ist
+Licht aus dem Unendlichen. Also sind die Strahlen fünf **parallele Bahnen**
+auf genau derselben Achse.
+
+Der erste Versuch ließ sie radial aus einem Punkt jenseits der oberen linken
+Ecke auffächern. Das war der Fehler: ein Fächer heißt naher Scheinwerfer,
+und dann müsste jeder Schatten im Bild in eine andere Richtung zeigen. Die
+Schatten des Spiels zeigen aber alle in dieselbe. Gezeichnet wird deshalb im
+gedrehten System — die Bahnen sind schlichte Rechtecke und können gar nicht
+auffächern.
 
 **Sie darf nie vor dem Spielfeld liegen.** `Machine.bounds()` meldet das
 Rechteck der Arena; liegende Blätter darin werden verworfen, fallende
@@ -1028,18 +1039,43 @@ Arenaformen und drei Dichten.
 **Sie muss leise sein.** Der erste Versuch lag bei 0.04–0.07 Deckkraft für
 die Strahlen und 0.16 für das Glimmen des Himmels. Das waren keine Strahlen
 mehr, sondern helle Balken quer durchs Bild, und die Knöpfe des Skill Trees
-standen nicht mehr davor. Jetzt: drei Keile bei 0.013–0.024, Glimmen bei
+standen nicht mehr davor. Jetzt: fünf Bahnen bei 0.015–0.030, Glimmen bei
 0.06. *Licht darf man ahnen; sobald man es liest, nimmt es dem Spiel den
-Vordergrund.*
+Vordergrund.* Breiten und Abstände sind bewusst ungleich — gleichmäßige
+lesen sich als Schraffur.
 
 **Sie ist deterministisch.** Die Streuung hängt an einem festen Seed —
 dieselbe Regel wie beim Baum-Layout. Ein Bild, das sich bei jedem Start neu
 würfelt, lässt sich weder beurteilen noch wiederfinden.
 
-Die Verteilung nimmt eine Lage mit der Wahrscheinlichkeit `m³` an, wobei `m`
-der Chebyshev-Radius ist (0 in der Bildmitte, 1 am Rand). Das gibt einen
-dichten Rand und trotzdem ein paar einzelne Blätter weiter innen — statt
-eines sauber ausgestanzten Lochs in der Mitte.
+Die Verteilung nimmt eine Lage mit der Wahrscheinlichkeit `m ** RANDDRANG`
+an, wobei `m` der Chebyshev-Radius ist (0 in der Bildmitte, 1 am Rand). Bei
+`3` lag noch zu viel in der Mitte und der Rand war zu dünn; bei **6** liegt
+der Schwerpunkt klar außen, und was nach innen fällt, sind einzelne Blätter
+statt einer zweiten Reihe. Die Größe wächst mit `m` mit: am Rand die
+größeren Blätter, innen die beiläufigen.
+
+### Blätter austauschen
+
+Jede Blattsorte hat eine stabile Id — **`ahorn`, `eiche`, `linde`, `birke`,
+`buche`, `espe`**. Die gerechneten Formen in `decor.ts` sind Platzhalter:
+sechs klar unterscheidbare Silhouetten, damit ein volles Bild nicht wie
+sechsmal dasselbe Blatt aussieht.
+
+Gezeichnete Kunst ersetzt sie ohne Codeänderung:
+
+1. PNG nach `public/assets/leaves/<id>.png` legen
+2. die Id in `public/assets/leaves/index.json` unter `bilder` eintragen
+
+Anforderungen an ein solches PNG: quadratisch (Vorschlag 128 × 128),
+transparenter Grund, das Blatt füllt die Fläche aus und sitzt **mittig**,
+die **Spitze zeigt nach rechts** (die Drehung kommt aus dem Code), **kein
+eigener Schatten** — den setzt `decor.ts` —, flach und ohne Verlauf wie
+alles andere im Spiel.
+
+Geladen wird nur, was im Manifest steht. Blind sechs Dateien anzufordern und
+sechs 404 zu ernten wäre billiger zu schreiben und teurer zu lesen; die
+Konsole ist kein Ablagefach.
 
 Der Abendhimmel hat drei Fassungen, umschaltbar: **Bänder** (Vorgabe — der
 Sonnenuntergang als Reihe flacher Streifen, das ist die einzige, die

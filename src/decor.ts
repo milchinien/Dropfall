@@ -7,11 +7,13 @@
    darin landen wuerde, wird verworfen. Ein Blatt, das einen Peg verdeckt,
    ist kein Stimmungstraeger mehr, sondern ein Lesefehler.
 
-   RICHTUNG DES LICHTS
-   Die Strahlen kommen von OBEN LINKS. Das ist keine Wahl, sondern eine
-   Folge: die Schatten des ganzen Spiels fallen 45° nach unten rechts (siehe
-   theme.ts). Kaeme das Licht von woanders, stuende die Szene im
-   Widerspruch zu jedem Knopf.
+   DAS LICHT IST PARALLEL
+   Die Schatten des Spiels laufen ALLE 45° nach unten rechts, ueberall im
+   Bild und unabhaengig davon, wo ein Objekt steht. Das ist Licht aus dem
+   Unendlichen. Also muessen die Strahlen parallele Bahnen auf derselben
+   Achse sein und duerfen nicht aus einem Punkt auffaechern — ein Faecher
+   waere ein naher Scheinwerfer, und dann stuende jeder Schatten im Bild im
+   Widerspruch zu ihm. Es gibt genau eine Lichtrichtung: LICHT_WINKEL.
 
    DETERMINISTISCH
    Die Streuung des liegenden Laubs haengt an einem festen Seed — dieselbe
@@ -31,6 +33,13 @@ export interface FreiRect {
   h: number;
 }
 
+/**
+ * Richtung des Lichts: 45° nach unten rechts. Dieselbe Achse, auf der jeder
+ * Schatten im Spiel liegt (theme.ts, longShadow). Wer diesen Wert aendert,
+ * muss auch dort ran — sonst faellt das Licht anders als der Schatten.
+ */
+const LICHT_WINKEL = Math.PI / 4;
+
 /* ----------------------------------------------------------- Zufall --- */
 
 /** mulberry32 — klein, schnell, und aus einem Seed reproduzierbar. */
@@ -44,6 +53,176 @@ function rng(seed: number): () => number {
   };
 }
 
+/* ======================================================================
+   BLATTSORTEN
+
+   Jede Sorte hat eine stabile Id. Sie ist der Haken, an dem gezeichnete
+   Kunst haengt: steht eine Id in `public/assets/leaves/index.json` unter
+   `bilder`, wird `assets/leaves/<id>.png` geladen und statt der gerechneten
+   Form gezeichnet. Alles Weitere — Groesse, Drehung, Streuung, Schatten,
+   die Aussparung ueber dem Spielfeld — bleibt unveraendert.
+
+   Anforderungen an ein solches PNG:
+     - quadratisch, Vorschlag 128 x 128, transparenter Grund
+     - das Blatt fuellt die Flaeche moeglichst aus und sitzt MITTIG
+     - die Spitze zeigt nach RECHTS; die Drehung kommt aus dem Code
+     - keinen eigenen Schatten mitzeichnen, den setzt decor.ts
+     - flach und ohne Verlauf, wie alles andere im Spiel
+   ====================================================================== */
+
+export type BlattId = "ahorn" | "eiche" | "linde" | "birke" | "buche" | "espe";
+
+export const BLATT_IDS: readonly BlattId[] = [
+  "ahorn",
+  "eiche",
+  "linde",
+  "birke",
+  "buche",
+  "espe",
+];
+
+/**
+ * Vorgabefarbe je Sorte, solange kein Bild hinterlegt ist. Bewusst eigene
+ * Werte und keine Ast-Farben aus dem Skin: Laub ist Landschaft, kein
+ * Bedienelement, und soll nicht mitwandern, wenn ein Ast im Baum seine
+ * Farbe aendert.
+ */
+const BLATT_FARBE: Record<BlattId, string> = {
+  ahorn: "#c2531f",
+  eiche: "#8f4a20",
+  linde: "#d9a637",
+  birke: "#e08a2a",
+  buche: "#a83618",
+  espe: "#b8632c",
+};
+
+/*
+ * Die gerechneten Formen sind Platzhalter mit Absicht: sechs klar
+ * unterscheidbare Silhouetten, damit ein volles Bild nicht wie sechsmal
+ * dasselbe Blatt aussieht — und damit beim Austausch gegen Kunst sofort
+ * sichtbar ist, welche Sorte wo liegt.
+ *
+ * Alle zeichnen in lokalen Koordinaten um (0,0), Spitze nach rechts, halbe
+ * Laenge `s`.
+ */
+type Form = (ctx: CanvasRenderingContext2D, x: number, y: number, s: number) => void;
+
+/**
+ * Ahorn: je zwei runde Lappen ueber und unter der Mittelrippe, davor die
+ * Spitze. Der erste Versuch war ein Zackenstern aus lineTo — bei 15 Pixeln
+ * halber Laenge wurden daraus duenne Stacheln, die wie ein Kritzel aussahen
+ * und nicht wie ein Blatt. Runde Kuppen tragen die Form auch klein.
+ */
+const formAhorn: Form = (ctx, x, y, s) => {
+  ctx.moveTo(x + s, y);
+  // Obere Haelfte, von der Spitze zum Stielansatz.
+  ctx.quadraticCurveTo(x + s * 0.42, y - s * 0.18, x + s * 0.34, y - s * 0.70);
+  ctx.quadraticCurveTo(x + s * 0.02, y - s * 0.46, x - s * 0.22, y - s * 0.60);
+  ctx.quadraticCurveTo(x - s * 0.34, y - s * 0.26, x - s * 0.92, y - s * 0.20);
+  ctx.lineTo(x - s * 0.98, y);
+  // Untere Haelfte, gespiegelt zurueck.
+  ctx.lineTo(x - s * 0.92, y + s * 0.20);
+  ctx.quadraticCurveTo(x - s * 0.34, y + s * 0.26, x - s * 0.22, y + s * 0.60);
+  ctx.quadraticCurveTo(x + s * 0.02, y + s * 0.46, x + s * 0.34, y + s * 0.70);
+  ctx.quadraticCurveTo(x + s * 0.42, y + s * 0.18, x + s, y);
+  ctx.closePath();
+};
+
+/** Eiche: laenglich mit weichen Buchten. */
+const formEiche: Form = (ctx, x, y, s) => {
+  for (const k of [-1, 1]) {
+    ctx.moveTo(x - s, y);
+    ctx.bezierCurveTo(
+      x - s * 0.6, y + k * s * 0.5,
+      x - s * 0.1, y + k * s * 0.26,
+      x + s * 0.25, y + k * s * 0.6
+    );
+    ctx.bezierCurveTo(
+      x + s * 0.58, y + k * s * 0.28,
+      x + s * 0.84, y + k * s * 0.34,
+      x + s, y
+    );
+    ctx.closePath();
+  }
+};
+
+/** Linde: herzfoermig, breite Basis. */
+const formLinde: Form = (ctx, x, y, s) => {
+  ctx.moveTo(x + s, y);
+  ctx.bezierCurveTo(x - s * 0.2, y - s * 0.85, x - s * 1.05, y - s * 0.58, x - s * 0.72, y);
+  ctx.bezierCurveTo(x - s * 1.05, y + s * 0.58, x - s * 0.2, y + s * 0.85, x + s, y);
+  ctx.closePath();
+};
+
+/** Birke: klein, spitz, fast dreieckig. */
+const formBirke: Form = (ctx, x, y, s) => {
+  ctx.moveTo(x + s, y);
+  ctx.quadraticCurveTo(x - s * 0.1, y - s * 0.6, x - s * 0.88, y - s * 0.2);
+  ctx.quadraticCurveTo(x - s, y, x - s * 0.88, y + s * 0.2);
+  ctx.quadraticCurveTo(x - s * 0.1, y + s * 0.6, x + s, y);
+  ctx.closePath();
+};
+
+/** Buche: glatte Ellipse mit angedeuteter Spitze. */
+const formBuche: Form = (ctx, x, y, s) => {
+  ctx.moveTo(x - s, y);
+  ctx.quadraticCurveTo(x - s * 0.15, y - s * 0.7, x + s, y);
+  ctx.quadraticCurveTo(x - s * 0.15, y + s * 0.7, x - s, y);
+  ctx.closePath();
+};
+
+/** Espe: fast rund, nur vorn ein Zipfel. */
+const formEspe: Form = (ctx, x, y, s) => {
+  ctx.moveTo(x + s, y);
+  ctx.bezierCurveTo(x + s * 0.1, y - s * 0.88, x - s * 0.88, y - s * 0.58, x - s * 0.82, y);
+  ctx.bezierCurveTo(x - s * 0.88, y + s * 0.58, x + s * 0.1, y + s * 0.88, x + s, y);
+  ctx.closePath();
+};
+
+const BLATT_FORM: Record<BlattId, Form> = {
+  ahorn: formAhorn,
+  eiche: formEiche,
+  linde: formLinde,
+  birke: formBirke,
+  buche: formBuche,
+  espe: formEspe,
+};
+
+/* ------------------------------------------------- Kunst statt Formel --- */
+
+/**
+ * Geladene PNGs je Sorte. Leer, solange nichts hinterlegt ist.
+ *
+ * Geladen wird nur, was in `assets/leaves/index.json` steht. Blind sechs
+ * Dateien anzufordern und sechs 404 zu ernten waere billiger zu schreiben
+ * und teurer zu lesen — die Konsole ist kein Ablagefach.
+ */
+const bilder = new Map<BlattId, HTMLImageElement>();
+let ladenGestartet = false;
+
+function ladeBilder(): void {
+  if (ladenGestartet) return;
+  ladenGestartet = true;
+  if (typeof fetch === "undefined" || typeof Image === "undefined") return;
+
+  void fetch("assets/leaves/index.json")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d: { bilder?: string[] } | null) => {
+      for (const id of d?.bilder ?? []) {
+        if (!(BLATT_IDS as readonly string[]).includes(id)) {
+          console.warn(`decor: unbekannte Blatt-Id "${id}" in leaves/index.json`);
+          continue;
+        }
+        const img = new Image();
+        img.onload = () => bilder.set(id as BlattId, img);
+        img.src = `assets/leaves/${id}.png`;
+      }
+    })
+    .catch(() => {
+      /* Kein Manifest — dann eben die gerechneten Formen. */
+    });
+}
+
 /* ------------------------------------------------------------- Laub --- */
 
 /**
@@ -51,37 +230,23 @@ function rng(seed: number): () => number {
  * proportional zur Flaeche: ein volles Feld hat schon hunderte Kontakte je
  * Sekunde, und die Deko darf davon nichts abzwacken.
  */
-const LIEGEND = { aus: 0, wenig: 16, normal: 38 } as const;
+const LIEGEND = { aus: 0, wenig: 26, normal: 64 } as const;
 const FALLEND = { aus: 0, wenig: 2, normal: 5 } as const;
 
 /**
- * Sechs Herbsttoene. Bewusst eigene Werte und keine Ast-Farben aus dem
- * Skin: Laub ist Landschaft, kein Bedienelement, und soll nicht mitwandern,
- * wenn ein Ast im Baum seine Farbe aendert.
+ * Wie stark sich die Streuung an den Rand draengt. Angenommen wird eine
+ * Lage mit der Wahrscheinlichkeit `m ** RANDDRANG`, wobei `m` der
+ * Chebyshev-Radius ist: 0 in der Bildmitte, 1 am Rand.
+ *
+ * Bei 3 lag noch zu viel in der Mitte und der Rand war zu duenn. Bei 6
+ * liegt der Schwerpunkt klar aussen, und was nach innen faellt, sind
+ * einzelne Blaetter statt einer zweiten Reihe.
  */
-/**
- * Halbe Breite des groessten Blattes (streue: bis 16) mit Sicherheitsrand.
- * Damit wird der Korridor der Faller bemessen und in imFreien gerechnet —
- * ein Blatt darf das Spielfeld auch mit seiner Spitze nicht beruehren.
- */
-const BLATT_RAND = 16 * 1.6;
+const RANDDRANG = 6;
 
-/**
- * Derselbe Rand fuer den Korridor der Faller, plus vier Pixel Luft. Ohne
- * die Luft liegt der Korridor exakt auf der Grenze, und ob ein Blatt sie
- * beruehrt, entscheidet die letzte Nachkommastelle. Vier Pixel sind
- * unsichtbar und machen die Zusage eindeutig.
- */
-const KORRIDOR_RAND = BLATT_RAND + 4;
-
-const LAUB = [
-  "#c2531f",
-  "#e08a2a",
-  "#a83618",
-  "#d9a637",
-  "#8f4a20",
-  "#b8632c",
-] as const;
+/** Halbe Laenge eines liegenden Blattes, in Pixeln. */
+const GROESSE_MIN = 7;
+const GROESSE_MAX = 16;
 
 interface Blatt {
   /** Lage in Anteilen der Bildbreite/-hoehe (-1 bis 1), damit sie mitskaliert. */
@@ -89,7 +254,7 @@ interface Blatt {
   v: number;
   groesse: number;
   dreh: number;
-  farbe: string;
+  id: BlattId;
 }
 
 interface Faller extends Blatt {
@@ -105,29 +270,40 @@ interface Faller extends Blatt {
 }
 
 /**
- * Streut Blaetter mit Schwerpunkt am Rand.
- *
- * `m` ist der Chebyshev-Radius: 0 in der Bildmitte, 1 am Rand. Angenommen
- * wird ein Vorschlag mit der Wahrscheinlichkeit m³ — das gibt einen dichten
- * Rand und trotzdem ein paar einzelne Blaetter weiter innen, statt eines
- * sauber ausgestanzten Lochs in der Mitte.
+ * Halbe Laenge des groessten Blattes mit Sicherheitsrand. Damit wird die
+ * Aussparung ueber dem Spielfeld gerechnet — ein Blatt darf es auch mit
+ * seiner Spitze nicht beruehren.
  */
+const BLATT_RAND = GROESSE_MAX * 1.6;
+
+/**
+ * Derselbe Rand fuer den Korridor der Faller, plus vier Pixel Luft. Ohne
+ * die Luft liegt der Korridor exakt auf der Grenze, und ob ein Blatt sie
+ * beruehrt, entscheidet die letzte Nachkommastelle. Vier Pixel sind
+ * unsichtbar und machen die Zusage eindeutig.
+ */
+const KORRIDOR_RAND = BLATT_RAND + 4;
+
 function streue(n: number, seed: number): Blatt[] {
   const r = rng(seed);
   const out: Blatt[] = [];
   let versuche = 0;
-  while (out.length < n && versuche < n * 200) {
+  while (out.length < n && versuche < n * 600) {
     versuche++;
     const u = r() * 2 - 1;
     const v = r() * 2 - 1;
     const m = Math.max(Math.abs(u), Math.abs(v));
-    if (r() > m * m * m) continue;
+    if (r() > Math.pow(m, RANDDRANG)) continue;
     out.push({
       u,
       v,
-      groesse: 7 + r() * 9,
+      // Am Rand die groesseren Blaetter: was weiter innen liegt, soll
+      // beilaeufig wirken und nicht mit dem Spielfeld um Aufmerksamkeit
+      // streiten.
+      groesse:
+        GROESSE_MIN + (GROESSE_MAX - GROESSE_MIN) * (0.3 + 0.7 * m) * (0.75 + r() * 0.25),
       dreh: r() * Math.PI * 2,
-      farbe: LAUB[(r() * LAUB.length) | 0],
+      id: BLATT_IDS[(r() * BLATT_IDS.length) | 0],
     });
   }
   return out;
@@ -144,46 +320,54 @@ function liegendes(anzahl: number): Blatt[] {
   return liegend;
 }
 
-/* -------------------------------------------------------- Blattform --- */
-
-/**
- * Ein Blatt: zwei Boegen zu einer Spitze. Flach gefuellt, mit demselben
- * harten 45°-Schatten wie alles andere — nur kurz, weil ein Blatt flach am
- * Boden liegt und nicht auf einem Sockel steht.
- */
-function blattPfad(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
-  ctx.moveTo(x - s, y);
-  ctx.quadraticCurveTo(x - s * 0.15, y - s * 0.78, x + s, y);
-  ctx.quadraticCurveTo(x - s * 0.15, y + s * 0.78, x - s, y);
-}
+/* -------------------------------------------------------- Zeichnen --- */
 
 function zeichneBlatt(
   ctx: CanvasRenderingContext2D,
+  b: Blatt,
   x: number,
   y: number,
-  s: number,
-  dreh: number,
-  farbe: string,
   alpha: number
 ): void {
+  const s = b.groesse;
+  const bild = bilder.get(b.id);
+
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(dreh);
-  ctx.globalAlpha = alpha;
+  ctx.rotate(b.dreh);
 
-  longShadow(ctx, (dx, dy) => blattPfad(ctx, dx, dy, s), s * 0.7, rgba(C.shadowBase, 0.3));
+  if (bild) {
+    // Bei einem PNG kennt niemand die Silhouette. Derselbe lange Schatten
+    // entsteht hier, indem das Bild mehrfach versetzt und dunkel
+    // uebereinandergelegt wird — Richtung und Laenge stimmen damit, und die
+    // Blaetter sind klein genug, dass die Kante nicht auffaellt.
+    ctx.globalAlpha = alpha * 0.14;
+    ctx.globalCompositeOperation = "multiply";
+    for (let d = 2; d <= s * 0.7; d += 2) {
+      ctx.drawImage(bild, -s + d, -s + d, s * 2, s * 2);
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(bild, -s, -s, s * 2, s * 2);
+    ctx.restore();
+    return;
+  }
+
+  ctx.globalAlpha = alpha;
+  const form = BLATT_FORM[b.id];
+  longShadow(ctx, (dx, dy) => form(ctx, dx, dy, s), s * 0.7, rgba(C.shadowBase, 0.3));
 
   ctx.beginPath();
-  blattPfad(ctx, 0, 0, s);
-  ctx.fillStyle = farbe;
+  form(ctx, 0, 0, s);
+  ctx.fillStyle = BLATT_FARBE[b.id];
   ctx.fill();
 
-  // Die Mittelrippe. Ohne sie ist es eine Linse, kein Blatt.
+  // Die Mittelrippe. Ohne sie ist es eine Flaeche, kein Blatt.
   ctx.beginPath();
-  ctx.moveTo(-s * 0.85, 0);
-  ctx.lineTo(s * 0.8, 0);
-  ctx.strokeStyle = shade(farbe, -0.4);
-  ctx.lineWidth = Math.max(1, s * 0.1);
+  ctx.moveTo(-s * 0.78, 0);
+  ctx.lineTo(s * 0.75, 0);
+  ctx.strokeStyle = shade(BLATT_FARBE[b.id], -0.4);
+  ctx.lineWidth = Math.max(1, s * 0.09);
   ctx.stroke();
 
   ctx.restore();
@@ -249,38 +433,41 @@ function himmel(ctx: CanvasRenderingContext2D, w: number, h: number): void {
 /* ---------------------------------------------------- Sonnenstrahlen --- */
 
 /**
- * Drei Keile aus einem Punkt weit ausserhalb der oberen linken Ecke. Flach
- * gefuellt — ein Verlauf waere hier der bequeme Weg, aber es gilt dieselbe
- * Regel wie ueberall: keine Weichzeichner.
+ * Parallele Lichtbahnen auf exakt der Schattenachse.
  *
- * Die Deckkraft ist absichtlich winzig. Bei 0.04 bis 0.07 waren es keine
- * Strahlen mehr, sondern helle Balken quer durchs Bild, vor denen die
- * Knoepfe des Skill Trees nicht mehr standen. Licht darf man ahnen; sobald
- * man es liest, nimmt es dem Spiel den Vordergrund.
+ * Vorher liefen sie radial aus einem Punkt jenseits der oberen linken Ecke
+ * und faecherten um ±0.3 rad auf. Das war der Fehler: ein Faecher heisst
+ * naher Scheinwerfer, und dann muesste jeder Schatten im Bild in eine
+ * andere Richtung zeigen. Die Schatten des Spiels zeigen aber alle in
+ * dieselbe — die Lichtquelle ist also unendlich weit weg und ihre Bahnen
+ * sind parallel.
+ *
+ * Gezeichnet wird im gedrehten System: die x-Achse zeigt laengs der Bahnen,
+ * die y-Achse quer dazu. Damit sind die Bahnen schlichte Rechtecke und
+ * koennen gar nicht auffaechern.
+ *
+ * `quer` ist der Versatz quer zur Achse in Anteilen der Bilddiagonale,
+ * `breite` dasselbe fuer die Breite der Bahn. Beide sind ungleichmaessig:
+ * gleiche Abstaende und Breiten lesen sich als Schraffur, nicht als Licht.
  */
-function strahlen(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const d = Math.hypot(w, h) * 1.6;
-  const qx = -w * 0.22;
-  const qy = -h * 0.34;
+const BAHNEN: Array<[quer: number, breite: number, deckung: number]> = [
+  [-0.40, 0.052, 0.020],
+  [-0.19, 0.020, 0.030],
+  [-0.10, 0.008, 0.022],
+  [0.10, 0.075, 0.015],
+  [0.30, 0.026, 0.026],
+];
 
-  // Um 45° nach unten rechts — dieselbe Achse, auf der die Schatten liegen.
-  const mitte = Math.PI / 4;
-  const keile: Array<[number, number, number]> = [
-    [-0.26, 0.030, 0.016],
-    [-0.05, 0.014, 0.024],
-    [0.22, 0.036, 0.013],
-  ];
+function strahlen(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const d = Math.hypot(w, h);
+  const farbe = mix(C.amber, "#ffffff", 0.22);
 
   ctx.save();
-  for (const [ab, breite, deckung] of keile) {
-    const a = mitte + ab;
-    ctx.beginPath();
-    ctx.moveTo(qx, qy);
-    ctx.lineTo(qx + Math.cos(a - breite) * d, qy + Math.sin(a - breite) * d);
-    ctx.lineTo(qx + Math.cos(a + breite) * d, qy + Math.sin(a + breite) * d);
-    ctx.closePath();
-    ctx.fillStyle = rgba(mix(C.amber, "#ffffff", 0.2), deckung);
-    ctx.fill();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(LICHT_WINKEL);
+  for (const [quer, breite, deckung] of BAHNEN) {
+    ctx.fillStyle = rgba(farbe, deckung);
+    ctx.fillRect(-d, quer * d, d * 2, breite * d);
   }
   ctx.restore();
 }
@@ -330,9 +517,9 @@ function neuerFaller(
   return {
     u: vonU + r() * Math.max(0, bisU - vonU),
     v: oben ? -1.05 - r() * 0.4 : r() * 2 - 1,
-    groesse: 6 + r() * 7,
+    groesse: GROESSE_MIN - 1 + r() * 7,
     dreh: r() * Math.PI * 2,
-    farbe: LAUB[(r() * LAUB.length) | 0],
+    id: BLATT_IDS[(r() * BLATT_IDS.length) | 0],
     sink: 0.045 + r() * 0.055,
     schwing: 0.02 + r() * 0.05,
     phase: r() * Math.PI * 2,
@@ -347,6 +534,29 @@ const fallRng = rng(0xfa111eaf);
 /* ----------------------------------------------------------- Ausgabe --- */
 
 /**
+ * Wo liegende Blaetter landen, bereits um das Spielfeld bereinigt.
+ *
+ * Getrennt vom Zeichnen, damit tools/decor-check.ts die eine Zusage der
+ * Deko pruefen kann, ohne einen Canvas nachzubauen: die Aussparung ist eine
+ * Aussage ueber Koordinaten, nicht ueber Pixel.
+ */
+export function liegendeLagen(
+  w: number,
+  h: number,
+  frei: FreiRect | null
+): Array<{ x: number; y: number; r: number }> {
+  const n = LIEGEND[grafik().laub];
+  const out: Array<{ x: number; y: number; r: number }> = [];
+  for (const b of liegendes(n)) {
+    const x = (b.u * 0.5 + 0.5) * w;
+    const y = (b.v * 0.5 + 0.5) * h;
+    if (imFreien(x, y, BLATT_RAND, frei)) continue;
+    out.push({ x, y, r: b.groesse });
+  }
+  return out;
+}
+
+/**
  * Hintergrund: Himmel, Strahlen, liegendes Laub. Wird direkt nach dem
  * Fuellen des Grundes gerufen, vor allem anderen.
  */
@@ -357,6 +567,7 @@ export function drawDecorBack(
   frei: FreiRect | null
 ): void {
   if (!aktiv()) return;
+  ladeBilder();
 
   himmel(ctx, w, h);
   strahlen(ctx, w, h);
@@ -368,7 +579,7 @@ export function drawDecorBack(
     const x = (b.u * 0.5 + 0.5) * w;
     const y = (b.v * 0.5 + 0.5) * h;
     if (imFreien(x, y, BLATT_RAND, frei)) continue;
-    zeichneBlatt(ctx, x, y, b.groesse, b.dreh, b.farbe, 0.5);
+    zeichneBlatt(ctx, b, x, y, 0.5);
   }
 }
 
@@ -377,15 +588,12 @@ export function drawDecorBack(
  * Sekunden und NICHT im 180-Hz-Physiktakt — Deko braucht keine
  * Zeitschritt-Genauigkeit, und sie soll auch nichts davon kosten.
  */
-export function drawDecorFront(
-  ctx: CanvasRenderingContext2D,
+export function fallendeLagen(
   w: number,
   h: number,
   dt: number,
   frei: FreiRect | null
-): void {
-  if (!aktiv()) return;
-
+): Array<{ x: number; y: number; r: number; f: Faller }> {
   const g = grafik();
   const n = g.laub === "aus" || !g.bewegung ? 0 : FALLEND[g.laub];
 
@@ -394,8 +602,8 @@ export function drawDecorFront(
     for (let i = 0; i < n; i++) faller.push(neuerFaller(fallRng, frei, w, false));
     fallerFuer = n;
   }
-  if (n === 0) return;
 
+  const out: Array<{ x: number; y: number; r: number; f: Faller }> = [];
   for (let i = 0; i < faller.length; i++) {
     const f = faller[i];
     f.v += f.sink * dt;
@@ -410,14 +618,20 @@ export function drawDecorFront(
     // Das Pendeln bleibt IM Korridor. Ohne die Klammer addiert es sich auf
     // dessen Rand und traegt das Blatt genau dorthin, wo es nicht hin darf.
     const u = clamp(f.u + Math.sin(f.phase) * f.schwing, f.vonU, f.bisU);
-    zeichneBlatt(
-      ctx,
-      (u * 0.5 + 0.5) * w,
-      (f.v * 0.5 + 0.5) * h,
-      f.groesse,
-      f.dreh,
-      f.farbe,
-      0.62
-    );
+    out.push({ x: (u * 0.5 + 0.5) * w, y: (f.v * 0.5 + 0.5) * h, r: f.groesse, f });
+  }
+  return out;
+}
+
+export function drawDecorFront(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  dt: number,
+  frei: FreiRect | null
+): void {
+  if (!aktiv()) return;
+  for (const l of fallendeLagen(w, h, dt, frei)) {
+    zeichneBlatt(ctx, l.f, l.x, l.y, 0.62);
   }
 }
