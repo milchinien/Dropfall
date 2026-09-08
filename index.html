@@ -15,12 +15,10 @@
         document.documentElement.dataset.skin = "herbst";
       }
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Schriften liegen selbst gehostet unter public/assets/fonts und
+         kommen ueber src/fonts.css. Kein Google-Fonts-Link: ein
+         Steam-Build hat kein Netz, und im Browser kostet der Umweg ueber
+         zwei fremde Hosts einen sichtbaren Schriftsprung beim Laden. -->
     <!-- Der Ring des Ladeschirms kommt aus dem gemeinsamen Loader-Bauteil.
          Es haengt als <link> im <head> und nicht am Modul, weil der
          Ladeschirm sichtbar sein muss, bevor das Skript ueberhaupt

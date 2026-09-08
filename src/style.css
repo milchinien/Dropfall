@@ -62,6 +62,15 @@
   --on-teal: #10281f;
   --on-amber: #2b1f05;
 
+  /*
+   * Zwei Rollen, nicht zwei Geschmäcker. `body` trägt Fließtext UND alle
+   * Zahlen — ein Incremental lebt von Ziffern, und die dürfen beim Skin-
+   * Wechsel nicht die Laufweite ändern, sonst springt jedes Layout.
+   * `display` ist nur für Überschriften und darf deshalb pro Skin wechseln.
+   */
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-body);
+
   --panel: rgba(15, 11, 24, 0.42);
   --shadow: rgba(14, 10, 22, 0.4);
 
@@ -198,6 +207,10 @@
   --on-teal: #2b0d02;
   --on-amber: #3a2205;
 
+  /* Bitter — eine warme Slab-Serif. Nur die Überschriften; Zahlen und
+     Fließtext bleiben Nunito, damit sich keine Spaltenbreite verschiebt. */
+  --font-display: "Bitter", "Nunito", "Segoe UI", system-ui, serif;
+
   --panel: rgba(22, 11, 6, 0.42);
   --shadow: rgba(26, 8, 3, 0.4);
 
@@ -222,7 +235,7 @@ body {
 }
 
 body {
-  font-family: "Nunito", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-body);
   font-weight: 700;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -1583,4 +1596,19 @@ body {
 .is-muted .seg,
 .is-muted .setting-hint {
   opacity: 0.35;
+}
+
+/* --- Überschriften ------------------------------------------------------
+   Alles, was ein Titel ist und keine Zahl: Arena-Name, Level-Name, der
+   Titel der Auswertung, die Zwischenüberschriften und der Kopf des
+   Einstellungsfensters. Im klassischen Skin ist `--font-display` gleich
+   `--font-body`, dort ändert diese Regel deshalb nichts. */
+
+.arena-title,
+.select-title,
+.select-kicker,
+.result-title,
+.result-sidetitle,
+.modal-card h2 {
+  font-family: var(--font-display);
 }

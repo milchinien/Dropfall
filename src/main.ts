@@ -10,6 +10,7 @@
    im Lauf zählen nur Funken, alles Bleibende wird erst danach ausgezahlt.
    ========================================================================= */
 
+import "./fonts.css";
 import "./style.css";
 // Das Loader-Bauteil. Das Stylesheet haengt
 // zusaetzlich per <link> im <head>, weil der Ladeschirm vor diesem Modul
