@@ -1,0 +1,1405 @@
+/* =========================================================================
+   DROPFALL — Outhold-Design-System
+   Regeln: flache Flächen, extrudierte Sockel, lange 45°-Schatten, die
+   nach hinten ins Nichts auslaufen.
+   ========================================================================= */
+
+:root {
+  --bg-deep: #241f30;
+  --bg: #2e2a3d;
+  --bg-lift: #3a3550;
+  --line: #57506b;
+
+  --text: #f4f1fa;
+  --muted: #8b84a0;
+
+  --teal: #2ed3ae;
+  --teal-dark: #1b9c80;
+  --amber: #edb443;
+  --amber-dark: #b8871f;
+  --pink: #f4506e;
+  --pink-dark: #b93450;
+  --magenta: #e4348f;
+  --magenta-dark: #a61f66;
+  --blue: #6fa8ff;
+  --blue-dark: #3c6dc0;
+
+  --panel: rgba(15, 11, 24, 0.42);
+  --shadow: rgba(14, 10, 22, 0.4);
+
+  /*
+   * AUSLAUFENDE 45-GRAD-SCHATTEN
+   *
+   * Ein einzelner harter box-shadow bricht am Ende auf voller Deckkraft ab,
+   * und dieser Abriss liest sich als Kante eines Gegenstands, der gar nicht
+   * da ist. CSS kann einen Schatten nicht entlang seiner Achse ausblenden —
+   * deshalb besteht er hier aus vielen fast durchsichtigen Lagen, jede etwas
+   * weiter hinten. Direkt am Objekt liegen alle uebereinander und decken
+   * satt; nach hinten faellt Lage um Lage weg, bis nur noch eine uebrig ist
+   * und der Schatten sich verliert.
+   *
+   * Alle laufen nach unten rechts, wie die Sockel der Knoepfe und wie die
+   * Schatten im Canvas (siehe theme.ts). Gleich viele Stufen je Paar, damit
+   * ein Wechsel zwischen zwei Laengen weich uebergeht statt zu springen.
+   */
+  --cast-lage: rgba(10, 7, 17, 0.042);
+  --cast-lage-kurz: rgba(10, 7, 17, 0.06);
+
+  /* Grosse Karten: Level-Auswahl, Auswertung. */
+  --cast-l:
+    4px 4px 0 var(--cast-lage),
+    8px 8px 0 var(--cast-lage),
+    12px 12px 0 var(--cast-lage),
+    16px 16px 0 var(--cast-lage),
+    20px 20px 0 var(--cast-lage),
+    24px 24px 0 var(--cast-lage),
+    28px 28px 0 var(--cast-lage),
+    32px 32px 0 var(--cast-lage),
+    36px 36px 0 var(--cast-lage),
+    40px 40px 0 var(--cast-lage);
+
+  /* Schwebendes Kleinzeug: Tooltip, Toast, Einstellungen. */
+  --cast-m:
+    2.8px 2.8px 0 var(--cast-lage),
+    5.6px 5.6px 0 var(--cast-lage),
+    8.4px 8.4px 0 var(--cast-lage),
+    11.2px 11.2px 0 var(--cast-lage),
+    14px 14px 0 var(--cast-lage),
+    16.8px 16.8px 0 var(--cast-lage),
+    19.6px 19.6px 0 var(--cast-lage),
+    22.4px 22.4px 0 var(--cast-lage),
+    25.2px 25.2px 0 var(--cast-lage),
+    28px 28px 0 var(--cast-lage);
+
+  /* Knoepfe, die auf ihrem Sockel stehen. */
+  --cast-s:
+    2px 2px 0 var(--cast-lage-kurz),
+    4px 4px 0 var(--cast-lage-kurz),
+    6px 6px 0 var(--cast-lage-kurz),
+    8px 8px 0 var(--cast-lage-kurz),
+    10px 10px 0 var(--cast-lage-kurz),
+    12px 12px 0 var(--cast-lage-kurz);
+
+  /* Derselbe Knopf, angehoben: hoeher heisst laengerer Schatten. */
+  --cast-s-hoch:
+    2.6px 2.6px 0 var(--cast-lage-kurz),
+    5.2px 5.2px 0 var(--cast-lage-kurz),
+    7.8px 7.8px 0 var(--cast-lage-kurz),
+    10.4px 10.4px 0 var(--cast-lage-kurz),
+    13.0px 13.0px 0 var(--cast-lage-kurz),
+    15.6px 15.6px 0 var(--cast-lage-kurz);
+
+  /* Derselbe Knopf, heruntergedrueckt: der Schatten rueckt nach. */
+  --cast-s-gedrueckt:
+    0.7px 0.7px 0 var(--cast-lage-kurz),
+    1.4px 1.4px 0 var(--cast-lage-kurz),
+    2.1px 2.1px 0 var(--cast-lage-kurz),
+    2.8px 2.8px 0 var(--cast-lage-kurz),
+    3.5px 3.5px 0 var(--cast-lage-kurz),
+    4.2px 4.2px 0 var(--cast-lage-kurz);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+body {
+  font-family: "Nunito", "Segoe UI", system-ui, sans-serif;
+  font-weight: 700;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------- HUD --- */
+
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  padding: 22px;
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+.panel {
+  position: absolute;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 12px 16px;
+  backdrop-filter: blur(2px);
+}
+
+.panel--res {
+  top: 22px;
+  left: 22px;
+  min-width: 190px;
+}
+
+.res-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.res-row--sub {
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.glyph {
+  width: 18px;
+  text-align: center;
+  font-size: 15px;
+}
+.glyph--teal { color: var(--teal); }
+.glyph--amber { color: var(--amber); }
+.glyph--pink { color: var(--pink); }
+.glyph--magenta { color: var(--magenta); }
+.glyph--blue { color: var(--blue); }
+
+.currency-icon,
+.currency-inline {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  vertical-align: -0.28em;
+}
+
+.currency-inline {
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.16em;
+}
+
+.goal-currency-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.arena-title {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: var(--text);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------- Lebensanzeige --- */
+/* Der Ring kommt aus `src/loader.css`, hier steht nur, wie
+   er im Panel sitzt und welche Farbe er traegt. */
+
+.panel--life {
+  left: 22px;
+  bottom: 22px;
+  /* Ring plus Text sind schmaler als die alte Leiste — feste Breite waere
+     jetzt nur noch leerer Kasten. */
+  min-width: 260px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.life-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.life-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.life-ring .ldr {
+  --ldr-size: 92px;
+  /* Teal statt monochrom: die Lebensanzeige ist das einzige Element, das
+     man im Lauf aus dem Augenwinkel liest — sie muss sich von der Arena
+     abheben, nicht mit ihr verschmelzen. */
+  --ldr-color: var(--teal);
+}
+
+/* Unter 30 % wechselt die Farbe. Das ist keine Kosmetik: die Zahl in der
+   Mitte liest man im Lauf nicht mehr, den Farbwechsel schon. */
+.life-ring .ldr.is-low {
+  --ldr-color: var(--pink);
+}
+
+.life-ring .ldr__center {
+  font-size: 17px;
+  color: var(--text);
+}
+
+/* ------------------------------------------------- Kugel-Upgrades --- */
+/* Rechts neben der Arena — dort ist im Lauf ohnehin Platz frei gehalten. */
+
+.panel--shop {
+  top: 84px;
+  right: 22px;
+  width: 320px;
+  max-height: calc(100vh - 190px);
+  overflow-y: auto;
+  padding: 14px 14px 10px;
+}
+
+.shop-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 4px 10px;
+}
+
+.shop-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.shop-hint {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/*
+ * Ein Knopf auf einem Sockel, kein Rechteck mit Rand: die Zeile steht
+ * --lift hoch ueber ihrem Fundament und faellt beim Druck darauf herunter.
+ * Der Sockel ist eine harte Flaeche ohne Verlauf und der Wurfschatten liegt
+ * auf 45 Grad — beides gehoert zum Outhold-Stil oben in dieser Datei.
+ * Der Abstand nach unten traegt --lift mit, sonst stuende die naechste Zeile
+ * im Sockel der vorigen.
+ */
+.shop-row {
+  --lift: 5px;
+  --socket: #100c1c;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: calc(7px + var(--lift));
+  padding: 9px 11px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text);
+  background: rgba(12, 9, 20, 0.5);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow:
+    0 var(--lift) 0 var(--socket),
+    var(--cast-s);
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    transform 0.07s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.07s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Kaufbar: die Zeile bekommt Kontur, und ihr Sockel nimmt die Farbe an —
+   der Knopf sieht aus, als waere er aus einem Stueck gegossen. Alles andere
+   bleibt ruhig; im Lauf soll der Blick nur die Zeilen finden, die gerade
+   etwas bringen. */
+.shop-row.is-ready {
+  --socket: var(--teal-dark);
+  border-color: var(--teal);
+  background: rgba(46, 211, 174, 0.1);
+}
+
+/* Unter dem Zeiger steigt der Knopf einen Hauch weiter aus dem Sockel. */
+.shop-row.is-ready:hover {
+  background: rgba(46, 211, 174, 0.18);
+  transform: translateY(-1px);
+  box-shadow:
+    0 calc(var(--lift) + 1px) 0 var(--socket),
+    var(--cast-s-hoch);
+}
+
+/*
+ * Der Druck: der Knopf faehrt genau um seine Sockelhoehe herunter und der
+ * Sockel verschwindet unter ihm. Die Wege sind gleich gross, deshalb bleibt
+ * die Unterkante stehen und nur die Oberflaeche sinkt — das ist es, was den
+ * Druck echt wirken laesst.
+ * `.is-pressed` gibt es fuer die Tasten 1-5: im Lauf kauft man ueber die
+ * Tastatur, und der Knopf soll auch dann sichtbar nachgeben.
+ */
+.shop-row:active,
+.shop-row.is-pressed {
+  transform: translateY(var(--lift));
+  box-shadow:
+    0 0 0 var(--socket),
+    var(--cast-s-gedrueckt);
+}
+
+/* Ausgereizt: der Knopf sitzt flach auf, es gibt nichts mehr zu druecken. */
+.shop-row.is-max {
+  --lift: 0px;
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+}
+
+.shop-row.is-max:active,
+.shop-row.is-max:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-row {
+    transition: border-color 0.12s, background 0.12s;
+  }
+}
+
+/* Markiert: der Reif in der Arena hat dieselbe Farbe. Die Zeile bestaetigt
+   nur, WELCHE Kugel es getroffen hat — gesetzt wird die Markierung in der
+   Arena, nicht hier. */
+/* Der Amber-Streifen sitzt als eigene Flaeche in der Zeile, nicht als
+   inset-Schatten: die box-shadow-Liste traegt jetzt den Sockel und wuerde
+   ihn sonst ueberschreiben. */
+.shop-row.is-marked {
+  border-color: var(--amber);
+}
+
+.shop-row.is-marked::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--amber);
+}
+
+.shop-row.is-marked .shop-name::after {
+  content: " ◈";
+  color: var(--amber);
+}
+
+.shop-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.shop-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shop-name {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.shop-lv {
+  color: var(--amber);
+}
+
+.shop-eff {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-cost {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--teal);
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-row.is-max .shop-cost {
+  color: var(--muted);
+}
+
+.shop-key {
+  flex: 0 0 auto;
+  width: 18px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------- Level-Auswahl --- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 15, 30, 0.72);
+}
+
+.select-card {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  width: min(1100px, 92vw);
+  height: min(720px, 88vh);
+  background: rgba(26, 20, 40, 0.97);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--cast-l);
+}
+
+.select-left {
+  padding: 26px 24px;
+  background: rgba(38, 28, 58, 0.85);
+  overflow-y: auto;
+}
+
+.select-kicker {
+  font-size: 19px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.select-mode {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: rgba(244, 241, 250, 0.1);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.select-modedesc {
+  margin: 10px 0 26px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(12, 9, 20, 0.5);
+  font-size: 14px;
+  font-weight: 600;
+  color: #cfc8de;
+}
+
+.goal {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+}
+
+.goal-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.goal-body {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #cfc8de;
+}
+
+.goal-body b {
+  color: var(--text);
+}
+
+.goal--main {
+  background: rgba(46, 211, 174, 0.12);
+  border-color: rgba(46, 211, 174, 0.4);
+}
+.goal--main .goal-title { color: var(--teal); }
+
+.goal--bonus {
+  background: rgba(228, 52, 143, 0.12);
+  border-color: rgba(228, 52, 143, 0.35);
+}
+.goal--bonus .goal-title { color: var(--magenta); }
+
+.goal.is-done {
+  background: rgba(46, 211, 174, 0.2);
+  border-color: var(--teal);
+}
+
+.goal-mark {
+  font-size: 15px;
+}
+
+.select-right {
+  display: flex;
+  flex-direction: column;
+  padding: 26px;
+}
+
+.select-title {
+  font-size: 34px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+
+.select-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 0;
+}
+
+.select-preview canvas {
+  max-height: 100%;
+  border-radius: 12px;
+}
+
+.prev-nav {
+  flex: 0 0 auto;
+  width: 62px;
+  height: 62px;
+  font-family: inherit;
+  font-size: 24px;
+  color: var(--text);
+  background: transparent;
+  border: 2px solid rgba(244, 241, 250, 0.55);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.prev-nav:hover:not(:disabled) {
+  background: rgba(244, 241, 250, 0.08);
+}
+
+.prev-nav:disabled {
+  color: rgba(244, 241, 250, 0.15);
+  border-color: rgba(244, 241, 250, 0.12);
+  cursor: default;
+}
+
+.select-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+/* Doppelte Klasse mit Absicht: .big-btn steht weiter unten und wuerde diese
+   Regel sonst ueberschreiben — die Knoepfe lagen dadurch uebereinander in der
+   Bildschirmecke statt nebeneinander in der Karte. */
+.big-btn.big-btn--inline {
+  position: static;
+  flex: 1;
+  min-width: 0;
+  padding: 16px 20px;
+  font-size: 19px;
+}
+
+.big-btn.big-btn--go {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.big-btn.big-btn--go:hover {
+  background: rgba(46, 211, 174, 0.12);
+}
+
+/* ------------------------------------------------------------ Buttons --- */
+/*
+ * Jeder Knopf der Oberflaeche steht auf einem Sockel — dieselbe Sprache wie
+ * die Zeilen der Kugel-Upgrades und die Knoten im Skill Tree. Vorher waren es
+ * flache Rechtecke mit Rand, die beim Klick um zwei, drei Pixel nach unten
+ * rutschten; das liest sich als Wackeln, nicht als Druck.
+ *
+ * Der Druckweg ist EXAKT die Sockelhoehe. Dadurch bleibt die Unterkante
+ * stehen und nur die Oberflaeche sinkt — genau daran erkennt das Auge einen
+ * Knopf, der nachgibt, statt eines Kastens, der wegrutscht.
+ *
+ * Die Flaeche ist deckend, nicht durchscheinend: durch einen transparenten
+ * Deckel saehe man seinen eigenen Sockel.
+ */
+.icon-btn,
+.big-btn,
+.ghost-btn,
+.prev-nav {
+  --lift: 5px;
+  --socket: #0f0b19;
+  --face: #1b1528;
+
+  font-family: inherit;
+  color: var(--text);
+  background: var(--face);
+  cursor: pointer;
+  box-shadow:
+    0 var(--lift) 0 var(--socket),
+    var(--cast-s);
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    transform 0.07s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.07s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Unter dem Zeiger steigt der Knopf einen Hauch weiter aus dem Sockel. Nur
+   das Heben steht hier — Farbe und Rand bleiben Sache des einzelnen Knopfes,
+   sonst wuerde der gruene Startknopf beim Hover seine Farbe verlieren. */
+.icon-btn:hover:not(:disabled),
+.big-btn:hover:not(:disabled),
+.ghost-btn:hover:not(:disabled),
+.prev-nav:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 calc(var(--lift) + 1px) 0 var(--socket),
+    var(--cast-s-hoch);
+}
+
+.icon-btn:active:not(:disabled),
+.big-btn:active:not(:disabled),
+.ghost-btn:active:not(:disabled),
+.prev-nav:active:not(:disabled) {
+  transform: translateY(var(--lift));
+  box-shadow:
+    0 0 0 var(--socket),
+    var(--cast-s-gedrueckt);
+}
+
+/* Gesperrt heisst: hier gibt es nichts zu druecken. Dann faellt der Sockel
+   weg, und der Knopf liegt flach auf. */
+.prev-nav:disabled {
+  --lift: 0px;
+  box-shadow: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn,
+  .big-btn,
+  .ghost-btn,
+  .prev-nav {
+    transition: border-color 0.12s, background 0.12s;
+  }
+}
+
+.icon-btn {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+  border: 2px solid rgba(244, 241, 250, 0.55);
+  border-radius: 10px;
+}
+
+.icon-btn:hover {
+  border-color: var(--text);
+  --face: #241c34;
+}
+
+.big-btn {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  min-width: 240px;
+  padding: 18px 34px;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  border: 2px solid rgba(244, 241, 250, 0.65);
+  border-radius: 12px;
+}
+
+.big-btn:hover {
+  border-color: var(--text);
+  --face: #241c34;
+}
+
+.ghost-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 20px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  border: 2px solid rgba(244, 241, 250, 0.4);
+  border-radius: 10px;
+}
+
+.ghost-btn:hover {
+  border-color: var(--text);
+  --face: #241c34;
+}
+
+/* ------------------------------------------------------------ Tooltip --- */
+
+.tooltip {
+  position: fixed;
+  z-index: 40;
+  width: 310px;
+  padding: 0;
+  background: #14101f;
+  border-radius: 12px;
+  overflow: hidden;
+  pointer-events: none;
+  box-shadow: var(--cast-m);
+}
+
+.tt-body {
+  padding: 16px 18px 14px;
+}
+
+.tt-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.tt-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* Stufenzähler rechts oben — die Zahl, die man beim Überfliegen zuerst sucht. */
+.tt-level {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--amber);
+  white-space: nowrap;
+}
+
+.tt-level--off {
+  color: var(--muted);
+}
+
+.tt-desc {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: #cfc8de;
+}
+
+/* Begriffe teal, Werte amber: zwei Farben, zwei Arten von Information. */
+.tt-desc em {
+  font-style: normal;
+  font-weight: 800;
+  color: var(--teal);
+}
+
+.tt-desc .tt-num {
+  font-weight: 800;
+  color: var(--amber);
+}
+
+.tt-locked {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pink);
+}
+
+.tt-cost {
+  padding: 12px 18px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.tt-cost--ok {
+  background: var(--teal);
+  color: #10281f;
+}
+.tt-cost--no {
+  background: rgba(244, 80, 110, 0.18);
+  color: var(--pink);
+}
+.tt-cost--max {
+  background: var(--amber);
+  color: #2b1f05;
+}
+
+/* -------------------------------------------------------------- Toast --- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  top: 84px;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 16px 28px;
+  background: #14101f;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.5;
+  box-shadow: var(--cast-m);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.toast b {
+  color: var(--amber);
+}
+
+/* -------------------------------------------------------------- Modal --- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 15, 30, 0.7);
+}
+
+.modal-card {
+  width: 340px;
+  padding: 26px;
+  background: #14101f;
+  border-radius: 14px;
+  box-shadow: var(--cast-m);
+}
+
+.modal-card h2 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.modal-sub {
+  margin: 4px 0 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ================================================ Auswertung nach dem Lauf --- */
+
+.result-card {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  width: min(1180px, 94vw);
+  height: min(760px, 92vh);
+  background: rgba(24, 18, 38, 0.97);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--cast-l);
+}
+
+.result-main {
+  display: flex;
+  flex-direction: column;
+  padding: 30px 32px 26px;
+  min-height: 0;
+}
+
+.result-title {
+  font-size: 34px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--teal);
+  letter-spacing: 0.01em;
+}
+
+.result-title.is-plain {
+  color: var(--text);
+}
+
+.result-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+  min-height: 4px;
+}
+
+.badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(228, 52, 143, 0.18);
+  border: 2px solid rgba(228, 52, 143, 0.5);
+  color: var(--magenta);
+}
+
+.badge--main {
+  background: rgba(46, 211, 174, 0.18);
+  border-color: rgba(46, 211, 174, 0.55);
+  color: var(--teal);
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+  overflow-y: auto;
+}
+
+.stat {
+  padding: 13px 15px;
+  border-radius: 10px;
+  background: rgba(12, 9, 20, 0.55);
+}
+
+.stat-name {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.stat-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 19px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-in {
+  color: var(--text);
+}
+
+.stat-arrow {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.stat-out {
+  color: var(--amber);
+}
+
+.result-reward {
+  margin-top: 20px;
+}
+
+.result-kicker {
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.result-reward-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  padding: 22px;
+  border-radius: 12px;
+  background: rgba(10, 7, 17, 0.6);
+}
+
+.reward-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reward-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.reward-icon--teal {
+  color: var(--teal);
+}
+
+.reward-value {
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.reward-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.result-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+/* Rechenweg der Auszahlung: aus Funken und Abdeckung wird Geld. */
+.payout {
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(12, 9, 20, 0.45);
+}
+
+.pay-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-name {
+  flex: 0 0 150px;
+  color: var(--muted);
+}
+
+.pay-in {
+  flex: 1;
+  color: var(--text);
+}
+
+.pay-out {
+  flex: 0 0 auto;
+  font-weight: 800;
+  color: var(--amber);
+}
+
+.reward-icon--blue {
+  color: var(--blue);
+}
+
+.reward-icon--magenta {
+  color: var(--magenta);
+}
+
+/* --------------------------------------------------- Quellen-Aufschlüsselung --- */
+
+.result-side {
+  padding: 30px 26px;
+  background: rgba(38, 28, 58, 0.85);
+  overflow-y: auto;
+}
+
+.result-sidetitle {
+  font-size: 21px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Je Quelle ein kleiner Wert-Ring — dasselbe Bauteil wie Ladeschirm und
+   Lebensanzeige, nur klein. Der Anteil steht in der Ringmitte, der
+   absolute Betrag daneben: der Ring allein beantwortet "wie viel vom
+   Ganzen", nicht "wie viel". */
+
+.src {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.src-ring .ldr {
+  --ldr-size: 52px;
+}
+
+.src-ring .ldr__center {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.src-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.src-name {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #14101f;
+}
+
+.src-value {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.src-empty {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 30px;
+}
+
+/* --- Zielzaehler und gesperrte Level in der Auswahl -------------------- */
+
+.goal-tally {
+  float: right;
+  color: var(--amber);
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.goal--locked {
+  border-color: var(--line);
+  opacity: 0.9;
+}
+.goal--locked .goal-title { color: var(--muted); }
+
+.select-title.is-locked { color: var(--muted); }
+
+.big-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* ============================================================ Tableiste --- */
+/* Ein gleitender Pill statt aufleuchtender Einzelknoepfe: die Bewegung
+   erzaehlt, in welche Richtung der Wechsel geht. */
+
+.smooth-tabs {
+  --tab-accent: var(--teal);
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: rgba(12, 9, 20, 0.5);
+}
+
+.smooth-tabs-pill {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  border-radius: 8px;
+  background: var(--tab-accent);
+  opacity: 0;
+  will-change: transform, width;
+}
+
+.smooth-tabs-pill.is-locked {
+  background: var(--line);
+}
+
+.smooth-tabs-list {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.smooth-tabs-btn {
+  min-width: 0;
+  padding: 9px 8px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+
+.smooth-tabs-btn:hover:not(.is-active) {
+  color: var(--text);
+  background: rgba(244, 241, 250, 0.07);
+}
+
+.smooth-tabs-btn.is-active {
+  color: #16111f;
+}
+
+.smooth-tabs-btn.is-active.is-locked {
+  color: var(--text);
+}
+
+.smooth-tabs-btn:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* Die Levelleiste sitzt unter der Vorschau und traegt die Auswahl der Arena. */
+.select-tabs {
+  margin-top: 16px;
+}
+
+/* ------------------------------------------------------- Ton-Einstellung --- */
+/* Der Regler folgt der Formsprache des Baums: flache Flaeche, harter
+   Schatten, keine Verlaeufe. Der Griff ist ein Kreis wie ein
+   freigeschalteter Knoten. */
+
+.setting {
+  margin: 0 0 14px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.setting-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.setting-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--teal);
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: #0d0a17;
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 2px 2px 0 var(--teal-dark);
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 2px 2px 0 var(--teal-dark);
+  cursor: pointer;
+}
+
+/* Stumm: der Regler tritt zurueck, statt zu verschwinden — man soll sehen,
+   auf welchen Wert das Aufheben zurueckfuehrt. */
+.is-muted .slider,
+.is-muted .setting-value {
+  opacity: 0.35;
+}
+
+/* Zwei Klangbaenke, umschaltbar. Formsprache wie im Baum: die aktive Wahl
+   steht erhoeht auf ihrem Sockel, die andere liegt flach. */
+
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.seg-btn {
+  padding: 10px 0;
+  border: 1px solid #2a2140;
+  border-radius: 10px;
+  background: #0d0a17;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, color 0.12s ease, border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.seg-btn:hover:not(.is-on) {
+  color: #cfc7e6;
+  border-color: #3b2f5c;
+}
+
+.seg-btn.is-on {
+  color: #0d0a17;
+  background: var(--teal);
+  border-color: var(--teal);
+  box-shadow: 3px 3px 0 var(--teal-dark);
+  transform: translate(-1px, -1px);
+}
+
+.setting-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.is-muted .seg,
+.is-muted .setting-hint {
+  opacity: 0.35;
+}

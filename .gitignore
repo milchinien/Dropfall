@@ -12,5 +12,6 @@ Thumbs.db
 *.log
 
 # Balancing-Simulation: Bundle-Zwischenergebnis
-prototypes/dropfall/tools/.out.mjs
-prototypes/dropfall/tools/.out-tree.png
+tools/.out.mjs
+tools/.out-tree.png
+tools/.out-arena-*.png

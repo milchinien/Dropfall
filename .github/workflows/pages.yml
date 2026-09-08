@@ -26,10 +26,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter dropfall-prototype build
+      - run: pnpm build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: prototypes/dropfall/dist
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
