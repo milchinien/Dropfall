@@ -1016,25 +1016,32 @@ Buff-Nachricht.
 `decor.ts` legt zwei Ebenen um das Spiel: Himmel, Sonnenstrahlen und
 liegendes Laub dahinter, die wenigen fallenden Blätter davor.
 
-**Das Licht ist parallel und liegt auf der Schattenachse.** Das ist keine
-Wahl, sondern eine Folge von Stilregel 3: die Schatten fallen überall im
-Bild 45° nach unten rechts, unabhängig davon, wo ein Objekt steht — das ist
-Licht aus dem Unendlichen. Also sind die Strahlen fünf **parallele Bahnen**
-auf genau derselben Achse.
+**Das Licht ist parallel und liegt auf der Schattenachse — und es hat eine
+Quelle.** Beides zugleich: die Schatten fallen überall im Bild 45° nach
+unten rechts, unabhängig davon, wo ein Objekt steht. Das ist Licht aus dem
+Unendlichen, also laufen die Strahlen parallel auf genau dieser Achse. Die
+**Sonne** selbst sitzt jenseits der oberen linken Ecke. Von ihr kommt ein
+gestufter Glanz in die Ecke (Viertelkreise in vier Stufen, kein Verlauf),
+und ihr **Fächer** schneidet als Maske aus den parallelen Bahnen den Teil
+aus, den sie beleuchtet — der Rest des Bildes bleibt Dämmerung. Die Bahnen
+verblassen nach hinten in drei Stufen. So liest sich das Licht als
+Sonnenschein mit Richtung, obwohl kein einziger Strahl von der
+Schattenachse abweicht.
 
-Der erste Versuch ließ sie radial aus einem Punkt jenseits der oberen linken
-Ecke auffächern. Das war der Fehler: ein Fächer heißt naher Scheinwerfer,
-und dann müsste jeder Schatten im Bild in eine andere Richtung zeigen. Die
-Schatten des Spiels zeigen aber alle in dieselbe. Gezeichnet wird deshalb im
-gedrehten System — die Bahnen sind schlichte Rechtecke und können gar nicht
-auffächern.
+Zwei Fassungen davor waren falsch. Die erste ließ die Strahlen radial aus
+einem Punkt auffächern: ein Fächer heißt naher Scheinwerfer, dann müsste
+jeder Schatten in eine andere Richtung zeigen. Die zweite legte parallele
+Bahnen symmetrisch über das ganze Bild — korrekt zu den Schatten, aber ohne
+Quelle, und ohne Quelle sind es Streifen, kein Sonnenschein.
 
 **Sie darf nie vor dem Spielfeld liegen.** `Machine.bounds()` meldet das
 Rechteck der Arena; liegende Blätter darin werden verworfen, fallende
 bekommen beim Erscheinen einen Korridor links oder rechts daneben — nicht je
 Bild geprüft, denn ein Blatt, das mitten im Flug ausgeblendet wird, blinkt.
 Geprüft wird das von `tools/decor-check.ts` über vier Bildgrößen, zwei
-Arenaformen und drei Dichten.
+Arenaformen und drei Dichten, jeweils 200 simulierte Sekunden mit Zeigerwind
+entlang der Arena-Kante und Zoom-Böen — der Fall, den die weiche Wand halten
+muss.
 
 **Sie muss leise sein.** Der erste Versuch lag bei 0.04–0.07 Deckkraft für
 die Strahlen und 0.16 für das Glimmen des Himmels. Das waren keine Strahlen
@@ -1044,9 +1051,24 @@ standen nicht mehr davor. Jetzt: fünf Bahnen bei 0.015–0.030, Glimmen bei
 Vordergrund.* Breiten und Abstände sind bewusst ungleich — gleichmäßige
 lesen sich als Schraffur.
 
-**Sie ist deterministisch.** Die Streuung hängt an einem festen Seed —
-dieselbe Regel wie beim Baum-Layout. Ein Bild, das sich bei jedem Start neu
-würfelt, lässt sich weder beurteilen noch wiederfinden.
+**Der Grundriss ist deterministisch, das Bild lebt darauf.** Wo Blätter
+liegen, hängt an einem festen Seed — dieselbe Regel wie beim Baum-Layout.
+Was darauf passiert, nicht:
+
+- **Wind vom Zeiger.** Blätter im Umkreis von 90 px werden mit der
+  Zeigergeschwindigkeit weggestoßen, gedeckelt und mit Reibung — ein Ruck
+  verschiebt sie um zwanzig Pixel, nicht über den Bildschirm.
+- **Böe beim Zoomen.** Hineinzoomen drückt das Laub vom Zeiger weg,
+  herauszoomen zieht es leicht hin, als atme die Luft mit dem Bild.
+- **Verfall und Nachschub.** Jedes Blatt liegt 45–150 s, blendet dann aus,
+  und ein neues fällt vom oberen Rand auf **dieselbe Heimatstelle** —
+  neue Sorte, neue Drehung, das Pendeln klingt zum Boden hin aus, damit es
+  genau dort landet. Der Rand bleibt also besetzt, wie er entworfen ist.
+- **Weiche Wand.** Was ins Spielfeld oder aus dem Bild wehen würde, bleibt
+  an der Kante liegen. Ein Blatt, das gerade unter dem Spielfeld verborgen
+  ist, altert nicht — sein Nachschub fiele sonst unsichtbar in die Arena.
+
+Alles davon hängt an der Einstellung *Bewegung*; aus heißt still.
 
 Die Verteilung nimmt eine Lage mit der Wahrscheinlichkeit `m ** RANDDRANG`
 an, wobei `m` der Chebyshev-Radius ist (0 in der Bildmitte, 1 am Rand). Bei

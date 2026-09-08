@@ -17,7 +17,7 @@
    Ein Test, der raten muss, prueft irgendwann etwas anderes als gemeint.
    ========================================================================= */
 
-import { fallendeLagen, liegendeLagen, type FreiRect } from "../src/decor";
+import { decorBoe, decorZeiger, fallendeLagen, liegendeLagen, type FreiRect } from "../src/decor";
 import { setSkin } from "../src/theme";
 import { setGrafik, type LaubDichte } from "../src/skin";
 
@@ -70,10 +70,27 @@ for (const [vw, vh] of GROESSEN) {
       setGrafik({ laub, bewegung: true, himmel: "baender" });
 
       const lagen: Array<[string, { x: number; y: number }]> = [];
-      for (const l of liegendeLagen(vw, vh, frei)) lagen.push(["liegend", l]);
-      // Die Faller ueber viele Bilder laufen lassen, damit jeder mindestens
-      // einmal durchs Bild faellt und neu erscheint.
-      for (let i = 0; i < 2000; i++) {
+      // Lange genug, dass jedes liegende Blatt mindestens einmal verfaellt
+      // und sein Nachschub vom Himmel bis auf die Heimat faellt (Lebensdauer
+      // bis 150 s), und dass jeder Treiber mehrmals durchs Bild kommt.
+      // Dazu Wind: der Zeiger faehrt an der Arena-Kante entlang und stoesst
+      // die Blaetter GEGEN das Feld — das ist der Fall, den die weiche Wand
+      // halten muss. Und ein paar Boeen aus der Mitte.
+      const bilder = 60 * 200;
+      for (let i = 0; i < bilder; i++) {
+        const t = i / 60;
+        if (i % 3 === 0) {
+          const seite = Math.floor(t / 5) % 4;
+          const p = (t % 5) / 5;
+          const [zx, zy] =
+            seite === 0 ? [frei.x - 30, frei.y + p * frei.h]
+            : seite === 1 ? [frei.x + frei.w + 30, frei.y + p * frei.h]
+            : seite === 2 ? [frei.x + p * frei.w, frei.y - 30]
+            : [frei.x + p * frei.w, frei.y + frei.h + 30];
+          decorZeiger(zx + Math.sin(t * 7) * 60, zy + Math.cos(t * 5) * 60);
+        }
+        if (i % 600 === 0) decorBoe(vw / 2, vh / 2, i % 1200 === 0 ? 70 : -55);
+        for (const l of liegendeLagen(vw, vh, 1 / 60, frei)) lagen.push(["liegend", l]);
         for (const l of fallendeLagen(vw, vh, 1 / 60, frei)) lagen.push(["fallend", l]);
       }
 

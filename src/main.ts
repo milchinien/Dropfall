@@ -21,7 +21,7 @@ import {
   loaderMarkup,
   setLoaderValue,
 } from "./loader";
-import { drawDecorBack, drawDecorFront } from "./decor";
+import { decorBoe, decorZeiger, drawDecorBack, drawDecorFront } from "./decor";
 import { grafik, initGrafik, setGrafik } from "./skin";
 import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
 import { drawArenaMiniature } from "./machine";
@@ -34,6 +34,7 @@ import {
   ballCost,
   ballValue,
   emptyBallLevels,
+  fireMaxPegs,
   type BallKind,
 } from "./balls";
 import {
@@ -1203,7 +1204,10 @@ function tick(): void {
     // Feuer ist ein Zustand, kein Ereignis: der Loop wird ueber die Zahl
     // brennender Pegs gefahren, nicht ueber die einzelnen Brand-Ticks.
     audio.setFire(
-      stats.fire.maxPegs > 0 ? machine.burningPegs / stats.fire.maxPegs : 0,
+      (() => {
+        const cap = fireMaxPegs(stats.fire, machine.pegTotal);
+        return cap > 0 ? machine.burningPegs / cap : 0;
+      })(),
     );
     // Der Puls unter 25 % Leben — die Vorgabe aus GAME_DESIGN.md, § 12.
     audio.lifeTick(dt, run.maxLife > 0 ? run.life / run.maxLife : 0);
@@ -1237,7 +1241,7 @@ function tick(): void {
    * randlastige Streuung die Mitte von allein frei.
    */
   const frei = state.view === "run" ? machine.bounds(vw, vh) : null;
-  drawDecorBack(ctx, vw, vh, frei);
+  drawDecorBack(ctx, vw, vh, dt, frei);
 
   if (state.view === "run") {
     machine.render(ctx, vw, vh);
@@ -1369,6 +1373,8 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 
 canvas.addEventListener("pointermove", (e) => {
+  // Der Zeiger weht das Laub — in jeder Ansicht, das Laub liegt ja ueberall.
+  decorZeiger(e.clientX, e.clientY);
   if (state.view !== "tree") return;
   tree.pointerMove(e.clientX, e.clientY);
 });
@@ -1379,6 +1385,9 @@ canvas.addEventListener(
     if (state.view !== "tree") return;
     e.preventDefault();
     tree.wheel(e.clientX, e.clientY, e.deltaY);
+    // Ein Zoom ist ein Atemzug: hinein drueckt das Laub vom Zeiger weg,
+    // heraus zieht es leicht hin. Leicht — es soll zucken, nicht fliegen.
+    decorBoe(e.clientX, e.clientY, e.deltaY < 0 ? 70 : -55);
     tree.pointerMove(e.clientX, e.clientY);
   },
   { passive: false }
