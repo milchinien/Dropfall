@@ -20,7 +20,7 @@ import {
   loaderMarkup,
   setLoaderValue,
 } from "./loader";
-import { initGrafik } from "./skin";
+import { grafik, initGrafik, setGrafik } from "./skin";
 import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
 import { drawArenaMiniature } from "./machine";
 import { BARREN_BOUNTY } from "./currency";
@@ -1471,6 +1471,118 @@ for (const b of bankBtns) {
 }
 
 renderAudioSettings();
+
+/* ----------------------------------------------------------- Reiter --- */
+/*
+ * Das Einstellungsfenster hat drei Orte: Grafik, Audio, Spiel. Ein Reiter
+ * wechselt einen Ort und nicht einen Wert — deshalb `role="tab"` und nicht
+ * die Segmentleisten, die sonst ueberall im Fenster stehen.
+ *
+ * Roving tabindex: nur der aktive Reiter ist mit Tab erreichbar, zwischen
+ * den Reitern wandert man mit den Pfeiltasten. Waeren alle drei tabbierbar,
+ * muesste man sich mit Tab durch die Leiste hindurcharbeiten, um an den
+ * ersten Regler zu kommen.
+ */
+const tabBtns = Array.from(document.querySelectorAll<HTMLButtonElement>("#setTabs .tab"));
+
+function showPane(id: string): void {
+  for (const t of tabBtns) {
+    const an = t.id === id;
+    t.classList.toggle("is-on", an);
+    t.setAttribute("aria-selected", String(an));
+    t.tabIndex = an ? 0 : -1;
+    document.getElementById(t.getAttribute("aria-controls")!)!.classList.toggle("hidden", !an);
+  }
+}
+
+for (const t of tabBtns) {
+  t.addEventListener("click", () => {
+    if (t.classList.contains("is-on")) return;
+    audio.play("ui");
+    showPane(t.id);
+  });
+}
+
+document.getElementById("setTabs")!.addEventListener("keydown", (ev) => {
+  const schritt = ev.key === "ArrowRight" ? 1 : ev.key === "ArrowLeft" ? -1 : 0;
+  if (!schritt) return;
+  ev.preventDefault();
+  const i = tabBtns.findIndex((t) => t.classList.contains("is-on"));
+  const next = tabBtns[(i + schritt + tabBtns.length) % tabBtns.length];
+  audio.play("ui");
+  showPane(next.id);
+  next.focus();
+});
+
+/* ----------------------------------------------------------- Grafik --- */
+
+const segOf = (id: string) =>
+  Array.from(document.querySelectorAll<HTMLButtonElement>(`#${id} .seg-btn`));
+
+const skinBtns = segOf("skin");
+const himmelBtns = segOf("himmel");
+const laubBtns = segOf("laub");
+const bewegungBtns = segOf("bewegung");
+const herbstNurBtns = [...himmelBtns, ...laubBtns, ...bewegungBtns];
+
+function renderGrafik(): void {
+  const g = grafik();
+  for (const b of skinBtns) b.classList.toggle("is-on", b.dataset.skin === g.skin);
+  for (const b of himmelBtns) b.classList.toggle("is-on", b.dataset.himmel === g.himmel);
+  for (const b of laubBtns) b.classList.toggle("is-on", b.dataset.laub === g.laub);
+  for (const b of bewegungBtns)
+    b.classList.toggle("is-on", (b.dataset.bewegung === "an") === g.bewegung);
+
+  // Himmel, Laub und Bewegung gehoeren zum Herbst. Im klassischen Aussehen
+  // treten sie zurueck, statt zu verschwinden: so bleibt sichtbar, was der
+  // andere Skin mitbringt, und das Fenster springt nicht in der Hoehe.
+  const herbst = g.skin === "herbst";
+  for (const id of ["setHimmel", "setLaub", "setBewegung"]) {
+    document.getElementById(id)!.classList.toggle("is-off", !herbst);
+  }
+  for (const b of herbstNurBtns) b.disabled = !herbst;
+  document.getElementById("skinNote")!.classList.toggle("hidden", herbst);
+}
+
+for (const b of skinBtns) {
+  b.addEventListener("click", () => {
+    const skin = b.dataset.skin;
+    if (skin !== "klassisch" && skin !== "herbst") return;
+    setGrafik({ skin });
+    renderGrafik();
+    audio.play("levelup");
+  });
+}
+
+for (const b of himmelBtns) {
+  b.addEventListener("click", () => {
+    const himmel = b.dataset.himmel;
+    if (himmel !== "baender" && himmel !== "einfarbig" && himmel !== "verlauf") return;
+    setGrafik({ himmel });
+    renderGrafik();
+    audio.play("ui");
+  });
+}
+
+for (const b of laubBtns) {
+  b.addEventListener("click", () => {
+    const laub = b.dataset.laub;
+    if (laub !== "aus" && laub !== "wenig" && laub !== "normal") return;
+    setGrafik({ laub });
+    renderGrafik();
+    audio.play("ui");
+  });
+}
+
+for (const b of bewegungBtns) {
+  b.addEventListener("click", () => {
+    setGrafik({ bewegung: b.dataset.bewegung === "an" });
+    renderGrafik();
+    audio.play("ui");
+  });
+}
+
+renderGrafik();
 
 document.getElementById("wipe")!.addEventListener("click", () => {
   wiping = true;

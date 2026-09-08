@@ -150,31 +150,121 @@
         <h2>Einstellungen</h2>
         <p class="modal-sub">Dropfall v0.4</p>
 
-        <div class="setting">
-          <div class="setting-row">
-            <label class="setting-label" for="vol">Lautst&auml;rke</label>
-            <span class="setting-value" id="volValue">70&nbsp;%</span>
-          </div>
-          <input class="slider" type="range" id="vol" min="0" max="100" step="1" value="70" />
+        <div class="tabs" id="setTabs" role="tablist" aria-label="Einstellungen">
+          <button
+            class="tab is-on"
+            id="tab-grafik"
+            role="tab"
+            aria-controls="pane-grafik"
+            aria-selected="true"
+          >
+            Grafik
+          </button>
+          <button
+            class="tab"
+            id="tab-audio"
+            role="tab"
+            aria-controls="pane-audio"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Audio
+          </button>
+          <button
+            class="tab"
+            id="tab-spiel"
+            role="tab"
+            aria-controls="pane-spiel"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Spiel
+          </button>
         </div>
-        <button class="ghost-btn" id="mute">Ton aus</button>
 
-        <div class="setting">
-          <div class="setting-row">
-            <span class="setting-label">Klangbank</span>
+        <div class="pane" id="pane-grafik" role="tabpanel" aria-labelledby="tab-grafik">
+          <div class="setting">
+            <div class="setting-row"><span class="setting-label">Aussehen</span></div>
+            <div class="seg" id="skin" role="group" aria-label="Aussehen">
+              <button class="seg-btn" data-skin="herbst">Herbst</button>
+              <button class="seg-btn" data-skin="klassisch">Klassisch</button>
+            </div>
+            <p class="setting-hint">
+              Beide Fassungen sind derselbe Spielstand &mdash; es &auml;ndert sich nur
+              das Bild, nie eine Zahl.
+            </p>
           </div>
-          <div class="seg" id="bank" role="group" aria-label="Klangbank">
-            <button class="seg-btn" data-bank="assets">Aufnahmen</button>
-            <button class="seg-btn" data-bank="generated">Synthetisch</button>
+
+          <div class="setting" id="setHimmel">
+            <div class="setting-row"><span class="setting-label">Abendhimmel</span></div>
+            <div class="seg" id="himmel" role="group" aria-label="Abendhimmel">
+              <button class="seg-btn" data-himmel="baender">B&auml;nder</button>
+              <button class="seg-btn" data-himmel="einfarbig">Einfarbig</button>
+              <button class="seg-btn" data-himmel="verlauf">Verlauf</button>
+            </div>
           </div>
-          <p class="setting-hint">
-            Hover und Herzschlag klingen in beiden gleich.
+
+          <div class="setting" id="setLaub">
+            <div class="setting-row"><span class="setting-label">Laub</span></div>
+            <div class="seg" id="laub" role="group" aria-label="Laub">
+              <button class="seg-btn" data-laub="aus">Aus</button>
+              <button class="seg-btn" data-laub="wenig">Wenig</button>
+              <button class="seg-btn" data-laub="normal">Normal</button>
+            </div>
+          </div>
+
+          <div class="setting" id="setBewegung">
+            <div class="setting-row"><span class="setting-label">Bewegung</span></div>
+            <div class="seg" id="bewegung" role="group" aria-label="Bewegung">
+              <button class="seg-btn" data-bewegung="an">An</button>
+              <button class="seg-btn" data-bewegung="aus">Aus</button>
+            </div>
+            <p class="setting-hint">
+              Fallendes Laub und wandernde Strahlen. Aus l&auml;sst alles stillstehen.
+            </p>
+          </div>
+
+          <p class="setting-hint pane-note" id="skinNote">
+            Himmel, Laub und Bewegung geh&ouml;ren zum Herbst und sind im klassischen
+            Aussehen ohne Wirkung.
           </p>
         </div>
 
-        <button class="ghost-btn" id="wipe">Spielstand l&ouml;schen</button>
+        <div class="pane hidden" id="pane-audio" role="tabpanel" aria-labelledby="tab-audio">
+          <div class="setting">
+            <div class="setting-row">
+              <label class="setting-label" for="vol">Lautst&auml;rke</label>
+              <span class="setting-value" id="volValue">70&nbsp;%</span>
+            </div>
+            <input class="slider" type="range" id="vol" min="0" max="100" step="1" value="70" />
+          </div>
+          <button class="ghost-btn" id="mute">Ton aus</button>
+
+          <div class="setting">
+            <div class="setting-row">
+              <span class="setting-label">Klangbank</span>
+            </div>
+            <div class="seg" id="bank" role="group" aria-label="Klangbank">
+              <button class="seg-btn" data-bank="assets">Aufnahmen</button>
+              <button class="seg-btn" data-bank="generated">Synthetisch</button>
+            </div>
+            <p class="setting-hint">
+              Hover und Herzschlag klingen in beiden gleich.
+            </p>
+          </div>
+        </div>
+
+        <div class="pane hidden" id="pane-spiel" role="tabpanel" aria-labelledby="tab-spiel">
+          <button class="ghost-btn" id="wipe">Spielstand l&ouml;schen</button>
+          <p class="setting-hint">
+            Setzt Baum, W&auml;hrungen und Ziele zur&uuml;ck. Das gew&auml;hlte Aussehen
+            bleibt &mdash; es h&auml;ngt nicht am Spielstand.
+          </p>
+        </div>
+
         <button class="ghost-btn" id="closeModal">Schlie&szlig;en</button>
       </div>
+    </div>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

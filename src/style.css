@@ -996,11 +996,67 @@ body {
 }
 
 .modal-card {
-  width: 340px;
+  width: 360px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   padding: 26px;
   background: var(--ink);
   border-radius: 14px;
   box-shadow: var(--cast-m);
+}
+
+/* --- Reiter -------------------------------------------------------------
+   Dieselbe Formsprache wie die Segmente darunter: die aktive Wahl steht auf
+   ihrem Sockel, die anderen liegen flach. Der Trennstrich darunter sagt,
+   dass hier ein Ort gewechselt wird und nicht ein Wert. */
+
+.tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-dim);
+}
+
+.tab {
+  padding: 9px 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s ease, color 0.12s ease, background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.tab:hover:not(.is-on) {
+  color: var(--text-soft);
+  background: var(--ink-deep);
+}
+
+.tab.is-on {
+  color: var(--ink-deep);
+  background: var(--teal);
+  box-shadow: 3px 3px 0 var(--teal-dark);
+  transform: translate(-1px, -1px);
+}
+
+/* Nur bei Tastaturbedienung. Die Maus hat den Sockel als Rueckmeldung. */
+.tab:focus-visible,
+.seg-btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.pane-note {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-dim);
 }
 
 .modal-card h2 {
@@ -1458,8 +1514,24 @@ body {
 
 .seg {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Nicht `1fr 1fr`: Himmel und Laub haben drei Knoepfe, Aussehen und
+     Klangbank zwei. Automatische Spalten passen sich der Zahl an, statt
+     dass jede Gruppe ihre eigene Regel braucht. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 8px;
+}
+
+/* Im klassischen Aussehen haben Himmel, Laub und Bewegung nichts zu tun.
+   Sie treten zurueck, statt zu verschwinden — sonst springt das Fenster
+   beim Umschalten in der Hoehe, und man sieht nicht, was der Herbst
+   zusaetzlich mitbringt. */
+.setting.is-off {
+  opacity: 0.4;
+}
+
+.seg-btn:disabled {
+  cursor: default;
 }
 
 .seg-btn {
