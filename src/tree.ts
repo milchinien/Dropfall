@@ -1,7 +1,7 @@
 /* =========================================================================
-   tree.ts — Generischer Skill-Tree im Outhold-Stil.
+   tree.ts — Generischer Skill-Tree.
 
-   Formsprache (aus Outhold übernommen):
+   Formsprache (die Farben kommen aus dem aktiven Skin, siehe theme.ts):
      gemaxt     -> Kreis, voll gefüllt, extrudiert
      investiert -> abgerundetes Quadrat, voll gefüllt, extrudiert
      kaufbar    -> Outline in Node-Farbe, dunkle Füllung, flacher Sockel

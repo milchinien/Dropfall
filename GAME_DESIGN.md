@@ -1,6 +1,12 @@
 # DROPFALL — Game Design Document
 
-> v0.4 · Genre: Incremental / Roguelite · Vorbild für Struktur und Optik: **Outhold**
+> v0.4 · Genre: Incremental / Roguelite
+>
+> Die **Struktur** ist von Outhold uebernommen und in Abschnitt 2 und 5 als
+> solche benannt. Die **Optik** war es bis v0.3 auch; seit dem Skin-Umbau
+> (Abschnitt 11) ist sie eigen — geblieben sind die drei Stilregeln, die
+> niemandem gehoeren: flache Flaechen, extrudierte Sockel, lange harte
+> 45°-Schatten.
 
 ---
 
@@ -916,28 +922,152 @@ ist eine offene Design-Frage und keine gemessene Tatsache.
 
 ---
 
-## 11. Art Direction — Outhold-Stil
-
-### Palette
-
-```
-Hintergrund tief    #241f30      Text            #f4f1fa
-Hintergrund         #2e2a3d      Text gedämpft   #8b84a0
-Linien              #57506b
-
-Teal      #2ed3ae / #1b9c80      Pink      #f4506e / #b93450
-Amber     #edb443 / #b8871f      Magenta   #e4348f / #a61f66
-
-Peg kalt  #5c5573    Peg getroffen  #2ed3ae    Peg brennend  #ff7a3d
-Blitz     #6fa8ff    Feuer          #ff7a3d
-```
+## 11. Art Direction — zwei Skins, ein Codestand
 
 ### Die drei Stilregeln
+
+Sie gelten in **jedem** Skin und sind der eigentliche Kern des Aussehens:
 
 1. **Flächen sind flach.** Keine Verläufe, keine Texturen, keine Weichzeichner.
 2. **Alles ist extrudiert.** Deckfläche plus abgedunkelter Sockel.
 3. **Ein langer, harter Schatten**, 45° nach unten rechts, deckend. Technisch:
    dieselbe Form vielfach versetzt als Subpfad sammeln und **einmal** füllen.
+
+Der **Winkel** der Schatten ist unantastbar. Ein Skin darf ihren Farbton
+wechseln, nie ihre Richtung — die Richtung bindet die ganze Szene zusammen,
+bis hin zu der Ecke, aus der im Herbst die Sonne scheint.
+
+### Warum zwei Skins und kein Backup-Zweig
+
+Ein Zweig mit dem alten Design müsste bei jedem neuen Feature nachgemergt
+werden, und genau dort geht es irgendwann schief. Stattdessen liegen beide
+Skins nebeneinander in `theme.ts`, und der Code zeichnet ausschließlich mit
+Tokens. Ein neues Feature kennt den Skin gar nicht — es erbt ihn.
+
+Umgeschaltet wird in den Einstellungen unter *Grafik*, ohne Neuladen. Die
+Wahl liegt unter `dropfall.grafik` und damit **außerhalb** des Spielstands:
+„Spielstand löschen" setzt den Baum zurück, nicht das Aussehen.
+
+### Drei Sorten Token
+
+| | Was | Verhalten |
+|---|---|---|
+| **Signal** | Peg getroffen und brennend, Buff-Aura, Markierung, die fünf Kugeln, die vier Währungen, der Barren | **In jedem Skin gleich** |
+| **Welt** | Grund, Linien, Schrift, Rahmen, Peg kalt, Bumper, Emitter, Ablauf, Schatten | Pro Skin |
+| **Baum** | die vier Astfarben der Skill-Tree-Knöpfe | Pro Skin |
+
+Die Trennung ist die wichtigste Regel des ganzen Umbaus: **ein Skin darf das
+Bild umfärben, aber nicht die Frage beantworten, woran man einen abgedeckten
+Peg erkennt.** Wer eine Signalfarbe skinabhängig macht, macht Lesbarkeit zur
+Geschmacksfrage.
+
+Die vier Baum-Slots heißen aus historischen Gründen `teal`, `amber`, `pink`
+und `magenta`. Das sind **Slot-Namen, keine Farbtöne**: `upgrades.ts` verteilt
+die Knoten auf diese vier Slots, und jeder Skin färbt sie anders. Im Herbst
+ist `teal` kein Türkis.
+
+### Palette
+
+```
+                     KLASSISCH              HERBST
+Hintergrund tief     #241f30                #1b1210
+Hintergrund          #2e2a3d                #2b1a13
+angehoben            #3a3550                #3d2519
+Linien               #57506b                #6d4529
+Text                 #f4f1fa                #fdf2e2
+Text gedämpft        #8b84a0                #b18b6d
+
+Ast-Slot „teal"      #2ed3ae / #1b9c80      #f2703c / #a83c12   Glut
+Ast-Slot „amber"     #edb443 / #b8871f      #f0b53c / #b07a14   Gold
+Ast-Slot „pink"      #f4506e / #b93450      #e2453f / #9c221f   Ahorn
+Ast-Slot „magenta"   #e4348f / #a61f66      #c94a7a / #8c2850   Beere
+
+Rahmen               #2ed3ae / #1b9c80      #b5623a / #7a3818
+Peg kalt             #5c5573                #6b5546
+Bumper / Emitter     #edb443 / #b8871f      #f0b53c / #b07a14
+Ablauf               #e4348f                #cf4a3e
+Schatten (Basis)     #0e0a16                #1a0803
+
+SIGNAL — in beiden gleich
+Peg getroffen  #2ed3ae    Peg brennend  #ff7a3d    Buff  #e4348f
+Markierung     #edb443    Blitz         #6fa8ff
+```
+
+**Der Herbst ist dunkel und warm, nicht hell.** Das Spiel lebt von
+leuchtenden Pegs auf ruhigem Grund; ein heller Grund hätte jede Signalfarbe
+unbrauchbar gemacht. Der Sonnenuntergang steckt im Licht, im Laub und in den
+Strahlen — nicht in der Helligkeit des Hintergrunds.
+
+Dass der abgedeckte Peg auch im Herbst teal bleibt, ist kein Rest: Teal ist
+die Gegenfarbe zu Orange und hat auf warmem Braun **mehr** Kontrast als auf
+dem alten Violett. Die Abdeckung liest sich im Herbst besser als im
+Klassiker.
+
+Der Ablauf bekommt im Herbst ein eigenes Rot. Im Klassiker teilt er sich die
+Farbe mit der Buff-Aura — das ist eine Verwechslung, die nicht sein muss: er
+ist die Stelle, an der eine Kugel verloren geht, und das ist keine
+Buff-Nachricht.
+
+### Die Deko-Ebene (nur Herbst)
+
+`decor.ts` legt zwei Ebenen um das Spiel: Himmel, Sonnenstrahlen und
+liegendes Laub dahinter, die wenigen fallenden Blätter davor.
+
+**Die Strahlen kommen von oben links.** Das ist keine Wahl, sondern eine
+Folge von Stilregel 3: die Schatten fallen 45° nach unten rechts, also steht
+die Sonne dort. Käme das Licht von woanders, stünde die Szene im Widerspruch
+zu jedem Knopf.
+
+**Sie darf nie vor dem Spielfeld liegen.** `Machine.bounds()` meldet das
+Rechteck der Arena; liegende Blätter darin werden verworfen, fallende
+bekommen beim Erscheinen einen Korridor links oder rechts daneben — nicht je
+Bild geprüft, denn ein Blatt, das mitten im Flug ausgeblendet wird, blinkt.
+Geprüft wird das von `tools/decor-check.ts` über vier Bildgrößen, zwei
+Arenaformen und drei Dichten.
+
+**Sie muss leise sein.** Der erste Versuch lag bei 0.04–0.07 Deckkraft für
+die Strahlen und 0.16 für das Glimmen des Himmels. Das waren keine Strahlen
+mehr, sondern helle Balken quer durchs Bild, und die Knöpfe des Skill Trees
+standen nicht mehr davor. Jetzt: drei Keile bei 0.013–0.024, Glimmen bei
+0.06. *Licht darf man ahnen; sobald man es liest, nimmt es dem Spiel den
+Vordergrund.*
+
+**Sie ist deterministisch.** Die Streuung hängt an einem festen Seed —
+dieselbe Regel wie beim Baum-Layout. Ein Bild, das sich bei jedem Start neu
+würfelt, lässt sich weder beurteilen noch wiederfinden.
+
+Die Verteilung nimmt eine Lage mit der Wahrscheinlichkeit `m³` an, wobei `m`
+der Chebyshev-Radius ist (0 in der Bildmitte, 1 am Rand). Das gibt einen
+dichten Rand und trotzdem ein paar einzelne Blätter weiter innen — statt
+eines sauber ausgestanzten Lochs in der Mitte.
+
+Der Abendhimmel hat drei Fassungen, umschaltbar: **Bänder** (Vorgabe — der
+Sonnenuntergang als Reihe flacher Streifen, das ist die einzige, die
+Stilregel 1 einhält), **Einfarbig** und **Verlauf**. Der Verlauf bricht die
+Regel bewusst und steht genau deshalb als eigene Wahl im Fenster und nicht
+als stille Ausnahme im Code.
+
+### Schrift
+
+Selbst gehostet unter `public/assets/fonts`, geholt von
+`tools/fetch-fonts.py`. Kein Google-Fonts-Link: ein Steam-Build hat kein
+Netz, und schon im Browser kostet der Umweg über zwei fremde Hosts einen
+sichtbaren Schriftsprung beim Laden.
+
+| | Rolle | Klassisch | Herbst |
+|---|---|---|---|
+| `--font-body` | Fließtext **und alle Zahlen** | Nunito | Nunito |
+| `--font-display` | Überschriften | Nunito | Bitter (Slab-Serif) |
+
+Die Zahlen bleiben absichtlich in beiden Skins dieselbe Schrift: ein
+Incremental lebt von Ziffern, und die dürfen beim Umschalten keine
+Laufweite ändern, sonst springt jedes Layout. Gemessen ist Bitter bei 34 px
+um 10 px schmaler als Nunito, die Titel laufen also nirgends über.
+
+Beide Familien liefert Google als **variable** Fonts — je Familie und Subset
+eine Datei mit einem Gewichtsbereich, nicht eine je Gewicht. Wer sie je
+Gewicht lädt, bekommt zehn Dateien, von denen sechs Duplikate sind. Vier
+Dateien, 141 kB, latin und latin-ext, beide unter der SIL OFL 1.1.
 
 ### Formsprache im Skill Tree
 
@@ -953,6 +1083,18 @@ Jeder Knopf steht auf einem **Sockel**: der gefüllte 18 Einheiten hoch, der
 noch leere 9. Ohne ihn liegt der Knoten flach auf dem Hintergrund wie ein
 Aufkleber, und der Baum zerfällt optisch in zwei Sorten Ding — aufstehende
 gekaufte und liegende ungekaufte.
+
+### Was beim Erweitern schiefgeht
+
+1. **Eine Farbe direkt in eine Zeichenroutine schreiben.** Sie bleibt dann in
+   jedem Skin gleich und ist beim nächsten Skin ein Leck. Farben gehören in
+   `theme.ts` (Canvas) oder in `:root` (Oberfläche).
+2. **Eine Farbe auf Modulebene in eine Konstante kopieren** (`const X =
+   C.teal`). Sie friert auf dem Skin ein, der beim Laden zufällig aktiv war.
+   Immer erst beim Zeichnen lesen.
+3. **Ein gecachtes Bild nicht verwerfen.** Der Arena-Rahmen liegt in einem
+   Cache-Canvas und hängt an einem Generationszähler, den jeder Skinwechsel
+   hochzählt.
 
 ---
 
@@ -1106,7 +1248,8 @@ hängt.
 Lauf, Level-Auswahl mit Vorschau und vier Zielen je Arena, Zutritt über erfüllte
 Ziele, Auswertung nach dem Lauf mit Rechenweg und Quellen-Aufschlüsselung,
 **neun** Arenen, fünf Kugeltypen mit je eigenem Ast, die **Markierung**,
-**78** Skill-Tree-Nodes mit Mausrad-Zoom, kompletter Outhold-Look, **Ton mit zwei
+**78** Skill-Tree-Nodes mit Mausrad-Zoom, **zwei umschaltbare Skins**
+(Klassisch und Herbst) samt Deko-Ebene, **Ton mit zwei
 umschaltbaren Klangbänken** samt Lautstärkeregler, Speichern in localStorage,
 Balancing-Simulation und Layout-Prüfung in `tools/`.
 

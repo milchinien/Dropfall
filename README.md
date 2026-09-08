@@ -1,6 +1,6 @@
 # Dropfall — v0.4
 
-Incremental im Outhold-Stil. Kugeln fallen durch eine Arena aus Pegs und sammeln
+Incremental mit Run-Struktur. Kugeln fallen durch eine Arena aus Pegs und sammeln
 bei jedem Kontakt **Funken**. Gespielt wird in **Läufen**: der Skill Tree ist die
 Hauptansicht, von dort startet man einen Arena-Lauf. Der Lauf endet, wenn die
 Lebensleiste leer ist.
@@ -284,10 +284,13 @@ src/
   balls.ts      Kugeltypen und ihre Verhaltensparameter
   upgrades.ts   Die 78 Skill-Tree-Nodes und die abgeleiteten Spielwerte
   layout.ts     Rechnet aus, wo die Nodes liegen — garantiert kreuzungsfrei
-  tree.ts       Generischer Skill-Tree im Outhold-Stil
-  theme.ts      Farbpalette und Zeichenprimitive (Extrusion, lange Schatten)
+  tree.ts       Generischer Skill-Tree, extrudierte Knoepfe mit langem Schatten
+  theme.ts      Die zwei Skins und die Zeichenprimitive (Extrusion, lange Schatten)
+  skin.ts       Grafik-Einstellungen und ihr Speicher (getrennt vom Spielstand)
+  decor.ts      Abendhimmel, Sonnenstrahlen, Laub — nur im Herbst-Skin
   audio.ts      Der Ton: Mischtabelle, Sperrzeiten, Tonhöhe, Ortung
-  style.css     HUD, Lebensleiste, Level-Auswahl, Tooltip
+  style.css     HUD, Lebensleiste, Level-Auswahl, Tooltip, Einstellungen
+  fonts.css     @font-face fuer die selbst gehosteten Schriften (erzeugt)
   loader.css    Ring-Loader: Ladeschirm, Lebensanzeige, Funken je Quelle
   loader.ts     createLoader()/loaderMarkup() dazu
 tools/
@@ -297,6 +300,8 @@ tools/
   reach.ts      Erreichbarkeit: welche Pegs nie getroffen werden, Treffer je Sekunde
   arena-png.ts  Zeichnet jede Arena als PNG (tools/.out-arena-*.png)
   arena-table.ts  Die Arenentabelle für GAME_DESIGN.md
+  decor-check.ts  Prüft, dass nie ein Blatt im Arena-Rechteck landet
+  fetch-fonts.py  Holt Nunito und Bitter nach public/assets/fonts
   build-and-run.sh   bündelt ein tools/*.ts und führt es in Node aus
   layout.ts          prüft Abstände, Kreuzungen und Erreichbarkeit im Baum
   tree-png.ts        zeichnet den Baum ohne Browser nach tools/tree.png
@@ -306,6 +311,7 @@ assets/sortme/  Roh-Downloads der Sounds, unbearbeitet
 public/assets/
   sfx/          Bank „Aufnahmen“, 31 Klänge
   sfx-gen/      Bank „Synthetisch“, 26 Klänge
+  fonts/        Nunito und Bitter, variabel, latin + latin-ext (SIL OFL 1.1)
 ```
 
 ## Technische Eigenheiten
