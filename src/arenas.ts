@@ -134,8 +134,14 @@ export const BARREN_COOLDOWN = 0.15;
  * diesen Wert; nur Wände dürfen enger sein.
  */
 export const PASS = 44;
-/** Mindestabstand eines Pegs zur Seitenwand — die Kugel muss vorbeipassen. */
+/** Mindestabstand eines Motiv-Pegs zur Seitenwand — die Kugel muss vorbeipassen. */
 export const WALL_GAP = PEG_R + 24;
+/** Randpegs sitzen so dicht an der Wand, dass kein Spalt bleibt. */
+export const RIM_GAP = PEG_R + 3;
+/** Abstand der Randpegs entlang der Wand, wenn die Arena nichts anderes sagt. */
+export const RIM_STEP = 70;
+/** Mindestabstand eines Pegs zur Mittellinie einer Bodenrampe (Radius 7). */
+export const RAMP_GAP = PEG_R + 7 + 2 * BALL_R + 6;
 /** Erreichbarkeitskegel unter dem Einwurf: halbe Breite oben, Zuwachs je Pixel. */
 export const CONE_BASE = 50;
 export const CONE_SLOPE = 1.1;
@@ -369,6 +375,8 @@ interface Spec {
   unlockCover: number;
   coverMax?: number;
   requiredGoals: number;
+  /** Abstand der Randpegs entlang der Waende; 0 = keine. Vorgabe RIM_STEP. */
+  rim?: number;
 }
 
 /**
@@ -390,13 +398,28 @@ export function build(s: Spec): ArenaDef {
   const barren = barren0.filter((b) => Math.abs(b.x - sx) <= cone(b.y) + 10);
   const kept: P[] = [];
 
-  outer: for (const p of s.pegs) {
+  // Randpegs: dicht an der Wand (kein Spalt, in dem die Kugel klemmen
+  // koennte), damit an der Seite nichts vorbeifaellt. Sie kommen zuletzt und
+  // weichen jedem Motiv-Peg, der ihnen zu nahe ist.
+  const rim = s.rim ?? RIM_STEP;
+  const rand: Array<P & { rim: true }> = [];
+  if (rim > 0) {
+    for (let y = 150, k = 0; y < ry - 50; y += rim, k++) {
+      const t = y / s.h;
+      const yl = y + (k % 2 ? rim * 0.35 : 0);
+      const yr = y + (k % 2 ? 0 : rim * 0.35);
+      rand.push({ x: profileAt(s.left, yl / s.h) * s.w + RIM_GAP, y: yl, rim: true });
+      rand.push({ x: profileAt(s.right, t) * s.w - RIM_GAP, y: yr, rim: true });
+    }
+  }
+
+  outer: for (const p of [...s.pegs, ...rand] as Array<P & { rim?: true }>) {
     const t = p.y / s.h;
     const l = profileAt(s.left, t) * s.w;
     const r = profileAt(s.right, t) * s.w;
-    // Wandabstand: neben einem Peg muss die Kugel noch vorbeikommen, sonst
-    // ist er von aussen nie zu treffen.
-    if (p.x < l + WALL_GAP || p.x > r - WALL_GAP) continue;
+    // Wandabstand: neben einem Motiv-Peg muss die Kugel noch vorbeikommen —
+    // ein Spalt, in den sie gerade nicht passt, ist eine Klemme.
+    if (!p.rim && (p.x < l + WALL_GAP || p.x > r - WALL_GAP)) continue;
     if (p.y < 98 || p.y > s.h - 34) continue;
     // Erreichbarkeitskegel: von einem Einwurf aus breitet sich die Kugel
     // etwa 1:1 nach unten aus. Was oben in den Ecken sitzt, erreicht nichts —
@@ -411,14 +434,19 @@ export function build(s: Spec): ArenaDef {
       const dy = s.h - 4 - ry;
       let k = ((p.x - ax) * dx + (p.y - ry) * dy) / (dx * dx + dy * dy || 1);
       k = k < 0 ? 0 : k > 1 ? 1 : k;
-      if (Math.hypot(p.x - (ax + dx * k), p.y - (ry + dy * k)) < PEG_R + 16) continue outer;
+      // Zwischen Peg und Rampe muss die Kugel durchpassen — ein engerer
+      // Winkel ist die Klemme, in der sie liegen bleibt.
+      if (Math.hypot(p.x - (ax + dx * k), p.y - (ry + dy * k)) < RAMP_GAP) continue outer;
       if (p.y > ry + dy * k + PEG_R && ((bx > ax && p.x < bx) || (bx < ax && p.x > bx))) continue outer;
     }
 
     for (const [bx, by] of s.bumpers) if (Math.hypot(p.x - bx, p.y - by) < BUMPER_R + 26) continue outer;
-    for (const ro of rotors) if (Math.hypot(p.x - ro.x, p.y - ro.y) < ro.r + PEG_R + 14) continue outer;
-    for (const b of barren) if (distBarren(p.x, p.y, b) < PEG_R + 9) continue outer;
-    for (const q of kept) if (Math.hypot(p.x - q.x, p.y - q.y) < 15) continue outer;
+    for (const ro of rotors) if (Math.hypot(p.x - ro.x, p.y - ro.y) < ro.r + PEG_R + 2 * BALL_R + 10) continue outer;
+    for (const b of barren) if (distBarren(p.x, p.y, b) < PEG_R + 2 * BALL_R + 6) continue outer;
+    // Mindestabstand zwischen Pegs: PASS, ohne Ausnahme. Enger war frueher
+    // als Wand erlaubt — aber zwischen zwei engen Pegs bleibt die Kugel in
+    // der Mulde liegen, und das darf es nicht geben. Wer zuerst kam, bleibt.
+    for (const q of kept) if (Math.hypot(p.x - q.x, p.y - q.y) < PASS) continue outer;
 
     kept.push({ x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 });
   }
@@ -577,12 +605,13 @@ function schacht(): ArenaDef {
 function kessel(): ArenaDef {
   const w = 470, h = 560, cx = 235;
   const pegs: P[] = [];
-  pegs.push({ x: 116, y: 170 }, { x: 100, y: 150 });
-  pegs.push({ x: 354, y: 166 }, { x: 370, y: 146 });
-  for (let r = 0; r < 5; r++) {
-    const y = 174 + r * 27;
-    pegs.push({ x: 128, y }, { x: 152, y: y + 4 });
-    pegs.push({ x: 342, y: y - 3 }, { x: 318, y: y + 2 });
+  pegs.push({ x: 116, y: 170 }, { x: 100, y: 150 }, { x: 104, y: 214 });
+  pegs.push({ x: 354, y: 166 }, { x: 370, y: 146 }, { x: 366, y: 210 });
+  pegs.push(...band(150, 320, 466, 4));
+  for (let r = 0; r < 3; r++) {
+    const y = 176 + r * 46;
+    pegs.push({ x: 122, y }, { x: 168, y: y + 22 });
+    pegs.push({ x: 348, y: y - 4 }, { x: 302, y: y + 18 });
   }
   pegs.push(...arc(cx, 286, 120, 0.09 * Math.PI, 0.91 * Math.PI, 8));
   pegs.push(...arc(cx, 286, 86, 0.17 * Math.PI, 0.83 * Math.PI, 5));
@@ -631,7 +660,7 @@ function turm(): ArenaDef {
     id: 3, name: "Turm", charakter: "die Etagen", w, h,
     left: [[0, 0.125], [0.35, 0.075], [1, 0.03]],
     right: [[0, 0.875], [0.4, 0.925], [1, 0.97]],
-    drainWidth: 84, rampTop: 0.9,
+    drainWidth: 84, rampTop: 0.9, rim: 52,
     bumpers: [[118, 352], [212, 502]],
     pegs,
     barren: [stein(172, 300, 8, 46), stein(150, 432, -9, 46), stein(178, 564, 7, 44)],
@@ -648,11 +677,13 @@ function halle(): ArenaDef {
   const w = 780, h = 520;
   const pegs: P[] = [];
   [108, 250, 372, 520, 690].forEach((x, i) => {
-    pegs.push(...column(x - 12, 208, 424, 7, 0));
-    pegs.push(...column(x + 12, 220, 436, 7, 0));
-    pegs.push({ x: x - 32, y: 186 + i }, { x: x + 32, y: 184 + i });
+    pegs.push(...column(x, 214, 430, 6, 0));
+    pegs.push({ x: x - 34, y: 236 + i }, { x: x + 34, y: 258 + i });
+    pegs.push({ x: x - 34, y: 328 + i }, { x: x + 34, y: 350 + i });
+    pegs.push({ x: x - 26, y: 176 + i }, { x: x + 26, y: 174 + i });
   });
   pegs.push(...band(66, 716, 152, 15, -8));
+  pegs.push(...band(130, 650, 300, 12, 6));
   // Sockelbaender zwischen den Saeulen — die Weite braucht unten Halt
   pegs.push(...band(150, 210, 404, 3, 4), ...band(290, 334, 398, 3, -3));
   pegs.push(...band(418, 480, 402, 3, 3), ...band(568, 646, 396, 3, -4));
@@ -1341,7 +1372,7 @@ function dornenfeld(): ArenaDef {
     bumpers: [[620, 460], [240, 660], [1000, 620], [420, 300]],
     pegs, barren,
     rotors: [
-      { x: 1080, y: 240, r: 42, arms: 3, speed: 1.6, phase: 0.2 },
+      { x: 900, y: 260, r: 42, arms: 3, speed: 1.6, phase: 0.2 },
       { x: 200, y: 400, r: 42, arms: 3, speed: -1.3, phase: 0.9 },
     ],
     ...goals(22),
@@ -1366,8 +1397,8 @@ function katakombe(): ArenaDef {
     // — klein und mindestens 60 px von jeder Wand, sonst rattert die Kugel
     // zwischen Inhalt und Kammerwand
     ...arc(220, 270, 40, 0.1 * Math.PI, 0.9 * Math.PI, 4),
-    ...jitter(grid(460, 240, 5, 2, 46, 40), 3, 241),
-    ...ringBy(960, 270, 44, 42), { x: 960, y: 270 },
+    ...jitter(grid(440, 240, 6, 2, 46, 40), 3, 241),
+    ...ringBy(960, 270, 44, 42), { x: 960, y: 270 }, { x: 330, y: 330 }, { x: 700, y: 330 },
     ...spokes(220, 470, 18, 44, 5, 2, 0.3),
     ...column(540, 440, 500, 2, 0), ...column(620, 444, 504, 2, 0),
     ...jitter(grid(830, 440, 5, 2, 46, 40), 3, 242),
@@ -1570,7 +1601,7 @@ function herzkammer(): ArenaDef {
   const w = 1250, h = 900;
   const left: Profile = [[0, 0.06], [1, 0.02]];
   const right: Profile = [[0, 0.94], [1, 0.985]];
-  const pegs = fan(625, 118, 38, 17, 9, 44, 26);
+  const pegs = fan(625, 118, 40, 16, 9, 44, 26);
   // Auskleidung: enge Ketten entlang beider Waende — die Kammer aus Level 1
   // hatte nackte Waende, die Herzkammer hat gemauerte
   for (let i = 0; i <= 40; i++) {

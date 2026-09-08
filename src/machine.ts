@@ -96,7 +96,7 @@ const MIN_HIT_SPEED = 55;
 /** Unter dieser Geschwindigkeit (px/s) gilt eine Kugel als liegend ... */
 const STALL_SPEED = 45;
 /** ... und nach so vielen Sekunden wird sie angestossen. */
-const STALL_TIME = 1.2;
+const STALL_TIME = 0.8;
 
 /**
  * Schattenlaenge des Arena-Rahmens. Steht hier oben, weil der Cache-Canvas
@@ -1654,12 +1654,27 @@ export class Machine {
 
   /* ------------------------------------------------------- Rendering --- */
 
-  render(ctx: CanvasRenderingContext2D, vw: number, vh: number): void {
+  /**
+   * Wo die Arena auf dem Bildschirm liegt. Oeffentlich, weil auch die
+   * Deko-Ebene das fragt: sie haelt dieses Rechteck frei, damit nie ein
+   * Blatt vor einem Peg liegt (siehe decor.ts). Die Rechnung steht nur
+   * hier, sonst laufen Bild und Aussparung irgendwann auseinander.
+   */
+  bounds(vw: number, vh: number): { x: number; y: number; w: number; h: number; scale: number } {
     const totalW = this.def.w + FRAME * 2;
     const totalH = this.def.h + FRAME * 2;
     const scale = Math.min((vw - 560) / totalW, (vh - 120) / totalH, 1.35);
-    const sx = (vw - totalW * scale) / 2 + 80 * scale;
-    const sy = (vh - totalH * scale) / 2;
+    return {
+      x: (vw - totalW * scale) / 2 + 80 * scale,
+      y: (vh - totalH * scale) / 2,
+      w: totalW * scale,
+      h: totalH * scale,
+      scale,
+    };
+  }
+
+  render(ctx: CanvasRenderingContext2D, vw: number, vh: number): void {
+    const { x: sx, y: sy, scale } = this.bounds(vw, vh);
 
     // Merken, damit `clickAt` einen Mausklick zurueckrechnen kann.
     this.view.sx = sx;

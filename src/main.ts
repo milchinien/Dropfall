@@ -21,6 +21,7 @@ import {
   loaderMarkup,
   setLoaderValue,
 } from "./loader";
+import { drawDecorBack, drawDecorFront } from "./decor";
 import { grafik, initGrafik, setGrafik } from "./skin";
 import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
 import { drawArenaMiniature } from "./machine";
@@ -1223,14 +1224,28 @@ function tick(): void {
   state.rate = updateRate(now / 1000, gainedThisFrame);
 
   resize();
+  const vw = canvas.clientWidth;
+  const vh = canvas.clientHeight;
   ctx.fillStyle = C.bg;
-  ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  ctx.fillRect(0, 0, vw, vh);
+
+  /*
+   * Die Deko liegt in zwei Ebenen um das Spiel herum: Himmel, Strahlen und
+   * liegendes Laub dahinter, die wenigen fallenden Blaetter davor. `frei`
+   * ist das Rechteck der Arena — dort kommt nichts hin, weder hinter noch
+   * vor dem Feld. Im Baum gibt es kein solches Rechteck; dort haelt die
+   * randlastige Streuung die Mitte von allein frei.
+   */
+  const frei = state.view === "run" ? machine.bounds(vw, vh) : null;
+  drawDecorBack(ctx, vw, vh, frei);
 
   if (state.view === "run") {
-    machine.render(ctx, canvas.clientWidth, canvas.clientHeight);
+    machine.render(ctx, vw, vh);
   } else {
-    tree.render(ctx, canvas.clientWidth, canvas.clientHeight, dt);
+    tree.render(ctx, vw, vh, dt);
   }
+
+  drawDecorFront(ctx, vw, vh, dt, frei);
 
   updateHud();
   if (run.active) updateShop();
