@@ -153,15 +153,72 @@ const KLASSISCH = defineSkin({
 });
 
 /*
- * Herbst — spaeter Sommer, tief stehende Sonne. Noch eine Kopie des
- * klassischen Skins: erst steht die Umschaltung, dann die Farben. Solange
- * beide Skins identisch sind, beweist ein Wechsel im Spiel, dass der Umbau
- * nichts kaputtgemacht hat.
+ * HERBST — spaeter Sommer, tief stehende Sonne.
+ *
+ * Dunkel und warm, nicht hell: das Spiel lebt von leuchtenden Pegs auf
+ * ruhigem Grund. Ein heller Grund haette jede Signalfarbe unbrauchbar
+ * gemacht — der Sonnenuntergang steckt deshalb im Licht, im Laub und in den
+ * Strahlen, nicht in der Helligkeit des Hintergrunds.
+ *
+ * Die Signalfarben (SIGNAL, BALL_INFO, CURRENCY) sind hier bewusst NICHT
+ * aufgefuehrt. Dass der abgedeckte Peg teal bleibt, ist kein Versehen: Teal
+ * ist die Gegenfarbe zu Orange, und auf warmem Braun hat er MEHR Kontrast
+ * als auf dem alten Violett. Die Abdeckung liest sich im Herbst besser als
+ * im Klassiker.
  */
 const HERBST = defineSkin({
-  ...KLASSISCH,
   name: "herbst",
   label: "Herbst",
+
+  /* Erde und Daemmerung. Der Abstand zwischen den drei Gruenden ist derselbe
+     wie im Klassiker, damit Karten und Sockel gleich stark abheben. */
+  bgDeep: "#1b1210",
+  bg: "#2b1a13",
+  bgLift: "#3d2519",
+  line: "#6d4529",
+  lineDim: "#4a2e1d",
+  text: "#fdf2e2",
+  muted: "#b18b6d",
+
+  /* Die vier Ast-Slots. Glut, Gold, Ahorn, Beere — vier Toene aus derselben
+     Jahreszeit, die sich trotzdem auf einen Blick unterscheiden lassen.
+     `teal` ist der Leitakzent der ganzen Oberflaeche (Knoepfe, Regler,
+     Werte), deshalb bekommt er die Glut und nicht das Gold: Gold traegt
+     schon das Geld. */
+  teal: "#f2703c",
+  tealDark: "#a83c12",
+  amber: "#f0b53c",
+  amberDark: "#b07a14",
+  pink: "#e2453f",
+  pinkDark: "#9c221f",
+  magenta: "#c94a7a",
+  magentaDark: "#8c2850",
+
+  /* Terrakotta statt Teal. Der Rahmen soll ein Bauwerk sein und nicht mit
+     dem abgedeckten Peg um dieselbe Farbe streiten. */
+  frame: "#b5623a",
+  frameDark: "#7a3818",
+  /* Trockene Rinde. Muss sich vom abgedeckten Peg (teal) auf einen Blick
+     unterscheiden — das tut er hier deutlicher als das alte Grauviolett. */
+  pegCold: "#6b5546",
+  bumper: "#f0b53c",
+  bumperDark: "#b07a14",
+  bumperGlyph: "#3a2205",
+  emitter: "#f0b53c",
+  emitterDark: "#b07a14",
+  /* Im Klassiker teilt sich der Ablauf die Farbe mit der Buff-Aura. Hier
+     bekommt er ein eigenes Rot: er ist die Stelle, an der eine Kugel
+     verloren geht, und das ist keine Buff-Nachricht. */
+  drain: "#cf4a3e",
+
+  faceEmpty: "#241610",
+  socketEmpty: "#150c08",
+  tooltipBg: "#1c110c",
+
+  /* Warm getoent. Winkel, Laenge und Technik der Schatten sind unveraendert
+     — ein schwarzviolett ausgeschnittener Schatten saehe in dieser Szene
+     aus wie aus einem anderen Bild. */
+  shadowBase: "#1a0803",
 });
 
 export const SKINS: Record<SkinName, Skin> = {

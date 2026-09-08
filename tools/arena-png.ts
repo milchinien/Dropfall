@@ -5,8 +5,13 @@
    zlib, fertig), damit man jede Arena ansehen kann, ohne das Spiel zu
    starten. Aufruf:
 
-     sh tools/build-and-run.sh tools/arena-png.ts          alle
-     sh tools/build-and-run.sh tools/arena-png.ts 3 7 12   nur diese Level
+     sh tools/build-and-run.sh tools/arena-png.ts                  alle
+     sh tools/build-and-run.sh tools/arena-png.ts 3 7 12           nur diese
+     sh tools/build-and-run.sh tools/arena-png.ts --skin=herbst    im Herbst
+
+   Die Farben kommen aus src/theme.ts und stehen NICHT mehr hier: eine
+   zweite Palette neben dem Spiel driftet, sobald einer von beiden sich
+   aendert, und dann prueft man ein Bild, das es so gar nicht gibt.
    ========================================================================= */
 
 import { deflateSync } from "node:zlib";
@@ -19,31 +24,41 @@ import {
   profileAt,
   type ArenaDef,
 } from "../src/arenas";
+import { BALL_INFO } from "../src/balls";
+import { SIGNAL, SKINS, hexToRgb, shade, type SkinName } from "../src/theme";
 
 /* ------------------------------------------------------------ Farben --- */
 
-const COL = {
-  page:      [0x2a, 0x25, 0x36],
-  field:     [0x24, 0x1f, 0x30],
-  frame:     [0x2e, 0xd3, 0xae],
-  frameDark: [0x1b, 0x9c, 0x80],
-  pegTop:    [0x5c, 0x55, 0x73],
-  pegBase:   [0x35, 0x31, 0x3f],
-  pegLive:   [0x2e, 0xd3, 0xae],
-  pegLiveB:  [0x1a, 0x7a, 0x64],
-  amber:     [0xed, 0xb4, 0x43],
-  amberDark: [0xb8, 0x87, 0x1f],
-  magenta:   [0xe4, 0x34, 0x8f],
-  wall:      [0x1b, 0x9c, 0x80],
-  wallDark:  [0x12, 0x6b, 0x58],
-  shadow:    [0x18, 0x14, 0x22],
-  barGlow:   [0xb8, 0x16, 0x16],
-  barEdge:   [0xef, 0x4d, 0x18],
-  barFill:   [0xa5, 0x0f, 0x0f],
-  barRivet:  [0xf4, 0x69, 0x1f],
-  ball:      [0xf4, 0xf1, 0xfa],
-};
+const skinName: SkinName =
+  process.argv.includes("--skin=herbst") ? "herbst" : "klassisch";
+const S = SKINS[skinName];
 
+type RGB = [number, number, number];
+const c = (hex: string): RGB => hexToRgb(hex) as RGB;
+
+const COL = {
+  page:      c(S.bg),
+  field:     c(S.bgDeep),
+  frame:     c(S.frame),
+  frameDark: c(S.frameDark),
+  pegTop:    c(S.pegCold),
+  pegBase:   c(shade(S.pegCold, -0.42)),
+  pegLive:   c(SIGNAL.pegHit),
+  pegLiveB:  c(shade(SIGNAL.pegHit, -0.42)),
+  amber:     c(S.bumper),
+  amberDark: c(S.bumperDark),
+  magenta:   c(S.drain),
+  wall:      c(S.frameDark),
+  wallDark:  c(shade(S.frameDark, -0.3)),
+  shadow:    c(shade(S.shadowBase, 0.06)),
+  /* Der Barren ist Signal und wechselt mit dem Skin nicht — siehe
+     BARREN_COL in machine.ts. */
+  barGlow:   [0xb8, 0x16, 0x16] as RGB,
+  barEdge:   [0xef, 0x4d, 0x18] as RGB,
+  barFill:   [0xa5, 0x0f, 0x0f] as RGB,
+  barRivet:  [0xf4, 0x69, 0x1f] as RGB,
+  ball:      c(BALL_INFO.white.top),
+};
 /* --------------------------------------------------- Mini-Rasterizer --- */
 
 const SS = 3;
@@ -332,7 +347,9 @@ const list = wanted.length ? ARENAS.filter((a) => wanted.includes(a.id + 1)) : A
 
 for (const a of list) {
   const id = String(a.id + 1).padStart(2, "0");
-  const file = "tools/.out-arena-" + id + "-" + a.name.toLowerCase() + ".png";
+  const file =
+    "tools/.out-arena-" + id + "-" + a.name.toLowerCase() +
+    (skinName === "klassisch" ? "" : "-" + skinName) + ".png";
   writePng(file, render(a));
   console.log(file);
 }

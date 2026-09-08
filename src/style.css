@@ -140,60 +140,72 @@
 /* =========================================================================
    SKIN: HERBST — später Sommer, tief stehende Sonne.
 
-   Noch eine Kopie des klassischen Skins. Erst steht die Umschaltung, dann
-   kommen die Farben: solange beide identisch sind, beweist ein Wechsel im
-   Spiel, dass der Umbau nichts kaputtgemacht hat.
+   Dunkel und warm, nicht hell: das Spiel lebt von leuchtenden Pegs auf
+   ruhigem Grund. Der Sonnenuntergang steckt im Licht, im Laub und in den
+   Strahlen — nicht in der Helligkeit des Hintergrunds.
 
    Überschrieben werden ausschließlich Farbwerte. Abstände, Radien und die
    `--cast-*`-Schatten bleiben im `:root` darüber stehen — sie beziehen ihre
    Farbe über `var(--cast-lage)` und ziehen deshalb von selbst mit.
    ========================================================================= */
 :root[data-skin="herbst"] {
-  --bg-deep: #241f30;
-  --bg: #2e2a3d;
-  --bg-lift: #3a3550;
-  --line: #57506b;
+  /* Erde und Dämmerung. Siehe theme.ts — dieselben Werte, damit Canvas und
+     Oberfläche nicht auseinanderlaufen. */
+  --bg-deep: #1b1210;
+  --bg: #2b1a13;
+  --bg-lift: #3d2519;
+  --line: #6d4529;
 
-  --text: #f4f1fa;
-  --muted: #8b84a0;
+  --text: #fdf2e2;
+  --muted: #b18b6d;
 
-  --teal: #2ed3ae;
-  --teal-dark: #1b9c80;
-  --amber: #edb443;
-  --amber-dark: #b8871f;
-  --pink: #f4506e;
-  --pink-dark: #b93450;
-  --magenta: #e4348f;
-  --magenta-dark: #a61f66;
+  /* Glut, Gold, Ahorn, Beere. `--teal` ist der Leitakzent der Oberfläche —
+     Knöpfe, Regler, Werte —, nicht die Farbe Türkis. */
+  --teal: #f2703c;
+  --teal-dark: #a83c12;
+  --amber: #f0b53c;
+  --amber-dark: #b07a14;
+  --pink: #e2453f;
+  --pink-dark: #9c221f;
+  --magenta: #c94a7a;
+  --magenta-dark: #8c2850;
+
+  /* Splitter behalten ihr Blau: Währungen sind Signal und wechseln nicht
+     mit dem Aussehen — die gezeichneten Icons tun es ja auch nicht. Ein
+     kühler Ton im warmen Bild ist hier Absicht und kein Rest. */
   --blue: #6fa8ff;
   --blue-dark: #3c6dc0;
 
-  --teal-rgb: 46, 211, 174;
-  --magenta-rgb: 228, 52, 143;
-  --pink-rgb: 244, 80, 110;
-  --text-rgb: 244, 241, 250;
-  --scrim-rgb: 20, 15, 30;
+  --teal-rgb: 242, 112, 60;
+  --magenta-rgb: 201, 74, 122;
+  --pink-rgb: 226, 69, 63;
+  --text-rgb: 253, 242, 226;
+  --scrim-rgb: 28, 14, 8;
 
-  --ink: #14101f;
-  --ink-deep: #0d0a17;
-  --face-empty: #1b1528;
-  --face-lift: #241c34;
-  --socket-empty: #0f0b19;
-  --panel-solid: rgba(26, 20, 40, 0.97);
-  --panel-lift: rgba(38, 28, 58, 0.85);
-  --panel-card: rgba(24, 18, 38, 0.97);
+  --ink: #1c110c;
+  --ink-deep: #140b07;
+  --face-empty: #241610;
+  --face-lift: #33201a;
+  --socket-empty: #150c08;
+  --panel-solid: rgba(32, 19, 13, 0.97);
+  --panel-lift: rgba(52, 31, 20, 0.85);
+  --panel-card: rgba(30, 18, 12, 0.97);
 
-  --text-soft: #cfc8de;
-  --line-dim: #2a2140;
-  --line-lift: #3b2f5c;
+  --text-soft: #e3cbb2;
+  --line-dim: #3d2718;
+  --line-lift: #5e3d26;
 
-  --on-teal: #10281f;
-  --on-amber: #2b1f05;
+  --on-teal: #2b0d02;
+  --on-amber: #3a2205;
 
-  --panel: rgba(15, 11, 24, 0.42);
-  --shadow: rgba(14, 10, 22, 0.4);
-  --cast-lage: rgba(10, 7, 17, 0.042);
-  --cast-lage-kurz: rgba(10, 7, 17, 0.06);
+  --panel: rgba(22, 11, 6, 0.42);
+  --shadow: rgba(26, 8, 3, 0.4);
+
+  /* Warm getönt, aber eine Spur kräftiger als im Klassiker: auf braunem
+     Grund trägt ein Schatten weniger weit als auf violettem. Der WINKEL
+     bleibt unangetastet — er steckt in den --cast-* oben. */
+  --cast-lage: rgba(24, 8, 2, 0.05);
+  --cast-lage-kurz: rgba(24, 8, 2, 0.07);
 }
 
 * {
