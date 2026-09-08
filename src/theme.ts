@@ -1,25 +1,128 @@
 /* =========================================================================
-   theme.ts — Die visuelle Sprache (Outhold-Stil)
+   theme.ts — Die visuelle Sprache.
 
-   Drei Regeln:
-     1. Flächen sind flach — keine Verläufe, keine Weichzeichner.
-     2. Alles ist extrudiert — Deckfläche + abgedunkelter Sockel.
+   Drei Regeln, die fuer JEDEN Skin gelten:
+     1. Flaechen sind flach — keine Verlaeufe, keine Weichzeichner.
+     2. Alles ist extrudiert — Deckflaeche + abgedunkelter Sockel.
      3. Ein langer 45°-Schatten, der nach hinten ins Nichts auslaeuft.
 
    Der lange Schatten entsteht, indem dieselbe Form vielfach mit wachsendem
-   Versatz als Subpfad gesammelt und dann EINMAL gefüllt wird. Ein einzelner
-   fill() über überlappende Subpfade deckt gleichmäßig, statt sich aufzudunkeln.
-   Gefüllt wird mit einem Verlauf entlang der Schattenachse: die Kante am
-   Objekt bleibt hart, das ferne Ende verliert sich.
+   Versatz als Subpfad gesammelt und dann EINMAL gefuellt wird. Ein einzelner
+   fill() ueber ueberlappende Subpfade deckt gleichmaessig, statt sich
+   aufzudunkeln. Gefuellt wird mit einem Verlauf entlang der Schattenachse:
+   die Kante am Objekt bleibt hart, das ferne Ende verliert sich.
+
+   ZWEI SKINS, EIN CODESTAND
+   -------------------------
+   Es gibt keinen Backup-Zweig fuer das alte Design. Stattdessen liegen beide
+   Skins nebeneinander in SKINS, und der Code zeichnet ausschliesslich mit
+   Tokens. Neue Features kennen den Skin gar nicht — sie erben ihn. Ein Zweig
+   muesste bei jedem Feature nachgemergt werden, und genau dort geht es
+   irgendwann schief.
+
+   DREI SORTEN TOKEN
+   -----------------
+   SIGNAL  — Farben, die eine Spielinformation tragen: getroffener Peg,
+             brennender Peg, Buff-Aura, Markierung, die Kugeln selbst.
+             Sie sind in BEIDEN Skins identisch. Wer sie skinabhaengig
+             macht, macht Lesbarkeit zur Geschmacksfrage.
+   WELT    — Grund, Linien, Schrift, Rahmen, Bumper, Emitter, Ablauf.
+             Pro Skin.
+   BAUM    — die vier Astfarben der Skill-Tree-Knoepfe. Pro Skin.
+
+   Die vier Baum-Slots heissen aus historischen Gruenden `teal`, `amber`,
+   `pink` und `magenta`. Das sind SLOT-NAMEN, keine Farbtoene: upgrades.ts
+   verteilt 78 Knoten auf diese vier Slots, und jeder Skin faerbt sie anders.
+   Im Herbst-Skin ist `teal` kein Tuerkis.
    ========================================================================= */
 
-export const C = {
+export type SkinName = "klassisch" | "herbst";
+
+/** Der Abendhimmel im Herbst-Skin. Im Klassik-Skin ohne Wirkung. */
+export type SkyMode = "baender" | "einfarbig" | "verlauf";
+
+export interface Skin {
+  name: SkinName;
+  label: string;
+
+  /* --- Grund und Schrift --- */
+  bgDeep: string;
+  bg: string;
+  bgLift: string;
+  line: string;
+  lineDim: string;
+  text: string;
+  muted: string;
+
+  /* --- Die vier Ast-Slots des Skill Trees (Slot-Namen, keine Farbtoene) --- */
+  teal: string;
+  tealDark: string;
+  amber: string;
+  amberDark: string;
+  pink: string;
+  pinkDark: string;
+  magenta: string;
+  magentaDark: string;
+
+  /* --- Welt: Arena --- */
+  /** Rahmen, Rampen und Rotoren — das Bauwerk, nicht der Zustand. */
+  frame: string;
+  frameDark: string;
+  /** Unberuehrter Peg. Der getroffene steht in SIGNAL und bleibt gleich. */
+  pegCold: string;
+  bumper: string;
+  bumperDark: string;
+  /** Der Pfeil auf Bumper und Emitter — dunkel genug fuer beide. */
+  bumperGlyph: string;
+  emitter: string;
+  emitterDark: string;
+  drain: string;
+
+  /* --- Welt: Skill Tree --- */
+  faceEmpty: string;
+  socketEmpty: string;
+  tooltipBg: string;
+
+  /* --- Schatten. Der WINKEL ist in beiden Skins 45°, nur der Ton wechselt. --- */
+  shadowBase: string;
+  shadow: string;
+  shadowSoft: string;
+}
+
+/**
+ * Farben, die eine Spielinformation tragen. Sie stehen bewusst AUSSERHALB
+ * von `Skin`: ein Skin darf das Bild umfaerben, aber nicht die Frage
+ * beantworten, woran man einen abgedeckten Peg erkennt.
+ *
+ * Die Kugelfarben gehoeren in dieselbe Kategorie und stehen in balls.ts
+ * (BALL_INFO) — dort, wo auch alles andere ueber eine Kugel steht.
+ */
+export const SIGNAL = {
+  /** Abgedeckt. Dieselbe Farbe traegt die Miniatur in der Level-Auswahl. */
+  pegHit: "#2ed3ae",
+  pegFire: "#ff7a3d",
+  /** Bannkreis: vom Puls geladener Peg. */
+  charge: "#2ed3ae",
+  /** Buff-Aura auf Peg und Kugel. */
+  buff: "#e4348f",
+  /** Reif um die markierte Kugel. */
+  mark: "#edb443",
+} as const;
+
+/** Fuellt die abgeleiteten Schattenwerte auf, damit sie nie auseinanderlaufen. */
+function defineSkin(s: Omit<Skin, "shadow" | "shadowSoft">): Skin {
+  return { ...s, shadow: rgba(s.shadowBase, 0.4), shadowSoft: rgba(s.shadowBase, 0.24) };
+}
+
+const KLASSISCH = defineSkin({
+  name: "klassisch",
+  label: "Klassisch",
+
   bgDeep: "#241f30",
   bg: "#2e2a3d",
   bgLift: "#3a3550",
   line: "#57506b",
   lineDim: "#413b53",
-
   text: "#f4f1fa",
   muted: "#8b84a0",
 
@@ -32,18 +135,100 @@ export const C = {
   magenta: "#e4348f",
   magentaDark: "#a61f66",
 
-  shadow: "rgba(14, 10, 22, 0.40)",
-  shadowSoft: "rgba(14, 10, 22, 0.24)",
-} as const;
+  frame: "#2ed3ae",
+  frameDark: "#1b9c80",
+  pegCold: "#5c5573",
+  bumper: "#edb443",
+  bumperDark: "#b8871f",
+  bumperGlyph: "#2b1f05",
+  emitter: "#edb443",
+  emitterDark: "#b8871f",
+  drain: "#e4348f",
+
+  faceEmpty: "#1b1528",
+  socketEmpty: "#0f0b19",
+  tooltipBg: "#14101f",
+
+  shadowBase: "#0e0a16",
+});
+
+/*
+ * Herbst — spaeter Sommer, tief stehende Sonne. Noch eine Kopie des
+ * klassischen Skins: erst steht die Umschaltung, dann die Farben. Solange
+ * beide Skins identisch sind, beweist ein Wechsel im Spiel, dass der Umbau
+ * nichts kaputtgemacht hat.
+ */
+const HERBST = defineSkin({
+  ...KLASSISCH,
+  name: "herbst",
+  label: "Herbst",
+});
+
+export const SKINS: Record<SkinName, Skin> = {
+  klassisch: KLASSISCH,
+  herbst: HERBST,
+};
+
+/**
+ * Der aktive Skin. Bewusst `let` und kein Getter: ES-Module exportieren
+ * lebende Bindungen, also sehen alle Importeure die Zuweisung sofort.
+ *
+ * ACHTUNG beim Erweitern: eine Farbe darf nicht auf Modulebene in eine
+ * Konstante kopiert werden (`const X = C.teal`), sonst friert sie auf dem
+ * Skin ein, der beim Laden zufaellig aktiv war. Immer erst beim Zeichnen
+ * lesen.
+ */
+export let C: Skin = KLASSISCH;
+
+let aktiv: SkinName = "klassisch";
+const hoerer: Array<() => void> = [];
+
+export const getSkin = (): SkinName => aktiv;
+
+/** Wird nach jedem Wechsel gerufen — fuer alles, was Farben zwischenspeichert. */
+export function onSkinChange(fn: () => void): void {
+  hoerer.push(fn);
+}
+
+export function setSkin(name: SkinName): void {
+  if (name === aktiv) return;
+  aktiv = name;
+  C = SKINS[name];
+  // Die kopflose Balancing-Simulation hat kein document.
+  if (typeof document !== "undefined") document.documentElement.dataset.skin = name;
+  for (const fn of hoerer) fn();
+}
 
 export type PaletteKey = "teal" | "amber" | "pink" | "magenta";
 
-export const PALETTE: Record<PaletteKey, { top: string; base: string }> = {
-  teal: { top: C.teal, base: C.tealDark },
-  amber: { top: C.amber, base: C.amberDark },
-  pink: { top: C.pink, base: C.pinkDark },
-  magenta: { top: C.magenta, base: C.magentaDark },
-};
+/**
+ * Die Farbe eines Ast-Slots im aktuellen Skin. Als Funktion und nicht als
+ * Tabelle, weil eine Tabelle den Skin einfrieren wuerde, der beim Laden
+ * aktiv war — siehe die Warnung an `C`.
+ */
+export function pal(key: PaletteKey): { top: string; base: string } {
+  switch (key) {
+    case "teal":
+      return { top: C.teal, base: C.tealDark };
+    case "amber":
+      return { top: C.amber, base: C.amberDark };
+    case "pink":
+      return { top: C.pink, base: C.pinkDark };
+    case "magenta":
+      return { top: C.magenta, base: C.magentaDark };
+  }
+}
+
+/**
+ * Schattenfarbe des aktiven Skins bei gegebener Deckkraft.
+ *
+ * Ersetzt die frueher ueber machine.ts und tree.ts verstreuten
+ * `"rgba(14,10,22,0.xx)"`-Literale. Winkel und Laenge der Schatten aendern
+ * sich dadurch nirgends — nur ihr Farbton haengt jetzt am Skin.
+ */
+export function sh(a: number): string {
+  return rgba(C.shadowBase, a);
+}
 
 /* ------------------------------------------------------------- Farben --- */
 

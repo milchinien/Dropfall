@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Dropfall</title>
+    <script>
+      /* Skin VOR dem ersten Bild setzen. Laeuft main.ts erst nach dem Parsen
+         los, blitzt sonst der Vorgabe-Skin kurz auf. Der Schluessel und die
+         Vorgabe muessen mit src/skin.ts uebereinstimmen. */
+      try {
+        var g = JSON.parse(localStorage.getItem("dropfall.grafik") || "{}");
+        document.documentElement.dataset.skin = g.skin === "klassisch" ? "klassisch" : "herbst";
+      } catch (e) {
+        document.documentElement.dataset.skin = "herbst";
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -15,3 +15,7 @@ Thumbs.db
 tools/.out.mjs
 tools/.out-tree.png
 tools/.out-arena-*.png
+
+# Balancing-Referenzlaeufe fuer Vorher/Nachher-Vergleiche
+tools/.baseline-report.txt
+tools/.check-report.txt

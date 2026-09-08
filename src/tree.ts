@@ -19,7 +19,8 @@ import type { TreeCurrency } from "./currency";
 import { layoutTree, parentOf, type Placed } from "./layout";
 import {
   C,
-  PALETTE,
+  pal,
+  sh,
   PaletteKey,
   approach,
   easeInOutCubic,
@@ -87,9 +88,9 @@ const DEPTH_EMPTY = 9;
 const SHADOW_LEN = 86;
 const CAP_SCALE = 1.28;
 
-/** Deckflaeche und Sockel eines Knopfes, in den noch nichts gesteckt wurde. */
-const FACE_EMPTY = "#1b1528";
-const SOCKET_EMPTY = "#0f0b19";
+/* Deckflaeche und Sockel eines leeren Knopfes stehen als C.faceEmpty und
+   C.socketEmpty im Skin. Sie duerfen hier NICHT in Konstanten kopiert werden:
+   das wuerde sie auf dem Skin einfrieren, der beim Laden aktiv war. */
 
 /** Wie weit der Knopf unter dem Zeiger aus seinem Sockel steigt, in Pixeln. */
 const HOVER_LIFT = 2.5;
@@ -631,7 +632,7 @@ export class TreeView {
       g.s + g.wall,
       g.r,
       lerp(34, SHADOW_LEN, eOwn),
-      `rgba(14, 10, 22, ${lerp(0.24, 0.4, eOwn).toFixed(3)})`
+      sh(lerp(0.24, 0.4, eOwn))
     );
     ctx.restore();
   }
@@ -652,7 +653,7 @@ export class TreeView {
     if (!a || a.show < 0.004) return;
 
     const lvl = this.hooks.getLevel(def.id);
-    const pal = PALETTE[def.color];
+    const slot = pal(def.color);
     const { s, half, p, x, y, r, depth, sink, ys, cys, grow } = this.geom(def, a);
 
     const eShow = easeOutCubic(a.show);
@@ -665,13 +666,13 @@ export class TreeView {
       a.open > 0.5 &&
       lvl < def.max &&
       this.hooks.getCurrency(currencyOf(def)) >= costOf(def, lvl);
-    const tint = affordable || a.own > 0 ? pal.top : shade(pal.top, -0.45);
+    const tint = affordable || a.own > 0 ? slot.top : shade(slot.top, -0.45);
     // Die Ahnung ist grau; mit dem Erkennen laeuft die Astfarbe ein.
     const col = mix(C.lineDim, tint, eOpen);
-    const face = mix(FACE_EMPTY, pal.top, eOwn);
+    const face = mix(C.faceEmpty, slot.top, eOwn);
     // Die Wand geht noch etwas tiefer als der Palettenton: bei 18 px Hoehe
     // ist sie eine grosse Flaeche und muss sich von der Deckflaeche loesen.
-    const socket = mix(SOCKET_EMPTY, shade(pal.base, -0.18), eOwn);
+    const socket = mix(C.socketEmpty, shade(slot.base, -0.18), eOwn);
 
     ctx.save();
 
@@ -735,7 +736,7 @@ export class TreeView {
     const y = ry - h + 3;
     ctx.beginPath();
     roundRectPath(ctx, x, y, w, h, 5);
-    ctx.fillStyle = "#14101f";
+    ctx.fillStyle = C.tooltipBg;
     ctx.fill();
     ctx.fillStyle = C.text;
     ctx.font = '800 12px Nunito, "Segoe UI", sans-serif';
@@ -788,7 +789,7 @@ export class TreeView {
       const at = this.at(def);
       ctx.beginPath();
       ctx.arc(at.x, at.y, r, 0, Math.PI * 2);
-      ctx.strokeStyle = rgba(PALETTE[def.color].top, (1 - k) * 0.8);
+      ctx.strokeStyle = rgba(pal(def.color).top, (1 - k) * 0.8);
       ctx.lineWidth = 4 * (1 - k) + 1;
       ctx.stroke();
     }

@@ -1,7 +1,16 @@
 /* =========================================================================
-   DROPFALL — Outhold-Design-System
-   Regeln: flache Flächen, extrudierte Sockel, lange 45°-Schatten, die
-   nach hinten ins Nichts auslaufen.
+   DROPFALL — Design-System der Oberfläche
+
+   Regeln, die für jeden Skin gelten: flache Flächen, extrudierte Sockel,
+   lange 45°-Schatten, die nach hinten ins Nichts auslaufen. Der WINKEL ist
+   in allen Skins derselbe, nur der Farbton wechselt.
+
+   ZWEI SKINS
+   Alles Farbige steht als Variable in `:root`. Ein Skin überschreibt
+   dieselben Namen unter `:root[data-skin="…"]` — es gibt keinen zweiten
+   Stylesheet und keinen Backup-Zweig. Wer hier eine Farbe direkt in eine
+   Regel schreibt statt in eine Variable, baut ein Leck: sie bleibt dann in
+   jedem Skin gleich. Das Gegenstück im Canvas ist `theme.ts`.
    ========================================================================= */
 
 :root {
@@ -23,6 +32,35 @@
   --magenta-dark: #a61f66;
   --blue: #6fa8ff;
   --blue-dark: #3c6dc0;
+
+  /*
+   * RGB-Tripel für halbtransparente Flächen. `rgba(var(--teal-rgb), 0.1)`
+   * geht überall; die relative Farbsyntax `rgb(from …)` bräuchte einen sehr
+   * neuen Browser und wäre für einen Steam-Build ein unnötiges Risiko.
+   */
+  --teal-rgb: 46, 211, 174;
+  --magenta-rgb: 228, 52, 143;
+  --pink-rgb: 244, 80, 110;
+  --text-rgb: 244, 241, 250;
+  --scrim-rgb: 20, 15, 30;
+
+  /* Dunkle Flächen: Tooltip, Karten, Sockel leerer Knöpfe. */
+  --ink: #14101f;
+  --ink-deep: #0d0a17;
+  --face-empty: #1b1528;
+  --face-lift: #241c34;
+  --socket-empty: #0f0b19;
+  --panel-solid: rgba(26, 20, 40, 0.97);
+  --panel-lift: rgba(38, 28, 58, 0.85);
+  --panel-card: rgba(24, 18, 38, 0.97);
+
+  --text-soft: #cfc8de;
+  --line-dim: #2a2140;
+  --line-lift: #3b2f5c;
+
+  /* Schrift auf farbigem Grund — dunkel genug, um auf Teal und Amber zu lesen. */
+  --on-teal: #10281f;
+  --on-amber: #2b1f05;
 
   --panel: rgba(15, 11, 24, 0.42);
   --shadow: rgba(14, 10, 22, 0.4);
@@ -97,6 +135,65 @@
     2.8px 2.8px 0 var(--cast-lage-kurz),
     3.5px 3.5px 0 var(--cast-lage-kurz),
     4.2px 4.2px 0 var(--cast-lage-kurz);
+}
+
+/* =========================================================================
+   SKIN: HERBST — später Sommer, tief stehende Sonne.
+
+   Noch eine Kopie des klassischen Skins. Erst steht die Umschaltung, dann
+   kommen die Farben: solange beide identisch sind, beweist ein Wechsel im
+   Spiel, dass der Umbau nichts kaputtgemacht hat.
+
+   Überschrieben werden ausschließlich Farbwerte. Abstände, Radien und die
+   `--cast-*`-Schatten bleiben im `:root` darüber stehen — sie beziehen ihre
+   Farbe über `var(--cast-lage)` und ziehen deshalb von selbst mit.
+   ========================================================================= */
+:root[data-skin="herbst"] {
+  --bg-deep: #241f30;
+  --bg: #2e2a3d;
+  --bg-lift: #3a3550;
+  --line: #57506b;
+
+  --text: #f4f1fa;
+  --muted: #8b84a0;
+
+  --teal: #2ed3ae;
+  --teal-dark: #1b9c80;
+  --amber: #edb443;
+  --amber-dark: #b8871f;
+  --pink: #f4506e;
+  --pink-dark: #b93450;
+  --magenta: #e4348f;
+  --magenta-dark: #a61f66;
+  --blue: #6fa8ff;
+  --blue-dark: #3c6dc0;
+
+  --teal-rgb: 46, 211, 174;
+  --magenta-rgb: 228, 52, 143;
+  --pink-rgb: 244, 80, 110;
+  --text-rgb: 244, 241, 250;
+  --scrim-rgb: 20, 15, 30;
+
+  --ink: #14101f;
+  --ink-deep: #0d0a17;
+  --face-empty: #1b1528;
+  --face-lift: #241c34;
+  --socket-empty: #0f0b19;
+  --panel-solid: rgba(26, 20, 40, 0.97);
+  --panel-lift: rgba(38, 28, 58, 0.85);
+  --panel-card: rgba(24, 18, 38, 0.97);
+
+  --text-soft: #cfc8de;
+  --line-dim: #2a2140;
+  --line-lift: #3b2f5c;
+
+  --on-teal: #10281f;
+  --on-amber: #2b1f05;
+
+  --panel: rgba(15, 11, 24, 0.42);
+  --shadow: rgba(14, 10, 22, 0.4);
+  --cast-lage: rgba(10, 7, 17, 0.042);
+  --cast-lage-kurz: rgba(10, 7, 17, 0.06);
 }
 
 * {
@@ -310,7 +407,7 @@ body {
  */
 .shop-row {
   --lift: 5px;
-  --socket: #100c1c;
+  --socket: var(--socket-empty);
 
   position: relative;
   display: flex;
@@ -343,12 +440,12 @@ body {
 .shop-row.is-ready {
   --socket: var(--teal-dark);
   border-color: var(--teal);
-  background: rgba(46, 211, 174, 0.1);
+  background: rgba(var(--teal-rgb), 0.1);
 }
 
 /* Unter dem Zeiger steigt der Knopf einen Hauch weiter aus dem Sockel. */
 .shop-row.is-ready:hover {
-  background: rgba(46, 211, 174, 0.18);
+  background: rgba(var(--teal-rgb), 0.18);
   transform: translateY(-1px);
   box-shadow:
     0 calc(var(--lift) + 1px) 0 var(--socket),
@@ -477,7 +574,7 @@ body {
   z-index: 55;
   display: grid;
   place-items: center;
-  background: rgba(20, 15, 30, 0.72);
+  background: rgba(var(--scrim-rgb), 0.72);
 }
 
 .select-card {
@@ -485,7 +582,7 @@ body {
   grid-template-columns: 380px 1fr;
   width: min(1100px, 92vw);
   height: min(720px, 88vh);
-  background: rgba(26, 20, 40, 0.97);
+  background: var(--panel-solid);
   border-radius: 16px;
   overflow: hidden;
   box-shadow: var(--cast-l);
@@ -493,7 +590,7 @@ body {
 
 .select-left {
   padding: 26px 24px;
-  background: rgba(38, 28, 58, 0.85);
+  background: var(--panel-lift);
   overflow-y: auto;
 }
 
@@ -506,7 +603,7 @@ body {
 .select-mode {
   padding: 14px 18px;
   border-radius: 10px;
-  background: rgba(244, 241, 250, 0.1);
+  background: rgba(var(--text-rgb), 0.1);
   font-size: 19px;
   font-weight: 800;
 }
@@ -518,7 +615,7 @@ body {
   background: rgba(12, 9, 20, 0.5);
   font-size: 14px;
   font-weight: 600;
-  color: #cfc8de;
+  color: var(--text-soft);
 }
 
 .goal {
@@ -542,7 +639,7 @@ body {
   font-size: 13.5px;
   font-weight: 600;
   line-height: 1.5;
-  color: #cfc8de;
+  color: var(--text-soft);
 }
 
 .goal-body b {
@@ -550,19 +647,19 @@ body {
 }
 
 .goal--main {
-  background: rgba(46, 211, 174, 0.12);
-  border-color: rgba(46, 211, 174, 0.4);
+  background: rgba(var(--teal-rgb), 0.12);
+  border-color: rgba(var(--teal-rgb), 0.4);
 }
 .goal--main .goal-title { color: var(--teal); }
 
 .goal--bonus {
-  background: rgba(228, 52, 143, 0.12);
-  border-color: rgba(228, 52, 143, 0.35);
+  background: rgba(var(--magenta-rgb), 0.12);
+  border-color: rgba(var(--magenta-rgb), 0.35);
 }
 .goal--bonus .goal-title { color: var(--magenta); }
 
 .goal.is-done {
-  background: rgba(46, 211, 174, 0.2);
+  background: rgba(var(--teal-rgb), 0.2);
   border-color: var(--teal);
 }
 
@@ -606,18 +703,18 @@ body {
   font-size: 24px;
   color: var(--text);
   background: transparent;
-  border: 2px solid rgba(244, 241, 250, 0.55);
+  border: 2px solid rgba(var(--text-rgb), 0.55);
   border-radius: 10px;
   cursor: pointer;
 }
 
 .prev-nav:hover:not(:disabled) {
-  background: rgba(244, 241, 250, 0.08);
+  background: rgba(var(--text-rgb), 0.08);
 }
 
 .prev-nav:disabled {
-  color: rgba(244, 241, 250, 0.15);
-  border-color: rgba(244, 241, 250, 0.12);
+  color: rgba(var(--text-rgb), 0.15);
+  border-color: rgba(var(--text-rgb), 0.12);
   cursor: default;
 }
 
@@ -644,7 +741,7 @@ body {
 }
 
 .big-btn.big-btn--go:hover {
-  background: rgba(46, 211, 174, 0.12);
+  background: rgba(var(--teal-rgb), 0.12);
 }
 
 /* ------------------------------------------------------------ Buttons --- */
@@ -666,8 +763,8 @@ body {
 .ghost-btn,
 .prev-nav {
   --lift: 5px;
-  --socket: #0f0b19;
-  --face: #1b1528;
+  --socket: var(--socket-empty);
+  --face: var(--face-empty);
 
   font-family: inherit;
   color: var(--text);
@@ -730,13 +827,13 @@ body {
   width: 46px;
   height: 46px;
   font-size: 22px;
-  border: 2px solid rgba(244, 241, 250, 0.55);
+  border: 2px solid rgba(var(--text-rgb), 0.55);
   border-radius: 10px;
 }
 
 .icon-btn:hover {
   border-color: var(--text);
-  --face: #241c34;
+  --face: var(--face-lift);
 }
 
 .big-btn {
@@ -748,13 +845,13 @@ body {
   font-size: 21px;
   font-weight: 800;
   letter-spacing: 0.09em;
-  border: 2px solid rgba(244, 241, 250, 0.65);
+  border: 2px solid rgba(var(--text-rgb), 0.65);
   border-radius: 12px;
 }
 
 .big-btn:hover {
   border-color: var(--text);
-  --face: #241c34;
+  --face: var(--face-lift);
 }
 
 .ghost-btn {
@@ -765,13 +862,13 @@ body {
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  border: 2px solid rgba(244, 241, 250, 0.4);
+  border: 2px solid rgba(var(--text-rgb), 0.4);
   border-radius: 10px;
 }
 
 .ghost-btn:hover {
   border-color: var(--text);
-  --face: #241c34;
+  --face: var(--face-lift);
 }
 
 /* ------------------------------------------------------------ Tooltip --- */
@@ -781,7 +878,7 @@ body {
   z-index: 40;
   width: 310px;
   padding: 0;
-  background: #14101f;
+  background: var(--ink);
   border-radius: 12px;
   overflow: hidden;
   pointer-events: none;
@@ -821,7 +918,7 @@ body {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.55;
-  color: #cfc8de;
+  color: var(--text-soft);
 }
 
 /* Begriffe teal, Werte amber: zwei Farben, zwei Arten von Information. */
@@ -853,15 +950,15 @@ body {
 
 .tt-cost--ok {
   background: var(--teal);
-  color: #10281f;
+  color: var(--on-teal);
 }
 .tt-cost--no {
-  background: rgba(244, 80, 110, 0.18);
+  background: rgba(var(--pink-rgb), 0.18);
   color: var(--pink);
 }
 .tt-cost--max {
   background: var(--amber);
-  color: #2b1f05;
+  color: var(--on-amber);
 }
 
 /* -------------------------------------------------------------- Toast --- */
@@ -873,7 +970,7 @@ body {
   transform: translateX(-50%);
   z-index: 50;
   padding: 16px 28px;
-  background: #14101f;
+  background: var(--ink);
   border-radius: 12px;
   font-size: 16px;
   font-weight: 700;
@@ -895,13 +992,13 @@ body {
   z-index: 60;
   display: grid;
   place-items: center;
-  background: rgba(20, 15, 30, 0.7);
+  background: rgba(var(--scrim-rgb), 0.7);
 }
 
 .modal-card {
   width: 340px;
   padding: 26px;
-  background: #14101f;
+  background: var(--ink);
   border-radius: 14px;
   box-shadow: var(--cast-m);
 }
@@ -929,7 +1026,7 @@ body {
   grid-template-columns: 1fr 340px;
   width: min(1180px, 94vw);
   height: min(760px, 92vh);
-  background: rgba(24, 18, 38, 0.97);
+  background: var(--panel-card);
   border-radius: 16px;
   overflow: hidden;
   box-shadow: var(--cast-l);
@@ -968,14 +1065,14 @@ body {
   border-radius: 999px;
   font-size: 13px;
   font-weight: 800;
-  background: rgba(228, 52, 143, 0.18);
-  border: 2px solid rgba(228, 52, 143, 0.5);
+  background: rgba(var(--magenta-rgb), 0.18);
+  border: 2px solid rgba(var(--magenta-rgb), 0.5);
   color: var(--magenta);
 }
 
 .badge--main {
-  background: rgba(46, 211, 174, 0.18);
-  border-color: rgba(46, 211, 174, 0.55);
+  background: rgba(var(--teal-rgb), 0.18);
+  border-color: rgba(var(--teal-rgb), 0.55);
   color: var(--teal);
 }
 
@@ -1122,7 +1219,7 @@ body {
 
 .result-side {
   padding: 30px 26px;
-  background: rgba(38, 28, 58, 0.85);
+  background: var(--panel-lift);
   overflow-y: auto;
 }
 
@@ -1167,7 +1264,7 @@ body {
   border-radius: 6px;
   font-size: 13px;
   font-weight: 800;
-  color: #14101f;
+  color: var(--ink);
 }
 
 .src-value {
@@ -1267,11 +1364,11 @@ body {
 
 .smooth-tabs-btn:hover:not(.is-active) {
   color: var(--text);
-  background: rgba(244, 241, 250, 0.07);
+  background: rgba(var(--text-rgb), 0.07);
 }
 
 .smooth-tabs-btn.is-active {
-  color: #16111f;
+  color: var(--ink);
 }
 
 .smooth-tabs-btn.is-active.is-locked {
@@ -1323,7 +1420,7 @@ body {
   width: 100%;
   height: 8px;
   border-radius: 4px;
-  background: #0d0a17;
+  background: var(--ink-deep);
   box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.6);
   cursor: pointer;
 }
@@ -1367,9 +1464,9 @@ body {
 
 .seg-btn {
   padding: 10px 0;
-  border: 1px solid #2a2140;
+  border: 1px solid var(--line-dim);
   border-radius: 10px;
-  background: #0d0a17;
+  background: var(--ink-deep);
   color: var(--muted);
   font: inherit;
   font-size: 13px;
@@ -1380,12 +1477,12 @@ body {
 }
 
 .seg-btn:hover:not(.is-on) {
-  color: #cfc7e6;
-  border-color: #3b2f5c;
+  color: var(--text-soft);
+  border-color: var(--line-lift);
 }
 
 .seg-btn.is-on {
-  color: #0d0a17;
+  color: var(--ink-deep);
   background: var(--teal);
   border-color: var(--teal);
   box-shadow: 3px 3px 0 var(--teal-dark);

@@ -20,7 +20,7 @@ import {
   type BarrenDef,
   type RotorDef,
 } from "./arenas";
-import { BARREN_BOUNTY, levelPayoutMult } from "./currency";
+import { BARREN_BOUNTY, CURRENCY, levelPayoutMult } from "./currency";
 import {
   BALL_INFO,
   FIRE_SPREAD_RANGE,
@@ -47,7 +47,9 @@ import {
 } from "./upgrades";
 import {
   C,
+  SIGNAL,
   clamp,
+  onSkinChange,
   extrudedCircle,
   extrudedRect,
   fmt,
@@ -58,6 +60,7 @@ import {
   rgba,
   roundRectPath,
   shade,
+  sh,
 } from "./theme";
 
 const FRAME = 24;
@@ -101,9 +104,9 @@ const STALL_TIME = 1.2;
  */
 const FRAME_SHADOW = 175;
 
-const PEG_COLOR_COLD = "#5c5573";
-const PEG_COLOR_HIT = C.teal;
-const PEG_COLOR_FIRE = "#ff7a3d";
+/* Peg-Farben: `kalt` gehoert zur Welt und wechselt mit dem Skin. `getroffen`
+   und `brennend` sind SIGNAL (theme.ts) und in jedem Skin gleich — an ihnen
+   liest der Spieler die Abdeckung ab. */
 
 /* Aufsteigende Zahlen. Nachgebaut nach dem "Dynamic Text"-Motiv von
    kokonutui.com: von unten einfliegen, kurz stehen bleiben, dann weit nach
@@ -183,10 +186,10 @@ function drawRamps(g: CanvasRenderingContext2D, a: ArenaDef): void {
     g.moveTo(x1, y1);
     g.lineTo(x2, y2);
     g.lineWidth = 22;
-    g.strokeStyle = "rgba(14,10,22,0.5)";
+    g.strokeStyle = sh(0.5);
     g.stroke();
     g.lineWidth = 14;
-    g.strokeStyle = C.tealDark;
+    g.strokeStyle = C.frameDark;
     g.stroke();
   }
 }
@@ -218,11 +221,11 @@ export function drawArenaMiniature(
   const inner = arenaOutline(a, 0);
   g.beginPath();
   tracePoly(g, outer, 0, 8, 16);
-  g.fillStyle = C.tealDark;
+  g.fillStyle = C.frameDark;
   g.fill();
   g.beginPath();
   tracePoly(g, outer, 0, 0, 16);
-  g.fillStyle = C.teal;
+  g.fillStyle = C.frame;
   g.fill();
   g.beginPath();
   tracePoly(g, inner, 0, 0, 10);
@@ -236,14 +239,14 @@ export function drawArenaMiniature(
   drawRamps(g, a);
   g.restore();
 
-  const col = done ? C.teal : PEG_COLOR_COLD;
+  const col = done ? SIGNAL.pegHit : C.pegCold;
   for (const p of buildPegs(a)) {
     extrudedCircle(g, p.x, p.y, PEG_R, col, shade(col, -0.42), 3);
   }
   for (const ro of a.rotors) {
     g.lineCap = "round";
     g.lineWidth = ROTOR_ARM_R * 2;
-    g.strokeStyle = C.tealDark;
+    g.strokeStyle = C.frameDark;
     for (let k = 0; k < ro.arms; k++) {
       const ang = ro.phase + (k / ro.arms) * Math.PI * 2;
       g.beginPath();
@@ -251,7 +254,7 @@ export function drawArenaMiniature(
       g.lineTo(ro.x + Math.cos(ang) * ro.r, ro.y + Math.sin(ang) * ro.r);
       g.stroke();
     }
-    extrudedCircle(g, ro.x, ro.y, ROTOR_HUB_R, C.teal, C.tealDark, 4);
+    extrudedCircle(g, ro.x, ro.y, ROTOR_HUB_R, C.frame, C.frameDark, 4);
   }
   for (const b of a.barren) {
     g.save();
@@ -268,12 +271,22 @@ export function drawArenaMiniature(
     g.restore();
   }
   for (const [bx, by] of a.bumpers) {
-    extrudedCircle(g, bx, by, BUMPER_R, C.amber, C.amberDark, 5);
+    extrudedCircle(g, bx, by, BUMPER_R, C.bumper, C.bumperDark, 5);
   }
   g.restore();
 }
 
 /** Farben des Barren: kalt (unberuehrt) und gluehend (einmal getroffen). */
+/*
+ * Der Arena-Rahmen wird einmal in einen Cache-Canvas gezeichnet und danach
+ * nur noch kopiert. Ein Skinwechsel macht dieses Bild ungueltig — ohne diesen
+ * Zaehler bliebe der alte Rahmen stehen, bis die Arena neu gebaut wird.
+ */
+let skinGen = 0;
+onSkinChange(() => {
+  skinGen++;
+});
+
 const BARREN_COL = {
   glow: "#8a1414",
   glowLit: "#c81a1a",
@@ -283,6 +296,9 @@ const BARREN_COL = {
   fillLit: "#b01010",
   rivetDim: "#5e2a16",
   rivetLit: "#ffb347",
+  /* Der Reif des Ruhe-Zaehlers. Gehoert zum Barren und damit zum Signal:
+     er zeigt an, wann der naechste Treffer wieder zaehlt. */
+  ring: "#edb443",
 };
 
 /* ------------------------------------------------------------ Typen --- */
@@ -595,6 +611,8 @@ export class Machine {
   private acc = 0;
   private drainGlow = 0;
   private cache: HTMLCanvasElement | null = null;
+  /** Skin-Stand, mit dem `cache` gezeichnet wurde. */
+  private cacheGen = -1;
 
   private ev: MachineEvents;
   private stats!: Stats;
@@ -1202,7 +1220,7 @@ export class Machine {
     this.runStats.burnTicks++;
     this.runStats.sparks.burn += v;
     this.ev.onGain(v);
-    this.pushFloat(p.x, p.y, v, PEG_COLOR_FIRE);
+    this.pushFloat(p.x, p.y, v, SIGNAL.pegFire);
 
     // `Übersprung`: das Feuer geht allein weiter.
     if (s.fire.spread > 0 && Math.random() < s.fire.spread) this.spreadFire(p, s);
@@ -1492,7 +1510,7 @@ export class Machine {
       this.sfx("smash", x);
       // Die Zahl, die der Spieler sieht, ist der Wert MIT Levelfaktor — der
       // Baumfaktor kommt in der Auswertung noch obendrauf.
-      this.pushFloat(x, y - 6, BARREN_BOUNTY * levelPayoutMult(this.arenaIndex), C.amber);
+      this.pushFloat(x, y - 6, BARREN_BOUNTY * levelPayoutMult(this.arenaIndex), CURRENCY.money.color);
     } else {
       this.sfx("crack", x);
     }
@@ -1719,18 +1737,18 @@ export class Machine {
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
 
     // Ein in den Rahmen gefräster Kanal: dunkler Schatten, hellere Innenseite.
-    ctx.strokeStyle = "rgba(10,8,16,0.45)";
+    ctx.strokeStyle = sh(0.45);
     ctx.lineWidth = 16;
     ctx.stroke();
 
-    ctx.strokeStyle = rgba(C.tealDark, 0.9);
+    ctx.strokeStyle = rgba(C.frameDark, 0.9);
     ctx.lineWidth = 11;
     ctx.stroke();
 
     for (const i of [Math.round(pts.length * 0.4), Math.round(pts.length * 0.68)]) {
       ctx.beginPath();
       ctx.arc(pts[i][0], pts[i][1], 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(224,229,240,0.4)";
+      ctx.fillStyle = rgba(C.text, 0.4);
       ctx.fill();
     }
 
@@ -1742,14 +1760,14 @@ export class Machine {
         const info = BALL_INFO[tb.kind];
         const fade = k < 0.08 ? k / 0.08 : k > 0.92 ? (1 - k) / 0.08 : 1;
 
-        longShadowCircle(ctx, x, y, BALL_R * 0.7, 18, "rgba(14,10,22,0.3)");
+        longShadowCircle(ctx, x, y, BALL_R * 0.7, 18, sh(0.3));
         ctx.save();
         ctx.globalAlpha = clamp(fade, 0, 1);
         extrudedCircle(ctx, x, y, BALL_R * 0.7, info.top, info.base, 4);
         if (tb.marked) {
           ctx.beginPath();
           ctx.arc(x, y, BALL_R * 0.7 + 3, 0, Math.PI * 2);
-          ctx.strokeStyle = rgba(C.amber, 0.9);
+          ctx.strokeStyle = rgba(SIGNAL.mark, 0.9);
           ctx.lineWidth = 2.5;
           ctx.stroke();
         }
@@ -1764,7 +1782,7 @@ export class Machine {
     const totalW = this.def.w + FRAME * 2;
     const totalH = this.def.h + FRAME * 2;
 
-    if (!this.cache) {
+    if (!this.cache || this.cacheGen !== skinGen) {
       const cv = document.createElement("canvas");
       // Die Reserve haengt an der Schattenlaenge: waere sie kleiner, schnitte
       // der Rand des Cache-Canvas den Schatten wieder gerade ab — genau die
@@ -1784,11 +1802,11 @@ export class Machine {
         g,
         (dx, dy) => tracePoly(g, outer, dx, dy, 20),
         FRAME_SHADOW,
-        "rgba(14,10,22,0.30)",
+        sh(0.3),
         { x: this.def.w / 2, y: this.def.h / 2, r: (totalW / 2 + totalH / 2) / Math.SQRT2 }
       );
       // Extrusion: Sockel = Umriss plus dieselbe Form um die Tiefe nach unten
-      g.fillStyle = C.tealDark;
+      g.fillStyle = C.frameDark;
       for (let d = 0; d <= 10; d += 2) {
         g.beginPath();
         tracePoly(g, outer, 0, d, 20);
@@ -1796,7 +1814,7 @@ export class Machine {
       }
       g.beginPath();
       tracePoly(g, outer, 0, 0, 20);
-      g.fillStyle = C.teal;
+      g.fillStyle = C.frame;
       g.fill();
 
       g.beginPath();
@@ -1810,10 +1828,11 @@ export class Machine {
       drawRamps(g, this.def);
       for (const p of this.pegs) {
         if (p.rotor) continue; // bewegt sich — Schatten kommt live
-        longShadowCircle(g, p.x, p.y, PEG_R, 21, "rgba(14,10,22,0.45)");
+        longShadowCircle(g, p.x, p.y, PEG_R, 21, sh(0.45));
       }
       g.restore();
       this.cache = cv;
+      this.cacheGen = skinGen;
     }
 
     ctx.drawImage(this.cache, 0, 0);
@@ -1831,17 +1850,17 @@ export class Machine {
     this.drawRotors(ctx);
     this.drawBarren(ctx);
     for (const ro of this.rotors) {
-      for (const p of ro.pegs) longShadowCircle(ctx, p.x, p.y, PEG_R, 21, "rgba(14,10,22,0.45)");
+      for (const p of ro.pegs) longShadowCircle(ctx, p.x, p.y, PEG_R, 21, sh(0.45));
     }
     this.drawPegs(ctx);
     this.drawZaps(ctx);
 
     for (const b of this.bumpers) {
       const r = BUMPER_R * (1 + b.flash * 0.16);
-      longShadowCircle(ctx, b.x, b.y, r, 58, "rgba(14,10,22,0.42)");
-      const top = b.flash > 0 ? mix(C.amber, "#ffffff", b.flash * 0.7) : C.amber;
-      extrudedCircle(ctx, b.x, b.y, r, top, C.amberDark, 7);
-      ctx.fillStyle = "#2b1f05";
+      longShadowCircle(ctx, b.x, b.y, r, 58, sh(0.42));
+      const top = b.flash > 0 ? mix(C.bumper, "#ffffff", b.flash * 0.7) : C.bumper;
+      extrudedCircle(ctx, b.x, b.y, r, top, C.bumperDark, 7);
+      ctx.fillStyle = C.bumperGlyph;
       ctx.font = '800 17px Nunito, "Segoe UI Symbol", sans-serif';
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -1856,14 +1875,14 @@ export class Machine {
 
   private drawPegs(ctx: CanvasRenderingContext2D): void {
     for (const p of this.pegs) {
-      let base = p.hit ? PEG_COLOR_HIT : PEG_COLOR_COLD;
-      if (p.fireT > 0) base = PEG_COLOR_FIRE;
+      let base = p.hit ? SIGNAL.pegHit : C.pegCold;
+      if (p.fireT > 0) base = SIGNAL.pegFire;
 
       // Geladen vom Puls — der nächste direkte Treffer zahlt hier mehr.
       if (p.chargeT > 0) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, PEG_R + 3, 0, Math.PI * 2);
-        ctx.strokeStyle = rgba(C.teal, 0.4);
+        ctx.strokeStyle = rgba(SIGNAL.charge, 0.4);
         ctx.lineWidth = 2;
         ctx.stroke();
       }
@@ -1872,7 +1891,7 @@ export class Machine {
       if (p.buffT > 0) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, PEG_R + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = rgba(C.magenta, 0.55);
+        ctx.strokeStyle = rgba(SIGNAL.buff, 0.55);
         ctx.lineWidth = 2.5;
         ctx.stroke();
       }
@@ -1926,7 +1945,7 @@ export class Machine {
       ctx.beginPath();
       ctx.setLineDash([5, 7]);
       ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-      ctx.strokeStyle = rgba(C.tealDark, 0.35);
+      ctx.strokeStyle = rgba(C.frameDark, 0.35);
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.setLineDash([]);
@@ -1936,16 +1955,16 @@ export class Machine {
         ctx.beginPath();
         ctx.moveTo(d.x, d.y);
         ctx.lineTo(p.x, p.y);
-        ctx.strokeStyle = "rgba(14,10,22,0.5)";
+        ctx.strokeStyle = sh(0.5);
         ctx.lineWidth = ROTOR_ARM_R * 2 + 4;
         ctx.stroke();
-        ctx.strokeStyle = C.tealDark;
+        ctx.strokeStyle = C.frameDark;
         ctx.lineWidth = ROTOR_ARM_R * 2;
         ctx.stroke();
       }
-      const top = ro.flash > 0 ? mix(C.teal, "#ffffff", ro.flash * 0.6) : C.teal;
-      longShadowCircle(ctx, d.x, d.y, ROTOR_HUB_R, 30, "rgba(14,10,22,0.4)");
-      extrudedCircle(ctx, d.x, d.y, ROTOR_HUB_R, top, C.tealDark, 5);
+      const top = ro.flash > 0 ? mix(C.frame, "#ffffff", ro.flash * 0.6) : C.frame;
+      longShadowCircle(ctx, d.x, d.y, ROTOR_HUB_R, 30, sh(0.4));
+      extrudedCircle(ctx, d.x, d.y, ROTOR_HUB_R, top, C.frameDark, 5);
     }
   }
 
@@ -1971,7 +1990,7 @@ export class Machine {
 
       ctx.beginPath();
       roundRectPath(ctx, -d.len / 2, -d.hgt / 2 + 4, d.len, d.hgt, d.rad);
-      ctx.fillStyle = "rgba(14,10,22,0.45)";
+      ctx.fillStyle = sh(0.45);
       ctx.fill();
 
       ctx.beginPath();
@@ -1998,7 +2017,7 @@ export class Machine {
         const f = Math.min(1, br.restT / BARREN_REST);
         ctx.beginPath();
         ctx.arc(0, 0, d.len / 2 + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f);
-        ctx.strokeStyle = rgba(C.amber, 0.9);
+        ctx.strokeStyle = rgba(BARREN_COL.ring, 0.9);
         ctx.lineWidth = 2.5;
         ctx.stroke();
       }
@@ -2011,7 +2030,7 @@ export class Machine {
     const cx = this.def.w * this.def.drainX;
     ctx.beginPath();
     roundRectPath(ctx, cx - h, this.def.h - 12, h * 2, 26, 6);
-    ctx.fillStyle = rgba(C.magenta, 0.35 + this.drainGlow * 0.6);
+    ctx.fillStyle = rgba(C.drain, 0.35 + this.drainGlow * 0.6);
     ctx.fill();
   }
 
@@ -2019,9 +2038,9 @@ export class Machine {
     const w = Math.min(90, this.def.w * 0.34);
     const cx = this.def.w * this.def.spawnX;
     const x = cx - w / 2;
-    longShadowRect(ctx, x, 14, w, 26, 8, 54, "rgba(14,10,22,0.4)");
-    extrudedRect(ctx, x, 14, w, 26, 8, C.amber, C.amberDark, 6);
-    ctx.fillStyle = "#2b1f05";
+    longShadowRect(ctx, x, 14, w, 26, 8, 54, sh(0.4));
+    extrudedRect(ctx, x, 14, w, 26, 8, C.emitter, C.emitterDark, 6);
+    ctx.fillStyle = C.bumperGlyph;
     ctx.font = '800 14px Nunito, "Segoe UI Symbol", sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -2044,7 +2063,7 @@ export class Machine {
       if (b.buffT > 0) {
         ctx.beginPath();
         ctx.arc(b.x, b.y, BALL_R + 6, 0, Math.PI * 2);
-        ctx.strokeStyle = rgba(C.magenta, 0.7);
+        ctx.strokeStyle = rgba(SIGNAL.buff, 0.7);
         ctx.lineWidth = 2.5;
         ctx.stroke();
       }
@@ -2055,12 +2074,12 @@ export class Machine {
         const puls = 1 + Math.sin(this.runTime * 5) * 0.12;
         ctx.beginPath();
         ctx.arc(b.x, b.y, (BALL_R + 3.5) * puls, 0, Math.PI * 2);
-        ctx.strokeStyle = rgba(C.amber, 0.95);
+        ctx.strokeStyle = rgba(SIGNAL.mark, 0.95);
         ctx.lineWidth = 3;
         ctx.stroke();
       }
 
-      longShadowCircle(ctx, b.x, b.y, BALL_R, 44, "rgba(14,10,22,0.38)");
+      longShadowCircle(ctx, b.x, b.y, BALL_R, 44, sh(0.38));
       extrudedCircle(ctx, b.x, b.y, BALL_R, info.top, info.base, 5);
 
       if (info.glyph) {

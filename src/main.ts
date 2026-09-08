@@ -20,6 +20,7 @@ import {
   loaderMarkup,
   setLoaderValue,
 } from "./loader";
+import { initGrafik } from "./skin";
 import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
 import { drawArenaMiniature } from "./machine";
 import { BARREN_BOUNTY } from "./currency";
@@ -89,6 +90,14 @@ const currencyIcon = (
  * ein neuer Schluessel statt einer Migration.
  */
 const SAVE_KEY = "dropfall.save.v7";
+
+/*
+ * Grafik-Einstellungen ganz frueh: der Skin muss stehen, bevor irgendetwas
+ * eine Farbe liest. Das Attribut am <html> setzt schon das Inline-Skript im
+ * <head> — dieser Aufruf bringt zusaetzlich die Canvas-Seite (theme.ts) auf
+ * denselben Stand und laedt Himmel, Laub und Bewegung.
+ */
+initGrafik();
 
 /* --------------------------------------------------------- Zustand --- */
 
@@ -622,14 +631,23 @@ function buyBall(kind: BallKind): void {
 
 /* ------------------------------------------------------- Auswertung --- */
 
-const SOURCE_INFO: Array<{ key: SparkSource; name: string; color: string }> = [
-  { key: "white", name: "Weiße Kugel", color: "#f4f1fa" },
-  { key: "pulse", name: "Puls-Kugel", color: "#2ed3ae" },
-  { key: "lightning", name: "Blitz-Kugel", color: "#6fa8ff" },
-  { key: "fire", name: "Feuer-Kugel", color: "#ff7a3d" },
-  { key: "burn", name: "Brand", color: "#c04d18" },
-  { key: "bumper", name: "Bumper", color: "#edb443" },
-];
+/*
+ * Die Balken unter "Funken nach Quelle". Bewusst eine FUNKTION und keine
+ * Tabelle: der Bumper ist ein Weltobjekt und wechselt mit dem Skin, eine
+ * Tabelle auf Modulebene wuerde ihn auf dem Startskin einfrieren. Die
+ * Kugelfarben kommen aus BALL_INFO statt aus einer zweiten Liste — sonst
+ * driften Feld und Auswertung auseinander.
+ */
+function sourceInfo(): Array<{ key: SparkSource; name: string; color: string }> {
+  return [
+    { key: "white", name: BALL_INFO.white.name, color: BALL_INFO.white.top },
+    { key: "pulse", name: BALL_INFO.pulse.name, color: BALL_INFO.pulse.top },
+    { key: "lightning", name: BALL_INFO.lightning.name, color: BALL_INFO.lightning.top },
+    { key: "fire", name: BALL_INFO.fire.name, color: BALL_INFO.fire.top },
+    { key: "burn", name: "Brand", color: BALL_INFO.fire.base },
+    { key: "bumper", name: "Bumper", color: C.bumper },
+  ];
+}
 
 function showResult(
   gemeistert: boolean,
@@ -769,8 +787,9 @@ function showResult(
   }
   elResReward.innerHTML = belohnung.join("");
 
-  const gesamt = SOURCE_INFO.reduce((sum, q) => sum + st.sparks[q.key], 0);
-  const zeilen = SOURCE_INFO.filter((q) => st.sparks[q.key] > 0).sort(
+  const quellen = sourceInfo();
+  const gesamt = quellen.reduce((sum, q) => sum + st.sparks[q.key], 0);
+  const zeilen = quellen.filter((q) => st.sparks[q.key] > 0).sort(
     (x, y) => st.sparks[y.key] - st.sparks[x.key]
   );
 
