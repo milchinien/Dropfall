@@ -1,5 +1,5 @@
 /* =========================================================================
-   decor.ts — Abendhimmel, Sonne und Laub. Nur im Herbst-Skin.
+   decor.ts — Abendhimmel und Laub. Nur im Herbst-Skin.
 
    REIN DEKORATIV. Nichts hier weiss etwas ueber Pegs, Kugeln oder
    Kollision, und nichts hier darf je vor dem Spielfeld liegen. Die Arena
@@ -8,15 +8,15 @@
    Ein Blatt, das einen Peg verdeckt, ist kein Stimmungstraeger mehr,
    sondern ein Lesefehler.
 
-   DAS LICHT IST PARALLEL
-   Die Schatten des Spiels laufen ALLE 45° nach unten rechts, ueberall im
-   Bild und unabhaengig davon, wo ein Objekt steht. Das ist Licht aus dem
-   Unendlichen. Also laufen die Strahlen parallel auf derselben Achse. Die
-   SONNE selbst sitzt jenseits der oberen linken Ecke; von ihr kommt der
-   Glanz, und ihr Faecher schneidet aus, welcher Teil der parallelen Bahnen
-   sichtbar ist. So hat das Licht eine Quelle, ohne dass ein einziger Strahl
-   von der Schattenachse abweicht. Es gibt genau eine Lichtrichtung:
-   LICHT_WINKEL.
+   DAS LAUB LIEGT IN DER WELT, NICHT AUF DEM GLAS
+   Frueher lag es in Bildschirmkoordinaten: gleiche Groesse, gleiche Lage,
+   egal wie weit man den Baum herauszoomte. Alles, was beim Zoomen nicht
+   mitgeht, liest das Auge als Folie VOR dem Bild — und eine Folie vor den
+   Knoepfen macht sie flach. Jetzt bekommt die Deko einen `Rahmen`: die
+   Abbildung Welt -> Bildschirm und die Ausdehnung der Welt. Im Baum ist das
+   die Kamera des Baums; das Laub wird zum Boden, auf dem die Knoepfe stehen,
+   ihre langen Schatten fallen darueber, und beim Zoomen bestaetigt die
+   Parallaxe die Tiefe. In der Arena ist der Rahmen die Identitaet.
 
    DER GRUNDRISS IST DETERMINISTISCH, DAS BILD LEBT DARAUF
    Wo Blaetter liegen, haengt an einem festen Seed — dieselbe Regel wie beim
@@ -39,11 +39,21 @@ export interface FreiRect {
 }
 
 /**
- * Richtung des Lichts: 45° nach unten rechts. Dieselbe Achse, auf der jeder
- * Schatten im Spiel liegt (theme.ts, longShadow). Wer diesen Wert aendert,
- * muss auch dort ran — sonst faellt das Licht anders als der Schatten.
+ * Der Rahmen, in dem die Deko lebt.
+ *
+ * `ox`, `oy`, `scale` bilden Weltkoordinaten auf den Bildschirm ab
+ * (sx = x * scale + ox). `welt` ist die Flaeche, auf der das Laub liegt, in
+ * Weltkoordinaten — im Baum die Ausdehnung des Baums plus Rand, in der
+ * Arena der Bildschirm selbst. `id` trennt die Bestaende: der Baum und die
+ * Arena haben je ihr eigenes Laub.
  */
-const LICHT_WINKEL = Math.PI / 4;
+export interface Rahmen {
+  id: "baum" | "arena";
+  ox: number;
+  oy: number;
+  scale: number;
+  welt: { x: number; y: number; w: number; h: number };
+}
 
 /* ----------------------------------------------------------- Zufall --- */
 
@@ -221,17 +231,24 @@ function ladeBilder(): void {
 /* ------------------------------------------------------------- Laub --- */
 
 /**
- * Wie viele Blaetter liegen und wie viele treiben frei durchs Bild.
- * Gedeckelt, nicht proportional zur Flaeche: ein volles Feld hat schon
- * hunderte Kontakte je Sekunde, und die Deko darf davon nichts abzwacken.
+ * Wie viele Blaetter liegen und wie viele treiben frei durchs Bild, je
+ * Rahmen. Der Baum ist eine grosse Welt, von der man meist nur einen
+ * Ausschnitt sieht — er braucht mehr, damit der Rand beim Herauszoomen
+ * nicht leer ist. Gedeckelt, nicht proportional zur Flaeche: ein volles
+ * Feld hat schon hunderte Kontakte je Sekunde, und die Deko darf davon
+ * nichts abzwacken. Was ausserhalb des Bildschirms liegt, wird nicht
+ * gezeichnet.
  */
-const LIEGEND = { aus: 0, wenig: 26, normal: 64 } as const;
+const LIEGEND: Record<Rahmen["id"], Record<"aus" | "wenig" | "normal", number>> = {
+  baum: { aus: 0, wenig: 60, normal: 150 },
+  arena: { aus: 0, wenig: 26, normal: 64 },
+};
 const TREIBEND = { aus: 0, wenig: 2, normal: 5 } as const;
 
 /**
  * Wie stark sich die Streuung an den Rand draengt. Angenommen wird eine
  * Lage mit der Wahrscheinlichkeit `m ** RANDDRANG`, wobei `m` der
- * Chebyshev-Radius ist: 0 in der Bildmitte, 1 am Rand.
+ * Chebyshev-Radius ist: 0 in der Mitte der Welt, 1 an ihrem Rand.
  *
  * Bei 3 lag noch zu viel in der Mitte und der Rand war zu duenn. Bei 6
  * liegt der Schwerpunkt klar aussen, und was nach innen faellt, sind
@@ -239,7 +256,7 @@ const TREIBEND = { aus: 0, wenig: 2, normal: 5 } as const;
  */
 const RANDDRANG = 6;
 
-/** Halbe Laenge eines liegenden Blattes, in Pixeln. */
+/** Halbe Laenge eines liegenden Blattes, in WELT-Einheiten. */
 const GROESSE_MIN = 7;
 const GROESSE_MAX = 16;
 
@@ -253,10 +270,13 @@ const LEBENSDAUER: [number, number] = [45, 150];
 /** Sekunden, die ein verfallendes Blatt zum Ausblenden braucht. */
 const VERFALL = 0.9;
 
+/** Aus welcher Hoehe ueber der Heimat der Nachschub faellt, Welt-Einheiten. */
+const FALLHOEHE = 900;
+
 /**
- * Halbe Laenge des groessten Blattes mit Sicherheitsrand. Damit wird die
- * Aussparung ueber dem Spielfeld gerechnet — ein Blatt darf es auch mit
- * seiner Spitze nicht beruehren.
+ * Halbe Laenge des groessten Blattes mit Sicherheitsrand, in BILDSCHIRM-
+ * Pixeln bei Massstab 1. Damit wird die Aussparung ueber dem Spielfeld
+ * gerechnet — ein Blatt darf es auch mit seiner Spitze nicht beruehren.
  */
 const BLATT_RAND = GROESSE_MAX * 1.6;
 
@@ -269,10 +289,10 @@ const BLATT_RAND = GROESSE_MAX * 1.6;
 const KORRIDOR_RAND = BLATT_RAND + 4;
 
 /**
- * Ein liegendes Blatt. `u`/`v` ist seine HEIMAT in Anteilen der Bildbreite
- * und -hoehe (-1 bis 1) — die aendert sich nie, auch nicht, wenn das Blatt
- * verfaellt und ein neues nachkommt. `ox`/`oy` ist, wohin der Wind es
- * getragen hat, in Pixeln.
+ * Ein liegendes Blatt. `u`/`v` ist seine HEIMAT in Anteilen der Welt
+ * (-1 bis 1) — die aendert sich nie, auch nicht, wenn das Blatt verfaellt
+ * und ein neues nachkommt. `ox`/`oy` ist, wohin der Wind es getragen hat,
+ * in Welt-Einheiten.
  */
 interface Blatt {
   u: number;
@@ -281,10 +301,9 @@ interface Blatt {
   dreh: number;
   id: BlattId;
 
-  /** Versatz durch Wind, Pixel. */
   ox: number;
   oy: number;
-  /** Geschwindigkeit des Versatzes, Pixel je Sekunde. */
+  /** Geschwindigkeit des Versatzes, Welt-Einheiten je Sekunde. */
   vx: number;
   vy: number;
   spin: number;
@@ -293,15 +312,15 @@ interface Blatt {
   zustand: "liegt" | "verfaellt" | "kommt";
   restzeit: number;
   alpha: number;
-  /** Nur waehrend `kommt`: aktuelle Hoehe in v-Anteilen, sinkt bis `v`. */
-  fallV: number;
+  /** Nur waehrend `kommt`: Hoehe ueber der Heimat, Welt-Einheiten, sinkt auf 0. */
+  hoehe: number;
   phase: number;
 }
 
-/** Frei treibende Blaetter: nicht an eine Heimat gebunden, fallen durch. */
+/** Frei treibende Blaetter, in Welt-Einheiten: nicht an eine Heimat gebunden. */
 interface Treiber {
-  u: number;
-  v: number;
+  x: number;
+  y: number;
   groesse: number;
   dreh: number;
   id: BlattId;
@@ -309,9 +328,9 @@ interface Treiber {
   schwing: number;
   phase: number;
   drehRate: number;
-  /** Waagerechter Korridor, in dem dieser Treiber bleiben darf. */
-  vonU: number;
-  bisU: number;
+  /** Waagerechter Korridor in Welt-Einheiten, in dem dieser Treiber bleibt. */
+  vonX: number;
+  bisX: number;
 }
 
 /** Wuerfelt Sorte, Groesse und Drehung — beim ersten Streuen und bei jedem Nachschub. */
@@ -349,7 +368,7 @@ function streue(n: number, seed: number): Blatt[] {
       zustand: "liegt",
       restzeit: 0,
       alpha: 1,
-      fallV: v,
+      hoehe: 0,
       phase: r() * Math.PI * 2,
     };
     neuesKleid(b, r, m);
@@ -358,24 +377,57 @@ function streue(n: number, seed: number): Blatt[] {
   return out;
 }
 
-let liegend: Blatt[] = [];
-let liegendFuer = -1;
-/** Der Wuerfel fuer alles, was NACH dem Streuen passiert: Nachschub, Boeen. */
-const lebenRng = rng(0x1eaf5eed);
-
-function liegendes(anzahl: number): Blatt[] {
-  if (liegendFuer !== anzahl) {
-    liegend = streue(anzahl, 0x5eeda11e);
-    liegendFuer = anzahl;
-  }
-  return liegend;
+/** Der Laubbestand eines Rahmens. */
+interface Bestand {
+  liegend: Blatt[];
+  liegendFuer: number;
+  treiber: Treiber[];
+  treiberFuer: number;
+  /** Der Wuerfel fuer alles, was NACH dem Streuen passiert: Nachschub, Boeen. */
+  leben: () => number;
+  treib: () => number;
 }
+
+const bestaende: Record<Rahmen["id"], Bestand> = {
+  baum: { liegend: [], liegendFuer: -1, treiber: [], treiberFuer: -1, leben: rng(0x1eaf5eed), treib: rng(0xfa111eaf) },
+  arena: { liegend: [], liegendFuer: -1, treiber: [], treiberFuer: -1, leben: rng(0x2eaf5eed), treib: rng(0xfb111eaf) },
+};
+
+const SEEDS: Record<Rahmen["id"], number> = { baum: 0x5eeda11e, arena: 0x5eeda22e };
+
+function bestand(R: Rahmen): Bestand {
+  const b = bestaende[R.id];
+  const n = LIEGEND[R.id][grafik().laub];
+  if (b.liegendFuer !== n) {
+    b.liegend = streue(n, SEEDS[R.id]);
+    b.liegendFuer = n;
+  }
+  return b;
+}
+
+/* ------------------------------------------------------- Abbildung --- */
+
+const weltX = (R: Rahmen, u: number) => R.welt.x + (u * 0.5 + 0.5) * R.welt.w;
+const weltY = (R: Rahmen, v: number) => R.welt.y + (v * 0.5 + 0.5) * R.welt.h;
+const schirmX = (R: Rahmen, x: number) => x * R.scale + R.ox;
+const schirmY = (R: Rahmen, y: number) => y * R.scale + R.oy;
+
+/** Liegt der Bildschirmpunkt (mit Rand) im geschuetzten Rechteck? */
+function imFreien(sx: number, sy: number, r: number, frei: FreiRect | null): boolean {
+  if (!frei) return false;
+  return (
+    sx > frei.x - r && sx < frei.x + frei.w + r && sy > frei.y - r && sy < frei.y + frei.h + r
+  );
+}
+
+const aktiv = (): boolean => getSkin() === "herbst";
 
 /* -------------------------------------------------------------- Wind --- */
 
 /**
- * Der Zeiger als Windquelle. Gemerkt wird die letzte Lage und daraus die
- * Geschwindigkeit — ein ruhender Zeiger weht nichts, ein schneller viel.
+ * Der Zeiger als Windquelle, in Bildschirmkoordinaten. Gemerkt wird die
+ * letzte Lage und daraus die Geschwindigkeit — ein ruhender Zeiger weht
+ * nichts, ein schneller viel.
  */
 const zeiger = { x: -1e9, y: -1e9, vx: 0, vy: 0, t: 0, da: false };
 
@@ -395,14 +447,14 @@ export function decorZeiger(x: number, y: number): void {
   zeiger.da = true;
 }
 
-/** Radius, in dem der Zeiger Blaetter erreicht, Pixel. */
+/** Radius, in dem der Zeiger Blaetter erreicht, BILDSCHIRM-Pixel. */
 const WIND_RADIUS = 90;
 /** Wie viel der Zeigergeschwindigkeit als Stoss ankommt. "Leicht wegpusten". */
 const WIND_STAERKE = 0.09;
 /** Deckel auf die Zeigergeschwindigkeit, Pixel je Sekunde — sonst fliegt ein Ruck alles weg. */
 const WIND_MAX = 1400;
 
-/** Ausstehende Boeen (Zoom): Mittelpunkt und Staerke, werden im naechsten Bild verbraucht. */
+/** Ausstehende Boeen (Zoom), Bildschirmkoordinaten; werden im naechsten Bild verbraucht. */
 const boeen: Array<{ x: number; y: number; staerke: number }> = [];
 
 /**
@@ -419,48 +471,52 @@ const BOE_RADIUS = 460;
 /** Reibung des Windversatzes: je Sekunde bleibt e^-REIBUNG uebrig. */
 const REIBUNG = 5;
 
-/* ------------------------------------------------------------ Sicht --- */
-
-/** Liegt der Punkt (mit Rand) im geschuetzten Rechteck? */
-function imFreien(x: number, y: number, r: number, frei: FreiRect | null): boolean {
-  if (!frei) return false;
-  return (
-    x > frei.x - r && x < frei.x + frei.w + r && y > frei.y - r && y < frei.y + frei.h + r
-  );
-}
-
-const aktiv = (): boolean => getSkin() === "herbst";
-
 /* ------------------------------------------------------- Lebenslauf --- */
 
 /**
  * Ein Bild im Leben der liegenden Blaetter: Wind, Verfall, Nachschub.
  * Rein rechnerisch, kein Canvas — damit tools/decor-check.ts es fahren
  * kann.
+ *
+ * Wind wird in Bildschirm-Groessen gedacht (der Zeiger ist ein Ding auf dem
+ * Glas) und dann in die Welt umgerechnet: ein Stoss verschiebt ein Blatt
+ * auf dem Bildschirm immer um dieselben zwanzig Pixel, egal wie weit man
+ * herausgezoomt hat.
  */
-function lebe(w: number, h: number, dt: number, frei: FreiRect | null): void {
+function lebe(B: Bestand, R: Rahmen, dt: number, frei: FreiRect | null): void {
   const g = grafik();
   if (!g.bewegung || dt <= 0) return;
 
-  const r = lebenRng;
-  const zeigerTempo = Math.min(WIND_MAX, Math.hypot(zeiger.vx, zeiger.vy));
+  const r = B.leben;
+  const s = R.scale;
+  // Zeiger in die Welt.
+  const zx = (zeiger.x - R.ox) / s;
+  const zy = (zeiger.y - R.oy) / s;
+  const zeigerTempo = Math.min(WIND_MAX, Math.hypot(zeiger.vx, zeiger.vy)) / s;
+  const windRadius = WIND_RADIUS / s;
   const reib = Math.exp(-REIBUNG * dt);
+  const boeenWelt = boeen.map((bo) => ({
+    x: (bo.x - R.ox) / s,
+    y: (bo.y - R.oy) / s,
+    staerke: bo.staerke / s,
+    radius: BOE_RADIUS / s,
+  }));
 
-  for (const b of liegend) {
-    const hx = (b.u * 0.5 + 0.5) * w;
-    const hy = (b.v * 0.5 + 0.5) * h;
+  for (const b of B.liegend) {
+    const hx = weltX(R, b.u);
+    const hy = weltY(R, b.v);
 
     if (b.zustand === "kommt") {
       // Faellt auf die Heimat. Das Pendeln klingt zum Boden hin aus, damit
       // das Blatt genau dort landet, wo das alte lag.
-      b.fallV += (0.16 + 0.06 * Math.sin(b.phase)) * dt;
+      b.hoehe -= (70 + 25 * Math.sin(b.phase)) * dt;
       b.phase += dt * 1.4;
       b.dreh += 0.6 * dt;
-      const rest = clamp((b.v - b.fallV) / 2.2, 0, 1);
+      const rest = clamp(b.hoehe / FALLHOEHE, 0, 1);
       b.ox = Math.sin(b.phase * 1.7) * 22 * rest;
       b.oy = 0;
-      if (b.fallV >= b.v) {
-        b.fallV = b.v;
+      if (b.hoehe <= 0) {
+        b.hoehe = 0;
         b.ox = 0;
         b.zustand = "liegt";
       }
@@ -470,11 +526,11 @@ function lebe(w: number, h: number, dt: number, frei: FreiRect | null): void {
     if (b.zustand === "verfaellt") {
       b.alpha -= dt / VERFALL;
       if (b.alpha <= 0) {
-        // Das neue Blatt: neue Sorte, neue Drehung, oben ueber dem Bild.
+        // Das neue Blatt: neue Sorte, neue Drehung, hoch ueber der Heimat.
         neuesKleid(b, r, Math.max(Math.abs(b.u), Math.abs(b.v)));
         b.ox = b.oy = b.vx = b.vy = b.spin = 0;
         b.alpha = 1;
-        b.fallV = -1.15 - r() * 0.3;
+        b.hoehe = FALLHOEHE * (1 + r() * 0.3);
         b.zustand = "kommt";
       }
       continue;
@@ -487,7 +543,7 @@ function lebe(w: number, h: number, dt: number, frei: FreiRect | null): void {
 
     // Ein Blatt, das gerade unter dem Spielfeld verborgen ist, altert nicht:
     // sein Nachschub wuerde sonst unsichtbar in die Arena fallen.
-    const sichtbar = !imFreien(x, y, BLATT_RAND, frei);
+    const sichtbar = !imFreien(schirmX(R, x), schirmY(R, y), BLATT_RAND, frei);
     if (sichtbar) {
       b.restzeit -= dt;
       if (b.restzeit <= 0) {
@@ -497,28 +553,28 @@ function lebe(w: number, h: number, dt: number, frei: FreiRect | null): void {
     }
 
     // Wind vom Zeiger.
-    if (zeiger.da && zeigerTempo > 40) {
-      const dx = x - zeiger.x;
-      const dy = y - zeiger.y;
+    if (zeiger.da && zeigerTempo * s > 40) {
+      const dx = x - zx;
+      const dy = y - zy;
       const d = Math.hypot(dx, dy);
-      if (d < WIND_RADIUS && d > 0.5) {
-        const k = (1 - d / WIND_RADIUS) * zeigerTempo * WIND_STAERKE;
+      if (d < windRadius && d > 0.5) {
+        const k = (1 - d / windRadius) * zeigerTempo * WIND_STAERKE;
         b.vx += (dx / d) * k;
         b.vy += (dy / d) * k;
-        b.spin += (r() - 0.5) * k * 0.05;
+        b.spin += (r() - 0.5) * k * s * 0.05;
       }
     }
 
     // Boeen vom Zoom.
-    for (const bo of boeen) {
+    for (const bo of boeenWelt) {
       const dx = x - bo.x;
       const dy = y - bo.y;
       const d = Math.hypot(dx, dy);
-      if (d < BOE_RADIUS && d > 0.5) {
-        const k = (1 - d / BOE_RADIUS) * bo.staerke;
+      if (d < bo.radius && d > 0.5) {
+        const k = (1 - d / bo.radius) * bo.staerke;
         b.vx += (dx / d) * k;
         b.vy += (dy / d) * k;
-        b.spin += (r() - 0.5) * k * 0.02;
+        b.spin += (r() - 0.5) * k * s * 0.02;
       }
     }
 
@@ -526,10 +582,11 @@ function lebe(w: number, h: number, dt: number, frei: FreiRect | null): void {
 
     const nx = x + b.vx * dt;
     const ny = y + b.vy * dt;
-    // Weiche Wand: was ins Spielfeld oder aus dem Bild wehen wuerde, bleibt
+    // Weiche Wand: was ins Spielfeld oder aus der Welt wehen wuerde, bleibt
     // an der Kante liegen. Kein Blatt kommt je ueber den Rand.
-    const imBild = nx > 4 && nx < w - 4 && ny > 4 && ny < h - 4;
-    if (imBild && !imFreien(nx, ny, BLATT_RAND, frei)) {
+    const W = R.welt;
+    const inWelt = nx > W.x + 4 && nx < W.x + W.w - 4 && ny > W.y + 4 && ny < W.y + W.h - 4;
+    if (inWelt && !imFreien(schirmX(R, nx), schirmY(R, ny), BLATT_RAND, frei)) {
       b.ox = nx - hx;
       b.oy = ny - hy;
     } else {
@@ -539,13 +596,14 @@ function lebe(w: number, h: number, dt: number, frei: FreiRect | null): void {
     b.vx *= reib;
     b.vy *= reib;
     b.spin *= reib;
-    if (Math.abs(b.vx) < 0.5 && Math.abs(b.vy) < 0.5) b.vx = b.vy = 0;
+    if (Math.abs(b.vx) * s < 0.5 && Math.abs(b.vy) * s < 0.5) b.vx = b.vy = 0;
     if (Math.abs(b.spin) < 0.01) b.spin = 0;
   }
+}
 
+/** Nach dem Bild: Boeen sind verbraucht, der Zeigerwind klingt ab. */
+function windAbklingen(dt: number): void {
   boeen.length = 0;
-  // Der Zeiger weht nur, solange er sich bewegt: die gemerkte Geschwindigkeit
-  // klingt ab, falls keine neue Bewegung kommt.
   zeiger.vx *= Math.exp(-12 * dt);
   zeiger.vy *= Math.exp(-12 * dt);
 }
@@ -558,14 +616,15 @@ interface Kleid {
   id: BlattId;
 }
 
+/** Zeichnet ein Blatt an Bildschirmposition (x, y) mit Bildschirm-Halblaenge s. */
 function zeichneBlatt(
   ctx: CanvasRenderingContext2D,
   b: Kleid,
   x: number,
   y: number,
+  s: number,
   alpha: number
 ): void {
-  const s = b.groesse;
   const bild = bilder.get(b.id);
 
   ctx.save();
@@ -598,13 +657,17 @@ function zeichneBlatt(
   ctx.fillStyle = BLATT_FARBE[b.id];
   ctx.fill();
 
-  // Die Mittelrippe. Ohne sie ist es eine Flaeche, kein Blatt.
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.78, 0);
-  ctx.lineTo(s * 0.75, 0);
-  ctx.strokeStyle = shade(BLATT_FARBE[b.id], -0.4);
-  ctx.lineWidth = Math.max(1, s * 0.09);
-  ctx.stroke();
+  // Die Mittelrippe. Ohne sie ist es eine Flaeche, kein Blatt. Unter drei
+  // Pixeln halber Laenge lohnt sie nicht mehr — dann ist das Blatt ein
+  // Fleck, und ein Strich darauf nur Rauschen.
+  if (s >= 3) {
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.78, 0);
+    ctx.lineTo(s * 0.75, 0);
+    ctx.strokeStyle = shade(BLATT_FARBE[b.id], -0.4);
+    ctx.lineWidth = Math.max(1, s * 0.09);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
@@ -613,7 +676,8 @@ function zeichneBlatt(
 
 /**
  * Der Abendhimmel, in drei Fassungen. Gezeichnet wird ueber den bereits
- * gefuellten Grund, es geht also nur um die Abweichung davon.
+ * gefuellten Grund, es geht also nur um die Abweichung davon. Er liegt auf
+ * dem Bildschirm, nicht in der Welt: ein Himmel zoomt nicht mit.
  *
  * `baender` ist die Vorgabe und die einzige, die Stilregel 1 einhaelt
  * ("Flaechen sind flach"): der Sonnenuntergang als Reihe harter Streifen
@@ -654,104 +718,12 @@ function himmel(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   }
 }
 
-/* ------------------------------------------------------------- Sonne --- */
-
-/**
- * Die Sonne sitzt jenseits der oberen linken Ecke, in Anteilen der
- * Bildbreite und -hoehe. Man sieht sie nie als Scheibe — nur ihren Glanz,
- * der in die Ecke faellt, und den Faecher ihrer Strahlen.
- */
-const SONNE = { u: -0.07, v: -0.11 };
-
-/**
- * Der Glanz um die Sonne: gestufte Viertelkreise, kein Verlauf. Radien in
- * Anteilen der Bilddiagonale, innen hell, aussen kaum noch da.
- */
-const GLANZ: Array<[radius: number, deckung: number]> = [
-  [0.13, 0.10],
-  [0.22, 0.06],
-  [0.33, 0.034],
-  [0.47, 0.016],
-];
-
-/**
- * Halber Oeffnungswinkel des Strahlenfaechers. Er schneidet aus den
- * parallelen Bahnen den Teil aus, den die Sonne beleuchtet — der Rest des
- * Bildes bleibt Daemmerung. Deshalb liest sich das Licht als Quelle, obwohl
- * keine Bahn von der Schattenachse abweicht.
- */
-const FAECHER = 0.62;
-
-/**
- * Die Bahnen im gedrehten System der Sonne: `quer` ist der Versatz quer zur
- * Lichtachse in Anteilen der Diagonale, `breite` dasselbe fuer die Breite,
- * `deckung` gilt nahe der Sonne und faellt nach hinten in drei Stufen ab.
- * Ungleich verteilt — gleichmaessige Bahnen lesen sich als Schraffur.
- */
-const BAHNEN: Array<[quer: number, breite: number, deckung: number]> = [
-  [-0.30, 0.020, 0.030],
-  [-0.17, 0.046, 0.021],
-  [-0.06, 0.011, 0.036],
-  [0.05, 0.062, 0.017],
-  [0.19, 0.026, 0.027],
-  [0.33, 0.014, 0.024],
-];
-
-/** Wie weit eine Bahn reicht und wie sie dabei verblasst: [bis, Anteil der Deckung]. */
-const STUFEN: Array<[number, number]> = [
-  [0.48, 1.0],
-  [0.82, 0.55],
-  [1.35, 0.25],
-];
-
-function sonne(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const d = Math.hypot(w, h);
-  const sx = SONNE.u * w;
-  const sy = SONNE.v * h;
-  const farbe = mix(C.amber, "#ffffff", 0.3);
-
-  // Glanz: von aussen nach innen, damit die hellen Stufen oben liegen.
-  for (let i = GLANZ.length - 1; i >= 0; i--) {
-    const [radius, deckung] = GLANZ[i];
-    ctx.beginPath();
-    ctx.arc(sx, sy, radius * d, 0, Math.PI * 2);
-    ctx.fillStyle = rgba(farbe, deckung);
-    ctx.fill();
-  }
-
-  ctx.save();
-  // Der Faecher als Schnittmaske, mit der Spitze in der Sonne.
-  ctx.beginPath();
-  ctx.moveTo(sx, sy);
-  ctx.lineTo(
-    sx + Math.cos(LICHT_WINKEL - FAECHER) * d * 3,
-    sy + Math.sin(LICHT_WINKEL - FAECHER) * d * 3
-  );
-  ctx.lineTo(
-    sx + Math.cos(LICHT_WINKEL + FAECHER) * d * 3,
-    sy + Math.sin(LICHT_WINKEL + FAECHER) * d * 3
-  );
-  ctx.closePath();
-  ctx.clip();
-
-  // Die Bahnen: parallel, exakt auf der Schattenachse.
-  ctx.translate(sx, sy);
-  ctx.rotate(LICHT_WINKEL);
-  for (const [quer, breite, deckung] of BAHNEN) {
-    let von = 0;
-    for (const [bis, anteil] of STUFEN) {
-      ctx.fillStyle = rgba(farbe, deckung * anteil);
-      ctx.fillRect(von * d, quer * d, (bis - von) * d + 1, breite * d);
-      von = bis;
-    }
-  }
-  ctx.restore();
-}
-
 /* ------------------------------------------------- Treibendes Laub --- */
 
-let treiber: Treiber[] = [];
-let treiberFuer = -1;
+/** Der sichtbare Ausschnitt der Welt, in Welt-Einheiten. */
+function sicht(R: Rahmen, w: number, h: number): { x: number; y: number; w: number; h: number } {
+  return { x: -R.ox / R.scale, y: -R.oy / R.scale, w: w / R.scale, h: h / R.scale };
+}
 
 /**
  * Der Korridor wird beim Erscheinen festgelegt und nicht je Bild geprueft:
@@ -759,52 +731,59 @@ let treiberFuer = -1;
  * entweder links oder rechts am Spielfeld vorbei — oder gar nicht, wenn
  * daneben kein Platz ist.
  */
-function neuerTreiber(r: () => number, frei: FreiRect | null, w: number, oben: boolean): Treiber {
-  let vonU = -1;
-  let bisU = 1;
-  if (frei && w > 0) {
-    // u laeuft von -1 bis 1 ueber die Bildbreite, ein Pixel ist also 2/w.
-    const randU = (KORRIDOR_RAND / w) * 2;
-    const l = (frei.x / w) * 2 - 1 - randU;
-    const rr = ((frei.x + frei.w) / w) * 2 - 1 + randU;
-    const linksBreit = l + 1;
-    const rechtsBreit = 1 - rr;
-    const genug = randU * 2;
+function neuerTreiber(
+  r: () => number,
+  R: Rahmen,
+  w: number,
+  h: number,
+  frei: FreiRect | null,
+  oben: boolean
+): Treiber {
+  const V = sicht(R, w, h);
+  let vonX = V.x;
+  let bisX = V.x + V.w;
+  if (frei) {
+    const rand = KORRIDOR_RAND / R.scale;
+    const l = (frei.x - R.ox) / R.scale - rand;
+    const rr = (frei.x + frei.w - R.ox) / R.scale + rand;
+    const linksBreit = l - V.x;
+    const rechtsBreit = V.x + V.w - rr;
+    const genug = rand * 2;
     const nimmLinks =
       linksBreit > genug &&
       (rechtsBreit <= genug || r() < linksBreit / (linksBreit + rechtsBreit));
     if (nimmLinks) {
-      vonU = -1;
-      bisU = l;
+      bisX = l;
     } else if (rechtsBreit > genug) {
-      vonU = rr;
-      bisU = 1;
+      vonX = rr;
     } else {
       // Kein Platz neben dem Feld — dann faellt hier eben nichts.
-      vonU = 0;
-      bisU = 0;
+      vonX = bisX = V.x;
     }
   }
+  const px = 1 / R.scale; // ein Bildschirmpixel in Welt-Einheiten
   return {
-    u: vonU + r() * Math.max(0, bisU - vonU),
-    v: oben ? -1.05 - r() * 0.4 : r() * 2 - 1,
-    groesse: GROESSE_MIN - 1 + r() * 7,
+    x: vonX + r() * Math.max(0, bisX - vonX),
+    y: oben ? V.y - (20 + r() * 160) * px : V.y + r() * V.h,
+    groesse: (GROESSE_MIN - 1 + r() * 7) * px,
     dreh: r() * Math.PI * 2,
     id: BLATT_IDS[(r() * BLATT_IDS.length) | 0],
-    sink: 0.045 + r() * 0.055,
-    schwing: 0.02 + r() * 0.05,
+    // Sinken und Pendeln in Bildschirm-Tempo: ein treibendes Blatt ist Luft
+    // vor der Kamera, nicht Boden — es faellt gleich schnell, egal wie weit
+    // man herausgezoomt hat.
+    sink: (36 + r() * 44) * px,
+    schwing: (13 + r() * 32) * px,
     phase: r() * Math.PI * 2,
     drehRate: (r() - 0.5) * 0.9,
-    vonU,
-    bisU,
+    vonX,
+    bisX,
   };
 }
-
-const treibRng = rng(0xfa111eaf);
 
 /* ----------------------------------------------------------- Ausgabe --- */
 
 export interface Lage {
+  /** Bildschirmkoordinaten und Halblaenge in Bildschirm-Pixeln. */
   x: number;
   y: number;
   r: number;
@@ -813,38 +792,41 @@ export interface Lage {
 /**
  * Wo liegende Blaetter in diesem Bild sind, nach einem Schritt ihres
  * Lebens und bereinigt um das Spielfeld. Auch die, die gerade vom Himmel
- * auf ihre Heimat fallen.
+ * auf ihre Heimat fallen. Was ausserhalb des Bildschirms liegt, fehlt.
  *
  * Getrennt vom Zeichnen, damit tools/decor-check.ts die eine Zusage der
  * Deko pruefen kann, ohne einen Canvas nachzubauen: die Aussparung ist eine
  * Aussage ueber Koordinaten, nicht ueber Pixel.
  */
 export function liegendeLagen(
+  R: Rahmen,
   w: number,
   h: number,
   dt: number,
   frei: FreiRect | null
 ): Array<Lage & { b: Blatt }> {
-  const n = LIEGEND[grafik().laub];
-  liegendes(n);
-  lebe(w, h, dt, frei);
+  const B = bestand(R);
+  lebe(B, R, dt, frei);
 
   const out: Array<Lage & { b: Blatt }> = [];
-  for (const b of liegend) {
-    const x = (b.u * 0.5 + 0.5) * w + b.ox;
-    const y = (b.zustand === "kommt" ? b.fallV * 0.5 + 0.5 : b.v * 0.5 + 0.5) * h + b.oy;
-    if (imFreien(x, y, BLATT_RAND, frei)) continue;
-    out.push({ x, y, r: b.groesse, b });
+  const rand = BLATT_RAND;
+  for (const b of B.liegend) {
+    const x = schirmX(R, weltX(R, b.u) + b.ox);
+    const y = schirmY(R, weltY(R, b.v) - b.hoehe + b.oy);
+    if (x < -rand || x > w + rand || y < -rand || y > h + rand) continue;
+    if (imFreien(x, y, rand, frei)) continue;
+    out.push({ x, y, r: b.groesse * R.scale, b });
   }
   return out;
 }
 
 /**
- * Hintergrund: Himmel, Sonne, liegendes Laub. Wird direkt nach dem Fuellen
- * des Grundes gerufen, vor allem anderen.
+ * Hintergrund: Himmel und liegendes Laub. Wird direkt nach dem Fuellen des
+ * Grundes gerufen, vor allem anderen.
  */
 export function drawDecorBack(
   ctx: CanvasRenderingContext2D,
+  R: Rahmen,
   w: number,
   h: number,
   dt: number,
@@ -854,10 +836,9 @@ export function drawDecorBack(
   ladeBilder();
 
   himmel(ctx, w, h);
-  sonne(ctx, w, h);
 
-  for (const l of liegendeLagen(w, h, dt, frei)) {
-    zeichneBlatt(ctx, l.b, l.x, l.y, 0.5 * l.b.alpha);
+  for (const l of liegendeLagen(R, w, h, dt, frei)) {
+    zeichneBlatt(ctx, l.b, l.x, l.y, l.r, 0.5 * l.b.alpha);
   }
 }
 
@@ -867,50 +848,66 @@ export function drawDecorBack(
  * Zeitschritt-Genauigkeit, und sie soll auch nichts davon kosten.
  */
 export function fallendeLagen(
+  R: Rahmen,
   w: number,
   h: number,
   dt: number,
   frei: FreiRect | null
 ): Array<Lage & { f: Treiber }> {
   const g = grafik();
+  const B = bestand(R);
   const n = g.laub === "aus" || !g.bewegung ? 0 : TREIBEND[g.laub];
 
-  if (treiberFuer !== n) {
-    treiber = [];
-    for (let i = 0; i < n; i++) treiber.push(neuerTreiber(treibRng, frei, w, false));
-    treiberFuer = n;
+  if (B.treiberFuer !== n) {
+    B.treiber = [];
+    for (let i = 0; i < n; i++) B.treiber.push(neuerTreiber(B.treib, R, w, h, frei, false));
+    B.treiberFuer = n;
   }
 
+  const V = sicht(R, w, h);
   const out: Array<Lage & { f: Treiber }> = [];
-  for (let i = 0; i < treiber.length; i++) {
-    const f = treiber[i];
-    f.v += f.sink * dt;
+  for (let i = 0; i < B.treiber.length; i++) {
+    const f = B.treiber[i];
+    f.y += f.sink * dt;
     f.phase += dt * 1.3;
     f.dreh += f.drehRate * dt;
-    if (f.v > 1.1) {
-      treiber[i] = neuerTreiber(treibRng, frei, w, true);
+    if (f.y > V.y + V.h + 60 / R.scale) {
+      B.treiber[i] = neuerTreiber(B.treib, R, w, h, frei, true);
       continue;
     }
-    if (f.bisU <= f.vonU) continue;
+    if (f.bisX <= f.vonX) continue;
 
     // Das Pendeln bleibt IM Korridor. Ohne die Klammer addiert es sich auf
     // dessen Rand und traegt das Blatt genau dorthin, wo es nicht hin darf.
-    const u = clamp(f.u + Math.sin(f.phase) * f.schwing, f.vonU, f.bisU);
-    out.push({ x: (u * 0.5 + 0.5) * w, y: (f.v * 0.5 + 0.5) * h, r: f.groesse, f });
+    const x = clamp(f.x + Math.sin(f.phase) * f.schwing, f.vonX, f.bisX);
+    const sx = schirmX(R, x);
+    const sy = schirmY(R, f.y);
+    const sr = f.groesse * R.scale;
+    // Was ausserhalb des Bildes treibt, wird nicht gemeldet und nicht
+    // gezeichnet — ueber dem oberen Rand wartet es nur auf seinen Auftritt,
+    // und nach einer Kamerafahrt kann es weit daneben liegen.
+    if (sx < -sr - 4 || sx > w + sr + 4 || sy < -sr - 4 || sy > h + sr + 4) continue;
+    out.push({ x: sx, y: sy, r: sr, f });
   }
+  // Der Vordergrund ist der letzte Schritt des Bildes: hier klingt der Wind ab.
+  windAbklingen(dt);
   return out;
 }
 
 /** Vordergrund: die wenigen frei treibenden Blaetter. */
 export function drawDecorFront(
   ctx: CanvasRenderingContext2D,
+  R: Rahmen,
   w: number,
   h: number,
   dt: number,
   frei: FreiRect | null
 ): void {
-  if (!aktiv()) return;
-  for (const l of fallendeLagen(w, h, dt, frei)) {
-    zeichneBlatt(ctx, l.f, l.x, l.y, 0.62);
+  if (!aktiv()) {
+    windAbklingen(dt);
+    return;
+  }
+  for (const l of fallendeLagen(R, w, h, dt, frei)) {
+    zeichneBlatt(ctx, l.f, l.x, l.y, l.r, 0.62);
   }
 }

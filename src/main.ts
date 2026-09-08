@@ -21,7 +21,7 @@ import {
   loaderMarkup,
   setLoaderValue,
 } from "./loader";
-import { decorBoe, decorZeiger, drawDecorBack, drawDecorFront } from "./decor";
+import { decorBoe, decorZeiger, drawDecorBack, drawDecorFront, type Rahmen } from "./decor";
 import { grafik, initGrafik, setGrafik } from "./skin";
 import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
 import { drawArenaMiniature } from "./machine";
@@ -41,6 +41,7 @@ import {
   CURRENCY,
   SHARD_FROM_LEVEL,
   SHARD_PER_BUMP,
+  shardLevelMult,
   computePayout,
   type Currency,
   type Payout,
@@ -101,6 +102,13 @@ const SAVE_KEY = "dropfall.save.v7";
  * denselben Stand und laedt Himmel, Laub und Bewegung.
  */
 initGrafik();
+
+/**
+ * Wie weit das Laub ueber den Baum hinausreicht, in Welt-Einheiten. Der
+ * Baum selbst ist rund 1600 x 1500; mit diesem Rand liegt der Schwerpunkt
+ * des Laubs (Randdrang, siehe decor.ts) ausserhalb der Knoepfe.
+ */
+const LAUB_RAND_UM_BAUM = 650;
 
 /* --------------------------------------------------------- Zustand --- */
 
@@ -286,6 +294,20 @@ let stats = deriveStats({});
 /** Ab diesem Level fällt bei jedem Bump ein Splitter an. */
 const shardsActive = () => run.arena + 1 >= SHARD_FROM_LEVEL;
 
+/*
+ * Der Levelfaktor macht den Splitterwert eines Bumps krumm (1.12^n). Splitter
+ * sollen aber ganze Zahlen bleiben — eine Anzeige mit Nachkommastellen wäre
+ * für eine Sammelwährung nur Rauschen. Der Bruchteil wird deshalb übertragen
+ * und beim nächsten Bump mitgezählt: über den Lauf stimmt die Summe exakt.
+ */
+let shardCarry = 0;
+function grantShards(units: number): number {
+  shardCarry += units * shardLevelMult(run.arena);
+  const ganz = Math.floor(shardCarry);
+  shardCarry -= ganz;
+  return ganz;
+}
+
 const machine = new Machine({
   onGain: (v) => {
     if (!run.active) return;
@@ -311,9 +333,10 @@ const machine = new Machine({
     run.healed += run.life - vorher;
 
     if (shardsActive()) {
-      let n = SHARD_PER_BUMP;
-      if (Math.random() < stats.shardLuck) n += SHARD_PER_BUMP;
-      if (marked && Math.random() < stats.mark.shard) n += SHARD_PER_BUMP;
+      let units = SHARD_PER_BUMP;
+      if (Math.random() < stats.shardLuck) units += SHARD_PER_BUMP;
+      if (marked && Math.random() < stats.mark.shard) units += SHARD_PER_BUMP;
+      const n = grantShards(units);
       run.shards += n;
       state.shards += n;
     }
@@ -323,8 +346,9 @@ const machine = new Machine({
     // Splitterquelle. Vorher fällt hier nichts an.
     if (!run.active || !shardsActive()) return;
     if (Math.random() >= stats.shardHarvest) return;
-    run.shards += SHARD_PER_BUMP;
-    state.shards += SHARD_PER_BUMP;
+    const n = grantShards(SHARD_PER_BUMP);
+    run.shards += n;
+    state.shards += n;
   },
   // Die Maschine meldet, WAS passiert ist; die Zuordnung zu Klaengen und
   // die ganze Mischung stehen in audio.ts. Hier laeuft nur die Leitung.
@@ -1241,7 +1265,24 @@ function tick(): void {
    * randlastige Streuung die Mitte von allein frei.
    */
   const frei = state.view === "run" ? machine.bounds(vw, vh) : null;
-  drawDecorBack(ctx, vw, vh, dt, frei);
+  // Im Baum liegt das Laub in der Welt der Knoepfe und zoomt mit — als
+  // Boden, auf dem sie stehen. In der Arena ist der Rahmen der Bildschirm.
+  let rahmen: Rahmen;
+  if (state.view === "run") {
+    rahmen = { id: "arena", ox: 0, oy: 0, scale: 1, welt: { x: 0, y: 0, w: vw, h: vh } };
+  } else {
+    const cam = tree.camera(vw, vh);
+    const b = tree.worldBounds();
+    const rand = LAUB_RAND_UM_BAUM;
+    rahmen = {
+      id: "baum",
+      ox: cam.x,
+      oy: cam.y,
+      scale: cam.zoom,
+      welt: { x: b.x - rand, y: b.y - rand, w: b.w + rand * 2, h: b.h + rand * 2 },
+    };
+  }
+  drawDecorBack(ctx, rahmen, vw, vh, dt, frei);
 
   if (state.view === "run") {
     machine.render(ctx, vw, vh);
@@ -1249,7 +1290,7 @@ function tick(): void {
     tree.render(ctx, vw, vh, dt);
   }
 
-  drawDecorFront(ctx, vw, vh, dt, frei);
+  drawDecorFront(ctx, rahmen, vw, vh, dt, frei);
 
   updateHud();
   if (run.active) updateShop();

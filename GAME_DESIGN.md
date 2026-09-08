@@ -1016,23 +1016,31 @@ Buff-Nachricht.
 `decor.ts` legt zwei Ebenen um das Spiel: Himmel, Sonnenstrahlen und
 liegendes Laub dahinter, die wenigen fallenden Blätter davor.
 
-**Das Licht ist parallel und liegt auf der Schattenachse — und es hat eine
-Quelle.** Beides zugleich: die Schatten fallen überall im Bild 45° nach
-unten rechts, unabhängig davon, wo ein Objekt steht. Das ist Licht aus dem
-Unendlichen, also laufen die Strahlen parallel auf genau dieser Achse. Die
-**Sonne** selbst sitzt jenseits der oberen linken Ecke. Von ihr kommt ein
-gestufter Glanz in die Ecke (Viertelkreise in vier Stufen, kein Verlauf),
-und ihr **Fächer** schneidet als Maske aus den parallelen Bahnen den Teil
-aus, den sie beleuchtet — der Rest des Bildes bleibt Dämmerung. Die Bahnen
-verblassen nach hinten in drei Stufen. So liest sich das Licht als
-Sonnenschein mit Richtung, obwohl kein einziger Strahl von der
-Schattenachse abweicht.
+**Keine Sonne.** Drei Fassungen von Sonnenstrahlen wurden gebaut und
+verworfen: radial aus einem Punkt (widerspricht den parallelen Schatten),
+parallel ohne Quelle (Streifen, kein Sonnenschein), parallel mit Glanz und
+Fächer aus der Ecke (stimmig, aber im Bild zu viel). Der Abend steckt jetzt
+allein im Himmel und im Laub. Die Richtung des Lichts liest man an den
+Schatten ab, und die brauchen keine Strahlen als Beleg.
 
-Zwei Fassungen davor waren falsch. Die erste ließ die Strahlen radial aus
-einem Punkt auffächern: ein Fächer heißt naher Scheinwerfer, dann müsste
-jeder Schatten in eine andere Richtung zeigen. Die zweite legte parallele
-Bahnen symmetrisch über das ganze Bild — korrekt zu den Schatten, aber ohne
-Quelle, und ohne Quelle sind es Streifen, kein Sonnenschein.
+**Das Laub liegt in der Welt, nicht auf dem Glas.** Die Deko bekommt einen
+`Rahmen`: die Abbildung Welt → Bildschirm und die Ausdehnung der Welt. Im
+Baum ist das die Kamera des Baums (`TreeView.camera()`) und seine
+Ausdehnung plus 650 Einheiten Rand; in der Arena die Identität und der
+Bildschirm. Blätter haben Heimat und Größe in Welt-Einheiten und **zoomen
+mit** — beim Herauszoomen werden sie kleiner, wie die Knöpfe. Vorher lagen
+sie in Bildschirmkoordinaten, gleich groß bei jedem Zoom, und alles, was
+beim Zoomen nicht mitgeht, liest das Auge als Folie *vor* dem Bild. Eine
+Folie vor den Knöpfen macht sie flach. Jetzt sind sie der Boden, auf dem die
+Knöpfe stehen; die langen Schatten fallen darüber, und die Parallaxe beim
+Zoomen bestätigt die Tiefe. Der Baum und die Arena haben je einen eigenen
+Bestand.
+
+Wind bleibt eine Größe des Glases: Radius und Stoß werden in
+Bildschirm-Pixeln gedacht und in die Welt umgerechnet, damit ein Ruck ein
+Blatt bei jedem Zoom um dieselben zwanzig Pixel verschiebt. Die frei
+treibenden Blätter sinken ebenfalls in Bildschirm-Tempo — sie sind Luft vor
+der Kamera, nicht Boden.
 
 **Sie darf nie vor dem Spielfeld liegen.** `Machine.bounds()` meldet das
 Rechteck der Arena; liegende Blätter darin werden verworfen, fallende
@@ -1043,13 +1051,10 @@ Arenaformen und drei Dichten, jeweils 200 simulierte Sekunden mit Zeigerwind
 entlang der Arena-Kante und Zoom-Böen — der Fall, den die weiche Wand halten
 muss.
 
-**Sie muss leise sein.** Der erste Versuch lag bei 0.04–0.07 Deckkraft für
-die Strahlen und 0.16 für das Glimmen des Himmels. Das waren keine Strahlen
-mehr, sondern helle Balken quer durchs Bild, und die Knöpfe des Skill Trees
-standen nicht mehr davor. Jetzt: fünf Bahnen bei 0.015–0.030, Glimmen bei
-0.06. *Licht darf man ahnen; sobald man es liest, nimmt es dem Spiel den
-Vordergrund.* Breiten und Abstände sind bewusst ungleich — gleichmäßige
-lesen sich als Schraffur.
+**Sie muss leise sein.** Das Glimmen des Himmels lag zuerst bei 0.16 — die
+Bänder lasen sich als eigenes Muster und die Knöpfe verschwanden darin.
+Jetzt 0.06. *Licht darf man ahnen; sobald man es liest, nimmt es dem Spiel
+den Vordergrund.*
 
 **Der Grundriss ist deterministisch, das Bild lebt darauf.** Wo Blätter
 liegen, hängt an einem festen Seed — dieselbe Regel wie beim Baum-Layout.

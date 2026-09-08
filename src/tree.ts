@@ -432,7 +432,14 @@ export class TreeView {
 
   /* --------------------------------------------------------- Rendering --- */
 
-  render(ctx: CanvasRenderingContext2D, w: number, h: number, dt: number): void {
+  /**
+   * Die Kamera: Welt -> Bildschirm ist sx = x * zoom + panX. Oeffentlich,
+   * weil die Deko-Ebene das Laub in dieselbe Welt legt wie die Knoepfe —
+   * es soll mitzoomen, sonst liest es sich als Folie vor dem Bild. Zentriert
+   * beim ersten Aufruf, damit auch ein Bild VOR dem ersten render() schon
+   * die richtige Lage bekommt.
+   */
+  camera(w: number, h: number): { x: number; y: number; zoom: number } {
     if (!this.centered) {
       // Auf den STARTKNOTEN zentrieren, nicht auf die Mitte des Baums. Die
       // Bounding Box liegt weit weg von (0,0) — wer neu anfaengt, saehe sonst
@@ -442,6 +449,25 @@ export class TreeView {
       this.panY = h / 2 - start.y * this.zoom;
       this.centered = true;
     }
+    return { x: this.panX, y: this.panY, zoom: this.zoom };
+  }
+
+  /** Umschliessendes Rechteck aller Knoten, in Weltkoordinaten. */
+  worldBounds(): { x: number; y: number; w: number; h: number } {
+    if (!this.bounds) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of this.pos.values()) {
+        x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y);
+        x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+      }
+      this.bounds = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+    return this.bounds;
+  }
+  private bounds: { x: number; y: number; w: number; h: number } | null = null;
+
+  render(ctx: CanvasRenderingContext2D, w: number, h: number, dt: number): void {
+    this.camera(w, h);
 
     this.stepAnim(dt);
 

@@ -17,7 +17,7 @@
    Ein Test, der raten muss, prueft irgendwann etwas anderes als gemeint.
    ========================================================================= */
 
-import { decorBoe, decorZeiger, fallendeLagen, liegendeLagen, type FreiRect } from "../src/decor";
+import { decorBoe, decorZeiger, fallendeLagen, liegendeLagen, type FreiRect, type Rahmen } from "../src/decor";
 import { setSkin } from "../src/theme";
 import { setGrafik, type LaubDichte } from "../src/skin";
 
@@ -66,6 +66,9 @@ for (const [vw, vh] of GROESSEN) {
   // kaum Platz und ist damit der harte Fall fuer die fallenden Blaetter.
   for (const [aw, ah] of [[320, 430], [1250, 740]] as Array<[number, number]>) {
     const frei = arenaRect(vw, vh, aw, ah);
+    // In der Arena ist der Rahmen der Bildschirm — nur dort gibt es ein
+    // Spielfeld, das frei bleiben muss.
+    const R: Rahmen = { id: "arena", ox: 0, oy: 0, scale: 1, welt: { x: 0, y: 0, w: vw, h: vh } };
     for (const laub of DICHTEN) {
       setGrafik({ laub, bewegung: true, himmel: "baender" });
 
@@ -90,8 +93,8 @@ for (const [vw, vh] of GROESSEN) {
           decorZeiger(zx + Math.sin(t * 7) * 60, zy + Math.cos(t * 5) * 60);
         }
         if (i % 600 === 0) decorBoe(vw / 2, vh / 2, i % 1200 === 0 ? 70 : -55);
-        for (const l of liegendeLagen(vw, vh, 1 / 60, frei)) lagen.push(["liegend", l]);
-        for (const l of fallendeLagen(vw, vh, 1 / 60, frei)) lagen.push(["fallend", l]);
+        for (const l of liegendeLagen(R, vw, vh, 1 / 60, frei)) lagen.push(["liegend", l]);
+        for (const l of fallendeLagen(R, vw, vh, 1 / 60, frei)) lagen.push(["fallend", l]);
       }
 
       for (const [art, l] of lagen) {
@@ -111,10 +114,47 @@ for (const [vw, vh] of GROESSEN) {
   }
 }
 
+/* --- Baum-Rahmen: kein Spielfeld, aber Zoom und Kamera in Bewegung ------
+   Hier gibt es nichts freizuhalten. Geprueft wird, dass die Deko mit einer
+   wandernden, zoomenden Kamera nicht haengt, nichts Unendliches liefert und
+   nur Lagen im Bild meldet. */
+{
+  const welt = { x: -1200, y: -1100, w: 2900, h: 2800 };
+  let haengt = 0;
+  let ausserhalb = 0;
+  let lagenBaum = 0;
+  const t0 = Date.now();
+  for (let i = 0; i < 60 * 120; i++) {
+    const t = i / 60;
+    const zoom = 0.2 + 0.8 * (0.5 + 0.5 * Math.sin(t * 0.7));
+    const R: Rahmen = {
+      id: "baum",
+      ox: 640 - Math.sin(t * 0.3) * 900 * zoom,
+      oy: 400 - Math.cos(t * 0.2) * 700 * zoom,
+      scale: zoom,
+      welt,
+    };
+    if (i % 4 === 0) decorZeiger(640 + Math.sin(t * 9) * 300, 400 + Math.cos(t * 6) * 250);
+    if (i % 300 === 0) decorBoe(640, 400, 70);
+    const vw = 1280, vh = 800;
+    for (const l of [...liegendeLagen(R, vw, vh, 1 / 60, null), ...fallendeLagen(R, vw, vh, 1 / 60, null)]) {
+      lagenBaum++;
+      if (!Number.isFinite(l.x) || !Number.isFinite(l.y) || !Number.isFinite(l.r)) haengt++;
+      if (l.x < -60 || l.x > vw + 60 || l.y < -60 || l.y > vh + 60) ausserhalb++;
+    }
+  }
+  const ms = Date.now() - t0;
+  console.log(`Baum-Rahmen: ${lagenBaum} Lagen in 120 s Kamera-Fahrt, ${ms} ms Rechenzeit`);
+  if (haengt || ausserhalb) {
+    console.log(`FEHLER Baum-Rahmen — nicht endlich: ${haengt}, ausserhalb des Bildes gemeldet: ${ausserhalb}`);
+    verstoesse += haengt + ausserhalb;
+  }
+}
+
 console.log(`Blattlagen geprueft: ${geprueft}`);
 console.log(
   verstoesse === 0
-    ? "OK — kein Blatt liegt im Arena-Rechteck."
-    : `FEHLER — ${verstoesse} Blaetter im Arena-Rechteck.`
+    ? "OK — kein Blatt im Arena-Rechteck, keines ausserhalb des Bildes gemeldet."
+    : `FEHLER — ${verstoesse} Verstoesse (siehe oben).`
 );
 process.exit(verstoesse === 0 ? 0 : 1);
