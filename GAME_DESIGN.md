@@ -17,9 +17,10 @@ Man besitzt Kugeln — nicht Munition. Jede freigeschaltete Kugel ist genau einm
 im Feld und kehrt nach dem Abfluss durch die Rücklauf-Röhre zurück.
 
 Gespielt wird in **Läufen**. Ein Lauf endet, wenn die Lebensleiste leer ist.
-Während des Laufs kauft man mit Funken **Kugel-Stufen** und **markiert** eine
-Kugel per Klick; danach zahlt der Lauf in bleibenden Währungen aus, die man im
-Skill Tree ausgibt — 78 Knoten, davon je einer großer Ast pro Kugel.
+Während des Laufs kauft man mit Funken **Kugel-Stufen**, **markiert** eine
+Kugel per Klick und nimmt bei jedem **Fund** eine von drei Karten; danach zahlt
+der Lauf in bleibenden Währungen aus, die man im Skill Tree ausgibt — 78
+Knoten, davon je einer großer Ast pro Kugel.
 
 ---
 
@@ -58,14 +59,21 @@ Anschaffung, nicht ein Klick ins Leere.
 
 ---
 
-## 3a. Die vier Währungen
+## 3a. Die fünf Währungen
 
 | | Währung | Verdient durch | Ausgegeben für | Sichtbar |
 |---|---|---|---|---|
 | ✦ | **Funken** | jeden Kontakt *während* des Laufs | Kugel-Stufen im Lauf | nur im Lauf |
 | ◆ | **Geld** | Leistung im Lauf, ausgezahlt am Ende | Skill Tree, Grundausbauten | nur außerhalb |
 | ◈ | **Splitter** | jeder **direkte** Peg-Bump, ab Level 3 | Ast für die Lauf-Ökonomie | ab Level 3 |
-| ♛ | **Kronen** | **einmalig** je gemeisterter Arena — genau eine | ausschließlich **Einmalkäufe**: die vier weiteren Kugeln und die Markierung | ab der ersten |
+| ♛ | **Kronen** | **einmalig** je **freigespielter** Arena — genau eine | ausschließlich **Einmalkäufe**: die weiteren Kugeln, die Markierung, der Zugang zur Esse | ab der ersten |
+| ❈ | **Siegel** | **einmalig** je Meisterschaft und je Ausdauer-Ziel | Verzauberungen in der Esse und die dritte Ast-Stufe | ab dem ersten |
+
+**Jedes Ziel zahlt genau eine Währung.** Vorher zahlte die Meisterschaft die
+Krone, Tempo und Ausdauer zahlten Splitter. Die Krone hing damit am *schwersten*
+Ziel jeder Arena — wer es nicht schaffte, bekam nie eine weitere Kugel. Jetzt
+zahlt die Freischaltung, also der Weg nach vorn, die Krone; die beiden harten
+Ziele zahlen Siegel.
 
 Die Trennung ist der eigentliche Punkt: **Funken überleben den Lauf nicht.**
 Alles, was man mit ihnen kauft, gilt bis zum Laufende — sie geben dem einzelnen
@@ -73,9 +81,8 @@ Durchgang eine eigene kleine Kurve, statt ihn zu einem Auszahlungsknopf zu mache
 Geld taucht im Lauf bewusst nirgends auf: was der Lauf wert war, steht erst in
 der Auswertung fest.
 
-Kronen sind die knappste Währung überhaupt: **eine je Arena, danach nie wieder**
-— für die Meisterschaft, das schwerste Ziel eines Levels. Neun Arenen ergeben
-neun Kronen; ausgegeben werden sieben.
+Kronen sind knapp: **eine je Arena, danach nie wieder** — für die
+Freischaltung. Dreißig Arenen ergeben dreißig Kronen.
 
 **Kronen kaufen niemals ein Upgrade.** Kein „mehr Geld", kein „mehr Leben",
 keine Stufe irgendwo. Sie kaufen ausschließlich Dinge, die es vorher gar nicht
@@ -84,10 +91,9 @@ Markierung (♛ 2). Damit ist jede Krone ein Ereignis und nicht Kleingeld — un
 umgekehrt weiß man beim Anblick eines ♛-Knotens sofort, dass dahinter etwas
 Neues wartet und keine Prozentzahl.
 
-Tempo und Ausdauer zahlen deshalb **Splitter** statt Kronen (`60 × Level` bzw.
-`45 × Level`). Als *Ziele* zählen sie weiter für den Zutritt zur nächsten Arena
-— sie messen ja, wie gut ein Lauf läuft, und genau das ist auch das Thema der
-Splitter.
+Siegel sind die Währung der **Meisterschaft**: sie kommen nur aus den beiden
+Zielen, die man nicht nebenbei erfüllt, und sie kaufen nur Dinge, die es sonst
+nirgends gibt. Sechzig sind im Spiel.
 
 > **Die zweite Kugel kostet ausdrücklich keine Krone, sondern ◆ 550.**
 > Sie ist der Moment, in dem das Spiel aufgeht, und darf nicht hinter einem
@@ -142,6 +148,29 @@ Wäre die Rampe ebenfalls linear, verschöbe jede weitere Kugel das Laufende
 immer weiter nach hinten. Mit Exponent 1.8 landet der letzte Lauf der Kampagne
 bei rund zweieinhalb Minuten statt bei über fünf.
 
+### Die Ausdauer — dieselbe Zahl von der anderen Seite
+
+Die Auszahlung wird mit `Ausdauer = Leerung ^ 0.5` multipliziert, gerechnet mit
+der Leerung im Augenblick des Todes. Die Zahl, die den ganzen Lauf über als
+Bedrohung unter der Leiste stand, ist am Ende der Lohn dafür, ihr standgehalten
+zu haben. Beide stehen deshalb nebeneinander im HUD:
+
+```
+Leerung ×5.4  ·  Ausdauer ×2.31
+```
+
+**Warum kein zweiter Zeitbegriff:** Ein eigener Zähler „Sekunden überlebt" wäre
+eine zweite Messung derselben Sache. Die Leerungsrampe *ist* bereits das Maß
+dafür, wie tief man im Lauf steckt — sie steigt mit der Zeit und ist per
+`Bremse` beeinflussbar, also nicht bloß eine Uhr.
+
+**Warum die Wurzel:** Gemessen (`tools/money.ts`) reicht die Leerung am
+Laufende von ×1.4 in den ersten Leveln bis ×9.1 in Level 30. Roh auf die
+Auszahlung gelegt wäre sie der mit Abstand größte Faktor im Spiel und machte
+Abdeckung, Funken und den ganzen Auszahlungs-Ast zur Randnotiz. Die Wurzel
+lässt die Reihenfolge unverändert — länger ist immer mehr — und bringt die
+Spanne auf ×1.2 bis ×3.0.
+
 ---
 
 ## 5. Die Level-Auswahl
@@ -183,11 +212,12 @@ noch fehlen.
 
 | Ziel | Art | Bedingung | Belohnung |
 |---|---|---|---|
-| **Freischaltung** | Haupt | Decke **55–86 %** der Pegs in einem **einzigen Lauf** ab. | Öffnet das nächste Level. |
-| **Meisterschaft** | Haupt | Triff **alle** Pegs der Arena in einem **einzigen Lauf**. | ♛ **eine Krone**, einmalig — die einzige Kronenquelle im Spiel. |
-| **Tempo** | Bonus | Mach das Feld **innerhalb von 9–13 s** vollständig. | ◈ `60 × Level` Splitter, einmalig. |
-| **Ausdauer** | Bonus | Halte einen Lauf **18–128 s** am Leben. | ◈ `45 × Level` Splitter, einmalig. |
+| **Freischaltung** | Haupt | Decke **55–86 %** der Pegs in einem **einzigen Lauf** ab. | Öffnet das nächste Level **und** zahlt ♛ **eine Krone** — die einzige Kronenquelle. |
+| **Meisterschaft** | Haupt | Triff **alle** Pegs der Arena in einem **einzigen Lauf**. | ❈ **ein Siegel**, einmalig. |
+| **Ausdauer** | Haupt | Halte einen Lauf **19–252 s** am Leben. | ❈ **ein Siegel**, einmalig. |
 | **Splitter** | Hinweis | Kein Ziel, sondern der Vermerk, dass hier ◈ anfallen (ab Level 3). | — |
+
+Drei Ziele je Arena, dreißig Arenen: **30 Kronen und 60 Siegel** im ganzen Spiel.
 
 **Freischaltung und Meisterschaft sind getrennt.** Vorher waren sie dasselbe
 Ziel, und damit hing die gesamte Kampagne an einer Bedingung, die eine einzelne
@@ -195,11 +225,19 @@ weiße Kugel praktisch nicht erfüllen kann. Jetzt ist die Freischaltung der Weg
 nach vorn und die Meisterschaft das, wofür man später mit mehr Kugeln
 zurückkommt.
 
-**Warum es das Tempo-Ziel gibt:** Abdeckung **sättigt**. Sobald Flächenkugeln
-im Feld sind, wird jede Arena irgendwann voll, egal wie groß sie ist — in der
-Messung wurden Level 3 bis 9 im *ersten* Anlauf gemeistert. Abdeckung *je
-Sekunde* sättigt nicht: sie hängt an Pulsradius, Takt und Kugelzahl. Das Tempo
-ist damit das einzige Ziel, das über die ganze Kampagne ein Prüfstein bleibt.
+**Warum das Tempo-Ziel entfallen ist.** Es war der Prüfstein, der nicht
+sättigt: Abdeckung wird irgendwann in jeder Arena voll, Abdeckung *je Sekunde*
+nicht. Nur hing es vollständig am Puls — und der deckte in seiner alten Fassung
+241 mal je Sekunde das halbe Feld ab. Nach der Anteilsregel wurde „Feld voll in
+neun bis dreizehn Sekunden" unerreichbar: gemessen deckte der Bot Level 6 in
+**294 von 300 Läufen** vollständig ab und blieb trotzdem 300 Läufe dort hängen,
+weil er die dreizehn Sekunden nie schaffte. Ein Ziel, das nur eine einzige Kugel
+erfüllen kann, ist kein Prüfstein, sondern ein Nadelöhr.
+
+Seine Rolle übernimmt die **Ausdauer**. Sie sättigt langsamer als die Abdeckung,
+weil sie am Lebensleisten-Ausbau hängt statt an einer einzelnen Kugel, und ihre
+Vorgaben sind auf die gemessene Laufzeit beim ersten Besuch mal 1.12 gesetzt —
+knapp außer Reichweite, bis man mit einem besseren Baum wiederkommt.
 
 **Warum kein Geldziel:** Geld ist zugleich die Upgrade-Währung. Ein Geldziel
 würde den Eindruck erzeugen, in einem Level sei nur ein begrenzter Betrag zu
@@ -210,11 +248,11 @@ holen — und damit jedes Ertrags-Upgrade entwerten.
 Ein Level lässt sich erst betreten, wenn das vorige freigespielt ist **und**
 insgesamt genug Ziele erfüllt sind:
 
-| Level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
-|---|---|---|---|---|---|---|---|---|---|
-| **Zutritt ab … Zielen** | 0 | 1 | 2 | 5 | 8 | 12 | 16 | 20 | 25 |
+| Level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | … | 20 | … | 30 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Zutritt ab … Zielen** | 0 | 1 | 2 | 4 | 6 | 9 | 12 | 15 | 18 | … | 44 | … | 58 |
 
-Es gibt 4 Ziele je Arena, also 36 insgesamt. Die Schwelle wächst schneller als
+Es gibt 3 Ziele je Arena, also 90 insgesamt; verlangt werden am Ende 58. Die Schwelle wächst schneller als
 die Zahl der Level: **man kommt nicht durch, indem man nur geradeaus rennt.**
 Irgendwann muss man zurück und in einer früheren Arena die offene Meisterschaft
 oder Ausdauer holen — was dort, mit dem inzwischen stärkeren Aufbau, machbar
@@ -261,18 +299,59 @@ vollständig abgedeckt wurde, sonst schlicht „Lauf beendet".
 **Plaketten** — jede Freischaltung und jedes erstmals erfüllte Bonusziel
 erscheint als Chip unter dem Titel.
 
-**Karten** — Laufzeit, Peg-Treffer, Abdeckung *gegen das Freischaltziel*,
-verdiente Funken, gekaufte Kugel-Stufen, Bumper, geheilte Lebenszeit, verlorene
-Kugeln, *Feld voll nach … s gegen die Tempo-Vorgabe*. Dazu je nach Build:
-ausgelöste Pulse, Blitzeinschläge, entzündete Pegs, gesetzte Buffs, gesammelte
-Splitter. Karten für Kugeln, die man nicht besitzt, werden weggelassen.
+**Karten** — drei stehen immer da: *Laufzeit* mit dem erreichten
+Ausdauer-Faktor, *Abdeckung gegen das Freischaltziel* und *verdiente Funken*.
+Genau drei, weil das Raster drei Spalten hat: eine volle Reihe, kein
+angebrochener Rest.
+
+Alles Weitere liegt hinter `Mehr anzeigen (n)`: Peg-Treffer, gekaufte
+Kugel-Stufen, Bumper, geheilte Lebenszeit, verlorene Kugeln, *Feld voll nach …
+s*. Dazu je nach Build ausgelöste Pulse, Blitzeinschläge, entzündete Pegs,
+gesetzte Buffs, zerschlagene Barren, gesammelte Splitter. Karten für Kugeln,
+die man nicht besitzt, werden weggelassen.
+
+**Warum aufgeklappt und nicht alles:** Vorher standen bis zu fünfzehn Karten
+gleichrangig nebeneinander. Wer gerade gestorben ist, will aber zuerst drei
+Dinge wissen — wie weit bin ich gekommen, habe ich das Freischaltziel
+geschafft, und was hat es gebracht. Die Nachlese geht dabei nicht verloren, sie
+steht nur eine Zeile tiefer. Die Wahl gilt für die Sitzung: wer einmal
+aufgeklappt hat, muss nicht bei jedem Lauf erneut suchen.
 
 **Der Rechenweg** — drei Zeilen über der Belohnung zeigen, wie aus Funken Geld
 wurde: verdiente Funken mal Ertrag, abgedeckte Pegs mal Prämie, beides mal
 Faktor. Der Faktor nennt beide Bestandteile getrennt — den Levelfaktor der
 Arena und den Baum-Faktor aus `Handelsposten`/`Börse` — sonst sucht man den
-Unterschied vergeblich beim Level. Ohne diese Rechnung wäre die Auszahlung
+Unterschied vergeblich beim Level. Die **Ausdauer** steht als eigene Zeile
+darunter und nennt ihre Herkunft („Leerung nach 43.2 s"); wäre sie in den
+Faktor eingerechnet, sähe man nur eine größere Zahl und wüsste nicht, dass das
+Durchhalten sie verdient hat. Ohne diese Rechnung wäre die Auszahlung
 eine Zahl aus dem Nichts, und kein Ertrags-Upgrade wäre am Ergebnis ablesbar.
+
+**Der Rechenweg läuft ab, er steht nicht da.** Die Zeilen decken sich
+nacheinander auf, 240 ms auseinander; die beiden **Faktoren** kommen zuletzt
+und ihr Wert wackelt beim Erscheinen — sie sind der Moment, auf den die
+Rechnung zuläuft, weil sie alles davor vervielfachen. Danach erscheint die
+Gesamtbelohnung und das Geld **zählt hoch**, mit Auslauf: ein lineares
+Hochzählen liest sich als Ladebalken, ein auslaufendes als Zählwerk, das zur
+Ruhe kommt. Der ganze Ablauf dauert rund 2,8 s.
+
+Das Bild folgt dabei genau der Tonfolge, die es ohnehin schon gab — was man
+hört, deckt sich zugleich auf: Posten klingeln (`coin`), Faktoren steigen
+(`levelup`), unter dem Hochzählen läuft die Münzfolge.
+
+*Die Reihenfolge bleibt fest.* Naheliegend wäre, die Posten nach Betrag zu
+sortieren, damit der größte zuletzt kommt. Das wäre aber keine Rechnung mehr:
+Funken, Pegs, Barren, dann die Faktoren darauf — diese Reihenfolge **ist** der
+Rechenweg, und sie muss zwischen zwei Läufen gleich bleiben, sonst lässt sich
+nichts vergleichen.
+
+*Zwei Vorsichtsmaßnahmen.* Die Zeilen liegen von Anfang an im Fluss, nur
+unsichtbar — wären sie `display: none`, wüchse die Karte beim Aufdecken und die
+Knöpfe darunter wanderten bei jeder Zeile ein Stück nach unten. Und für die
+Endzahl wird vor dem Zählen die Breite reserviert, sonst schöbe die wachsende
+Zahl Splitter und Krone neben sich zur Seite. Bei `prefers-reduced-motion`
+steht alles sofort da; abbestellt war die Bewegung, nicht der Moment, deshalb
+bleibt die Tonfolge.
 
 **Funken nach Quelle** — waagerechte Balken mit Betrag und Prozentanteil, sortiert
 nach Größe. Das ist die eigentliche Build-Rückmeldung: man sieht sofort, welche
@@ -426,7 +505,7 @@ Jede freigeschaltete Kugel ist **genau einmal** im Feld.
 | Kugel | Farbe | Verhalten auf Stufe 0 |
 |---|---|---|
 | **Weiß** | Weiß | Zahlt bei jedem Peg-Kontakt. Profitiert zusätzlich von `Mehr Wert`. |
-| **Puls** | Teal | Alle 2.6 s ein Puls mit Radius 92, trifft **alle Pegs im Umkreis** (×0.55). |
+| **Puls** | Teal | Alle 2.6 s ein Puls mit Radius **22 % der Arenabreite**, trifft **alle Pegs im Umkreis** (×0.55). |
 | **Blitz** | Blau | 22 % Chance pro Kontakt, Blitze auf die **4 nächsten Pegs** im Umkreis 135 (×0.8). |
 | **Feuer** | Orange | Entzündet berührte Pegs für 4.5 s. Sie zahlen alle 0.5 s weiter (×0.35), Stapel bis 4× **mit abnehmendem Effekt** (0.6 je Stapel). Der Brand ist ein Zusatz zum direkten Treffer und soll den Startwert der anderen Kugeln nicht überholen. |
 | **Buff** | Magenta | Sammelt **selbst nichts**. Hinterlässt 5 s lang einen Effekt: getroffene Pegs und Kugeln zahlen doppelt. |
@@ -440,9 +519,15 @@ Tempo, nicht zur Laufzeit. Für die Laufzeit sorgen `Drop-Tempo`, `Heilung`,
 `Königsruhe` und `Bremse`.
 
 Die Heilung je direktem Treffer skaliert mit der Zahl aktiver Kugeln ab:
-100 % bei einer, 85 % bei zwei, 75 % bei drei und 68 % ab vier Kugeln. So
+`1 / (1 + 0.26 × (Kugeln − 1))`, also 100 %, 79 %, 66 %, 56 %, 49 % … So
 bleibt eine neue Kugel stark, ohne durch zusätzliche Lebenszeit noch einen
 zweiten vollständigen Multiplikator zu erhalten.
+
+Früher stand hier eine Treppe aus vier festen Werten, die bei vier Kugeln
+endete. Mit Prisma- und Teilungskugel werden es sieben, und gemessen liefen
+die letzten beiden Arenen mit vollem Baum über den 300-Sekunden-Deckel der
+Simulation hinaus — also faktisch endlos. Die Formel setzt die Treppe stetig
+fort, egal wie viele Kugeln noch dazukommen.
 
 ### Kugel-Stufen — der Ausbau im Lauf
 
@@ -459,10 +544,10 @@ obendrauf, nie an ihm vorbei.
 | Kugel | Kosten Stufe 1 | Wachstum | Wert je Stufe | Zweiteffekt je Stufe |
 |---|---|---|---|---|
 | **Weiß** | 10 | ×1.50 | +30 % | — (dafür der steilste Wert) |
-| **Puls** | 16 | ×1.52 | +22 % | Takt ×0.94, Radius +7 |
-| **Blitz** | 20 | ×1.54 | +22 % | Chance +3 %-Punkte (max 92 %), je 4 Stufen +1 Ziel |
-| **Feuer** | 20 | ×1.54 | +22 % | Brand +0.45 s, je 5 Stufen +1 Stapel |
-| **Buff** | 24 | ×1.56 | — | Dauer +0.5 s, Faktor +0.12 |
+| **Puls** | 16 | ×1.52 | +6 % | Takt-*Rate* +0.085, Radius +0.05 %-Punkte |
+| **Blitz** | 20 | ×1.54 | +10 % | Chance +3 %-Punkte (max 92 %), Ziele +0.08 %-Punkte des Feldes |
+| **Feuer** | 20 | ×1.54 | +12 % | Brand +0.45 s, je 5 Stufen +1 Stapel |
+| **Buff** | 24 | ×1.56 | — | Dauer +0.5 s, Faktor +0.02 |
 
 Obergrenze: **Stufe 12** je Kugel und Lauf, per `Meisterschaft` (◆) und
 `Vollendung` (◈) bis **Stufe 90**. Ohne Deckel entartet ein sehr langer Lauf; mit einem *festen*
@@ -543,6 +628,113 @@ den man abwägen muss.
 
 ---
 
+## 7b. Der Fund
+
+Alle paar Sekunden legen sich **drei Karten** an den Feldrand, und man nimmt
+eine davon. Sie gilt nur für diesen Lauf und ist mit dem letzten Funken wieder
+weg — wie die Kugel-Stufen, und aus demselben Grund.
+
+**Warum es das braucht.** Im Lauf gab es genau zwei Handlungen: Stufen kaufen
+und eine Kugel markieren. Beide finden in der Seitenleiste statt, beide sind
+nach dem dritten Lauf Routine, und die Markierung ist ausdrücklich als
+*einmalige* Entscheidung gebaut. Man sah der Arena zu, statt sie zu spielen.
+Der Fund ist die dritte Handlung, und er ist die einzige, die sich zwischen
+zwei Läufen unterscheidet.
+
+### Der Takt hängt an der Leerung, nicht an der Uhr
+
+Ein Fund erscheint, wenn die Leerungsrampe eine neue Schwelle überschreitet:
+**×1,20, danach ×1,25 je Fund.**
+
+| Lauf | Funde | bei |
+|---|---|---|
+| Kessel, 25 s, Rampe 30 | 2 | 12 · 20 s |
+| Halle, 55 s, Rampe 30 | 6 | 12 · 20 · 28 · 35 · 43 · 52 s |
+| Kathedrale, 112 s, Rampe 46 | 8 | 19 · 31 · 43 · 54 · 66 · 79 · 93 · 109 s |
+| Endlauf, 226 s, Rampe 62 | 11 | 25 · 42 · 58 · 73 · 89 · 107 · 126 · 147 · 170 · 196 · 225 s |
+
+**Warum nicht alle 25 Sekunden.** Ein fester Takt gäbe dem Kessel-Lauf einen
+einzigen Fund und dem Endlauf neun — die Spanne der Laufzeiten beträgt 9×, und
+eine Uhr überträgt sie ungedämpft. Über die Rampe sind es 2 und 11, also 5,5×.
+Das ist dieselbe Dämpfung, die `Ausdauer = Leerung ^ 0.5` schon auf die
+Auszahlung legt, und sie fällt hier ohne zweite Formel ab.
+
+**Warum ausgerechnet die Leerung.** Sie steht bereits im HUD („Leerung ×5.4")
+und ist bereits die sichtbare Bedrohung. Der Fundzähler ist damit eine zweite
+Marke auf einer Skala, die der Spieler ohnehin liest — kein neuer Zeitbegriff,
+kein zweiter Balken. Dasselbe Argument wie in Abschnitt 4 gegen einen eigenen
+Zähler „Sekunden überlebt".
+
+**Der Nebeneffekt ist gewollt.** `Bremse` streckt den Abstand zwischen zwei
+Funden von rund 8 s auf 17 s. Späte Läufe sind also nicht nur länger, sondern
+auch ruhiger: mehr Funde im Ganzen, weniger je Minute.
+
+### Drei Sorten, immer eine von jeder
+
+| Sorte | Was sie tut | Beispiele |
+|---|---|---|
+| **Wert** | wirkt sofort auf den Ertrag | *Nachhall* — jeder Puls löst 0,4 s später einen zweiten, halb starken aus · *Zunder* — zerbrochene Barren zünden ihre Nachbarpegs an · *Kettenschlag* — jeder Blitz springt einmal weiter · *Schneise* — ab Serie 12 zieht die weiße Kugel eine Spur, gestreifte Pegs zahlen mit |
+| **Zeit** | verlängert den Lauf | *Atem* — die Leerungsrampe fällt um 15 s zurück · *Weite* — Obergrenze der Leiste +6 s, sofort gefüllt · *Rücklauf* — die Röhre läuft doppelt so schnell · *Ruhe* — ein Peg heilt wieder alle 0,2 s statt 0,35 s |
+| **Wagnis** | stark, mit Haken | *Sturz* — Schwerkraft ×1,5, mehr Treffer je Sekunde, aber weniger Heilung je Treffer · *Aderlass* — sofort 8 s Lebenszeit weg, dafür alle Kugel-Stufen +3 · *Gier* — Funken ×1,8, aber Barren heilen nicht mehr |
+
+Die feste Sortenverteilung ist der Grund, warum die Wahl lesbar bleibt: man
+vergleicht nicht drei Texte, sondern beantwortet immer dieselbe Frage.
+
+> **Ernte ich jetzt — oder kaufe ich mir die Zeit, später mehr zu ernten?**
+
+Zeit früh genommen heißt: mehr Schwellen erreicht, mehr Funde, größerer Bau.
+Zeit spät genommen ist fast wertlos. Damit trägt der Fund dieselbe Spannung wie
+der ganze Lauf, nur als Entscheidung statt als Multiplikator — und weil *Atem*
+die Rampe zurücksetzt, verzögert eine Zeit-Karte zugleich den nächsten Fund.
+Der Kreislauf schließt sich von selbst, statt sich aufzuschaukeln.
+
+### Karten ändern Verhalten, keine Prozente
+
+Dieselbe Regel wie bei den Kronen: was man aufdeckt, muss man **sehen** können.
+Eine Karte „+18 % Blitzwert" wäre die Kugel-Stufen-Leiste noch einmal, nur in
+Kartenform — zwei Systeme, die dasselbe tun, und der Fund verlöre genau das,
+was ihn von der Seitenleiste unterscheidet.
+
+Karten stapeln: dieselbe kann erneut erscheinen und verstärkt sich. Der
+Kartenpool hängt an den besessenen Kugeln — keine Puls-Karte ohne Puls-Kugel,
+so wie die Auswertung Karten für fehlende Kugeln weglässt.
+
+### Nichts hält an — aber es liegt nur ein Angebot
+
+Die drei Karten legen sich an den Feldrand und bleiben liegen, bis man wählt.
+Physik, Leiste und Rampe laufen weiter. Wer nur zusehen will, darf das.
+
+Der Druck kommt von anderswo: **solange ein Angebot offen liegt, löst die
+nächste Schwelle keines aus.** Sie geht nicht verloren, sie wartet. Zögern
+kostet damit keine Lebenszeit, sondern *Funde* — ein Druck, der ohne Timer
+auskommt, den Fluss nicht bricht und sich von selbst anpasst: im hektischen
+Endlauf ist er scharf, im ersten Kessel-Lauf spürt man ihn nicht.
+
+**Warum keine Pause und keine Zeitlupe.** Bei elf Funden im Endlauf wäre eine
+harte Pause elfmal ein Schnitt durch denselben Lauf. Zeitlupe wäre milder,
+kostet aber die Eigenschaft, die das Spiel bisher hat: dass man es auch laufen
+lassen kann, ohne etwas zu verpassen.
+
+Verfällt ein Angebot beim Laufende, ist es weg. Das ist die einzige harte
+Strafe im System und braucht keine Erklärung im UI.
+
+### Anschluss an den Baum und an die Seitenleiste
+
+Der Fund wird durch einen **♛-Knoten** freigeschaltet — er ist etwas, das es
+vorher nicht gab, also genau das, wofür Kronen da sind. Danach: ◆-Knoten senken
+den Schwellenfaktor unter 1,25 und geben damit mehr Funde je Lauf, ◈ erlaubt
+das Neuziehen einer Karte, ❈ schaltet seltene Karten frei.
+
+**Die Kugel-Stufen bekommen einen Autokauf.** Zwei Systeme, die im selben
+Augenblick um dieselbe Aufmerksamkeit ringen, ergeben kein doppelt so
+interessantes Spiel, sondern ein hektisches. Ein Schalter je Kugel („kaufen,
+sobald bezahlbar") macht das stetige Wachsen automatisch und den Fund zur
+eigentlichen Handlung im Lauf. Die Entscheidung „breit oder tief" wandert damit
+vom Klickzeitpunkt in die Schalterstellung — sie verschwindet nicht, sie wird
+nur einmal getroffen statt zwanzigmal.
+
+---
+
 ## 8. Der Skill Tree
 
 **78 Knoten, 789 Stufen, drei Währungen.** Der Baum hat drei Sorten Ast, und
@@ -618,15 +810,15 @@ Stufe:
 | Original ◆ | Zwilling ◈ | je Stufe |
 |---|---|---|
 | Leitfähigkeit | Ionisierung | +1.4 % → **+3.0 %** Auslösechance |
-| Verästelung | Gabelung | +1 Ziel je 2 Stufen → **+1 Ziel je Stufe** |
+| Verästelung | Gabelung | +0.6 → **+1.3 %-Punkte** des Feldes als Ziele |
 | Zunder | Dauerbrand | +0.5 s → **+1.3 s** Brand |
-| Feuersbrunst | Flächenbrand | +2 → **+6** brennende Pegs |
-| Taktgeber | Metronom | −2.5 % → **−5.5 %** Puls-Takt |
-| Weite | Schallmauer | +5 px → **+12 px** Radius |
-| Mehr Wert | Klarer Schliff | ×1.22 → **×1.40** |
+| Feuersbrunst | Flächenbrand | +0.8 → **+1.8 %-Punkte** des Feldes brennend |
+| Taktgeber | Metronom | +0.06 → **+0.14** auf die Puls-*Rate* |
+| Weite | Schallmauer | +0.22 → **+0.45 %-Punkte** der Arenabreite |
+| Mehr Wert | Klarer Schliff | ×1.10 → **×1.09** |
 | Nachwirkung | Langzeitwirkung | +0.4 s → **+1.1 s** Buff |
-| Heilung | Genesung | +0.028 s → **+0.065 s** je Treffer |
-| Königsruhe | Ewige Ruhe | +6 s → **+14 s** Leben |
+| Heilung | Genesung | +0.028 s → **+0.04 s** je Treffer |
+| Königsruhe | Ewige Ruhe | +6 s → **+8 s** Leben |
 | Auszeichnung | Orden | +9 % → **+22 %** auf die markierte Kugel |
 
 So hat jeder Ast zwei Tempi: **Geld bringt ihn zum Laufen, Splitter bringen ihn
@@ -727,8 +919,15 @@ kann trotzdem nichts davon einordnen.
 
 ### Jede Währung braucht eine Senke ohne Boden
 
-`Ausbeute` (◆, 60 Stufen) und `Raffinerie` (◈, 40 Stufen) sind absichtlich nicht
-auszureizen, dazu `Handelsposten` (◆, 15), `Börse` (◈, 12) und `Bremse` (◈, 14). Vorher hatte **jeder**
+`Ausbeute` (◆, 60 Stufen) ist absichtlich nicht auszureizen, dazu
+`Handelsposten` (◆, 15) und `Börse` (◈, 12).
+
+**Bei den Splittern gilt das ausdrücklich nicht mehr.** `Raffinerie` hatte 40
+Stufen und kostete zusammen drei Billionen — eine ganze Kampagne bringt
+gemessen rund eine halbe Million. Der Knoten war nicht schwer, sondern
+unerreichbar, und mit ihm der ganze Splitter-Ast. Die bodenlose Senke bleibt
+beim Geld; Splitter haben eine erreichbare Obergrenze und bleiben im lesbaren
+Tausender- bis Millionenbereich. Vorher hatte **jeder**
 Node eine kleine Höchststufe, der gesamte Geldbaum kostete zusammen 31 k — und
 ein einziger später Lauf brachte 74 k ein. Ab da gab es nichts mehr zu kaufen:
 das Spiel war nicht zu Ende, es war nur leer.
@@ -759,14 +958,33 @@ multipliziert mit dem Werkstatt-Rabatt.
 ### Nach dem Lauf: Geld
 
 ```
-Geld = ( verdiente Funken × Ertrag  +  abgedeckte Pegs × Prämie )
-       × Levelfaktor × Baum-Faktor
+Geld = ( verdiente Funken × Ertrag  +  abgedeckte Pegs × Prämie
+         + zerschlagene Barren × 10 )
+       × Levelfaktor × Baum-Faktor × Ausdauer
 
-Ertrag      = 5 % + 0.7 %-Punkte je `Zoll` + 1.8 %-Punkte je `Auszahlung`
-Prämie      = 10 + 3 je `Prämie` + 9 je `Kopfgeld`
+Ertrag      = 15 % + 0.8 %-Punkte je `Zoll` + 1.2 %-Punkte je `Auszahlung`
+Prämie      = 4 + 2 je `Prämie` + 4 je `Kopfgeld`
 Levelfaktor = 1.3 ^ (Levelnummer − 1)
 Baum-Faktor = (1 + 0.05 × `Handelsposten`) × 1.12 ^ `Börse`
+Ausdauer    = Leerung am Laufende ^ 0.5   (siehe Abschnitt 4)
 ```
+
+**Warum das Geld aus Funken kommt und nicht aus Abdeckung.** Gemessen stammte
+die Auszahlung in Level 1 zu **98 % aus abgedeckten Pegs** und nur zu 2 % aus
+Funken; erst ab Level 9 drehte sich das Verhältnis. Die Abdeckung ist aber eine
+*einmalige* Größe — ein Feld hat so viele Pegs, wie es hat. Wer sein Geld
+daraus bezieht, spielt die ersten Level auf eine Obergrenze zu, die keine Kugel
+und kein Upgrade verschieben kann; die Kugel-Upgrades, das eigentliche Spiel,
+zahlen sich am Konto nicht aus. Funken dagegen sind das, was der Lauf
+tatsächlich leistet.
+
+Verschoben wurde deshalb nicht die Summe, sondern die Herkunft. Der Grundsatz
+je Funken verdreifacht sich (5 % → 15 %) und wirkt genau dort, wo Funken bisher
+wertlos waren: am Anfang, ohne Knoten. Der Zuwachs je Knoten wird dafür
+flacher — voll ausgebaut liegt der Ertrag bei 39 % statt 35 %, das Spätspiel
+bleibt also, wo es war. Die Prämie je Peg fällt von 10 auf 4 im Grund und von
+136 auf 72 voll ausgebaut: eine echte Einnahme, deren beide Knoten kaufenswert
+bleiben, aber nicht mehr die tragende.
 
 Der Levelfaktor wächst geometrisch, aber mit kleinem Schritt. Ein höheres Level
 bringt ohnehin schon mehr Pegs, mehr Kontakte und längere Läufe; käme ein
@@ -896,6 +1114,218 @@ Sparphase für die Puls-Kugel, L5 Halle (≈15 Läufe) die für den nächsten
 Ausbauschritt; die übrigen sieben liegen zwischen 1 und 6 Läufen. Ob dieses
 Profil — zwei lange Plateaus statt einer gleichmäßigen Kurve — gewollt ist,
 ist eine offene Design-Frage und keine gemessene Tatsache.
+
+### Die Anteilsregel
+
+> **Flächenwirkung wird in Anteilen der Arena gemessen, nicht in Pixeln und
+> Stückzahlen.**
+
+Das gilt für den Puls-Radius, die Zahl der Blitzziele und die Höchstzahl
+gleichzeitig brennender Pegs. Vorher standen dort absolute Zahlen, und bei
+30 Arenen von 320 bis 1250 Pixeln Breite bedeutet dieselbe Zahl an beiden
+Enden etwas völlig anderes. Gemessen mit vollem Baum:
+
+| | vorher | in der kleinsten Arena | jetzt |
+|---|---|---|---|
+| Puls-Radius | 902 px | **192 %** der Kesselbreite | 34 % der Breite |
+| Blitz-Ziele | 39 | **144 %** aller Pegs | 25 % aller Pegs |
+| Brennende Pegs | 80 | **296 %** des Feldes | 44 % des Feldes |
+
+In kleinen Arenen war damit jeder Flächeneffekt ein Vollbild und die anderen
+Kugeln bedeutungslos. Mit Anteilen wächst die Wirkung mit der Arena mit:
+derselbe Ausbau ist im Dornenfeld absolut viel stärker als in der Kammer,
+ohne dort alles plattzumachen. Das stützt genau die Leitlinie, dass der
+große Fortschritt aus den **Arenen** kommt und der Baum ihn nur verstärkt.
+
+### Der Puls-Takt: hyperbolisch statt geometrisch
+
+Der Takt lautete `2.6 × 0.94^Stufe`. Solange die Stufendecke bei 12 lag, war
+das harmlos; mit `Meisterschaft` und `Vollendung` steht sie bei **90**, und
+dort ergab die Formel einen Takt von **0.004 s** — 241 Pulse je Sekunde,
+begrenzt nur noch durch die Simulationsrate.
+
+Neu ist der Takt `2.6 / (1 + 0.055 × Stufe + Baum-Rate)`. Damit wächst die
+Puls-*Rate* linear mit der Stufe, so wie der Wert jeder anderen Kugel linear
+mit ihrer Stufe wächst. Baum-Knoten geben ebenfalls einen Zuschlag auf die
+Rate statt eines Faktors auf den Takt — Zuschläge addieren sich, Faktoren
+multiplizieren sich, und nur das Zweite kann gegen null laufen.
+
+### Wieviel eine Kugel ihrer Stufe entnimmt
+
+Der Entwurf sagt seit jeher: *die weiße Kugel wächst im Wert am steilsten,
+alle anderen zahlen einen Teil ihres Zuwachses in ihre eigene Mechanik.* Das
+war ein Vorsatz, keine Zahl — tatsächlich standen alle vier Mechanikkugeln
+bei +22 % je Stufe gegen +30 % bei der weißen, also fast gleich steil **und**
+obendrauf ihre Mechanik. Beim Puls wirkte die Stufe sogar dreifach: Wert,
+Takt und Radius zugleich.
+
+Die Wertkurven sind jetzt danach bemessen, wieviel eine Kugel ihrer Stufe
+schon als Mechanik entnimmt: Weiß +30 %, Feuer +12 %, Blitz +10 %, Puls +6 %.
+
+### Der private Multiplikator der weißen Kugel
+
+`Mehr Wert` ×1.22 und `Klarer Schliff` ×1.40 ergaben zusammen **×1120** — nur
+für die weiße Kugel. Die Ertrags-Knoten der anderen vier heben ihren
+Typfaktor bestenfalls von 0.35 auf 0.77, also rund ×2. Gemessen war die
+weiße Kugel bei vollem Baum dadurch **100- bis 479-mal** so stark wie jede
+andere: der Puls war im Spätspiel übermächtig, die weiße Kugel war es im
+Baum. Beide Multiplikatoren stehen jetzt bei ×1.10 und ×1.09.
+
+### Der Buff zählte zweimal
+
+`buffMult` wurde sowohl auf die gebuffte **Kugel** als auch auf den gebufften
+**Peg** angewandt — und damit quadriert. Bei vollem Ausbau war das
+16.28² = **265×**, aus einer einzigen Kugel, die selbst gar nichts sammelt;
+gemessen hob die Buff-Kugel den Ertrag der weißen um das **214fache**. Sind
+beide gebufft, gibt es jetzt einen deutlichen, aber kleinen Zuschlag (×1.25)
+statt eines zweiten vollen Faktors.
+
+### Splitter bekommen einen Levelfaktor
+
+Geld hat eine Rückkopplung: mehr Geld kauft `Ausbeute`, das gibt mehr Funken,
+das gibt mehr Geld — dazu der Levelfaktor `1.3^n`. Splitter hatten von beidem
+nichts: ein Stück je direktem Bump, in jeder Arena gleich. Ihre Einnahme wuchs
+linear, ihre Kosten geometrisch.
+
+Gemessen brachte eine ganze Kampagne **54 000** Splitter, während alle
+◈-Knoten zusammen **drei Billionen** kosteten — es fehlte der Faktor
+**55 Millionen**. Splitter tragen jetzt `1.12^n`, bewusst flacher als das Geld,
+und der Bruchteil wird von Bump zu Bump übertragen, damit die Anzeige ganze
+Zahlen bleibt.
+
+### Gemessen: vorher und nachher
+
+`tools/balance.ts` vergleicht die Kugeln unter festgehaltenen Bedingungen —
+jede allein in der Arena, alle auf derselben Stufe, feste Laufzeit, feste
+Seeds. Die Kennzahl ist die **Spreizung**: stärkste durch schwächste Kugel.
+
+| | vorher | jetzt |
+|---|---|---|
+| Spreizung, voller Baum, große Arena | 104–299× | **1.4×** |
+| Puls gegen Weiß, Stufe 90 ohne Baum | bis 1937× | 1.1–2.3× |
+| Buff-Faktor auf die weiße Kugel | 214× | 2.8–6.1× |
+| Funken nach Quelle (Kampagne) | Puls 59.6 % | Weiß 42 %, Blitz 20 %, Feuer 23 %, Puls 15 % |
+| Splitter: bezahlbarer Anteil des ◈-Astes | 0.0000 % | 35 % |
+| Kampagne | 133 Läufe / 169 min | 97 Läufe / 130 min |
+
+Der letzte Lauf der Kampagne dauert jetzt rund 226 s. Vor dem Eingriff lief er
+über den 300-Sekunden-Deckel der Simulation hinaus, endete also gar nicht mehr
+von selbst.
+
+**In kleinen Arenen bleibt eine Spreizung von rund 4× stehen**, weil dichte
+Felder die direkt fallenden Kugeln bevorzugen und Flächenkugeln dort wenig zu
+treffen haben. Das ist eine Folge der Anteilsregel und gewollt: die Wahl der
+Arena soll etwas mit dem Build zu tun haben.
+
+### Der Spielstand wird umgerechnet, nicht weggeworfen
+
+Beim Sprung von v6 auf v7 wurde die Umrechnung umgangen, indem der
+Speicherschlüssel stieg — der alte Stand war damit still weg. Das ist diesmal
+ausgeschlossen: es existiert genau ein echter Spielstand.
+
+Gelesen wird deshalb weiter `dropfall.save.v7`, geschrieben ausschließlich
+`dropfall.save.v8`. Der alte Eintrag bleibt unberührt daneben liegen — falls
+an der Umrechnung etwas falsch war, gibt es einen Rückweg. Erkannt wird ein
+alter Stand am fehlenden Feld `sigils`.
+
+Gerechnet statt geraten:
+
+```
+Kronen = Anzahl freigespielter Arenen  −  bereits ausgegebene Kronen
+Siegel = Anzahl Meisterschaften        +  Anzahl erfüllter Ausdauer-Ziele
+```
+
+Die ausgegebenen Kronen stehen exakt in den gekauften Knoten und werden von
+dort aufsummiert; ein gespeicherter Kontostand allein sagt nicht, wieviel
+schon ausgegeben wurde. **Gekaufte Knoten werden nie zurückgenommen** — auch
+dann nicht, wenn ein Stand nach der neuen Rechnung mehr Kronen ausgegeben hat,
+als er verdient hätte. In dem Fall steht der Kontostand auf null statt im
+Minus, und der Hinweis beim Start sagt das auch.
+
+Geprüft wird das von `tools/migration-check.ts` gegen konstruierte Stände —
+nicht von Hand im Browser, wo ein Fehler den Stand schon zerstört hat, bevor
+man ihn sieht. Die Zusicherungen: kein Konto wird negativ, gekaufte Knoten
+bleiben unangetastet, die Siegelzahl entspricht genau den erfüllten Zielen,
+und zweimal umrechnen ändert nichts.
+
+## 8a. Die Esse und die Verzauberungen
+
+Der Skill Tree ist **reine Zunahme**: jeder Knoten macht etwas besser, nie
+etwas schlechter. Genau deshalb fühlen sich die späten Knoten wie Verwaltung
+an. Eine Verzauberung ist dagegen ein **Tausch** — sie hat immer einen Vorteil
+*und* einen Haken. Das ist der ganze Unterschied und der Grund, warum sie ein
+eigenes System ist und kein weiterer Ast.
+
+### Die Regeln
+
+1. **Genau eine Verzauberung je Kugel.** Die Kugel *ist* ihr Element — „meine
+   Frost-Blitzkugel“. Bei sieben Kugeln und sechs Elementen bleibt immer eine
+   ohne; das ist Absicht.
+2. **Einzelstück.** Zu jedem Zeitpunkt kann nur *eine* Kugel Frost tragen. Wer
+   Frost zweimal will, schmiedet ein zweites Exemplar — teuer. So kann man nie
+   einfach „das beste Element“ überall hinlegen.
+3. **Umstecken ist gratis.** Die Entscheidung ist ein Build, keine Ressource.
+   Wer fürs Ausprobieren zahlen muss, probiert nie etwas aus.
+4. Bezahlt wird alles mit **Siegeln** — Schmieden wie Aufstiege.
+5. **Ersatzwirkung.** Ein Element wirkt auf jeder Kugel gleich. Wo das ins
+   Leere liefe, greift es auf die Währung der Kugel über.
+
+Die Esse selbst kostet **eine Krone** und hängt an der `Werkstatt` — dort, wo
+es schon um Handwerk und um die Kosten der Kugel-Stufen geht. Damit bleibt die
+Kronenregel intakt: sie kauft etwas, das es vorher gar nicht gab, hier eine
+ganze zweite Ansicht.
+
+### Die sechs Elemente
+
+| Element | Vorteil | Haken |
+|---|---|---|
+| **Wind** | Auftrieb: fällt langsam, driftet seitlich, fließt **28 % seltener ab**, Wert ×1,25–1,45 | trifft ein Drittel seltener, deckt 15 % schlechter ab |
+| **Frost** | Ruhe im Feld, Wert ×1,18–1,30, dazu 2,2–11 % Chance je Treffer, die **Lebensleiste 1,5 s einzufrieren** | wenige Treffer, 11 % weniger Abdeckung |
+| **Feuer** | Hitze: **+13–27 % Wert je Sekunde** im Feld, bis +110–250 % | ab +90 % Hitze **kosten** ihre Treffer Lebenszeit; gemessen 19 % kürzere Läufe |
+| **Erde** | Masse: pflügt durch, **+55 % Treffer**, Ertrag ×1,66 | **+77 % Abflüsse**, 22 % weniger Abdeckung |
+| **Weisheit** | Erfahrung: je 45–17 direkte Treffer eine **kostenlose Kugel-Stufe** | gekaufte Stufen kosten rund 1,9× |
+| **Edel** | ihre Funken sind am Laufende **×1,5 bis ×2,46** wert | ihre Treffer decken **gar nicht** ab — weder Freischaltung noch Meisterschaft |
+
+### Die Kosten
+
+```
+Schmieden   1, 2, 3, 4, 5, 6   (nach Zahl der bereits besessenen Elemente)
+Aufstieg    I->II 2, II->III 3, III->IV 5, IV->V 8   (18 je Element)
+Duplikat    12 x vorhandene Exemplare
+```
+
+Alle sechs auf Stufe I kosten **21 Siegel**, alle sechs auf Stufe V **129**. Im
+Spiel gibt es **60**. Man kann also nicht alles haben, und das ist der Punkt:
+die Esse ist eine Entscheidung und keine Einkaufsliste. Der Endlosschacht
+(Arena 31) liefert später Nachschub.
+
+### Gemessen: jede Verzauberung ist ein Tausch
+
+`tools/balance.ts` misst jedes Element an der weißen Kugel in Arena 15, mit
+vollem Baum, gegen dieselbe Kugel ohne Verzauberung — in sechs Spalten, weil
+eine Tabelle, die nur den Ertrag zeigt, die Hälfte verschweigen würde.
+
+Drei Dinge hat diese Messung aufgedeckt, die sich vorher nicht ahnen ließen:
+
+- **Mit leerem Baum ist die Messung wertlos.** Dort endet jeder Lauf nach rund
+  16 Sekunden am Zeitlimit statt an der Lebensleiste — die Heilung ist noch zu
+  klein, um etwas zu bewegen. Damit war die Laufzeit für *alle* Elemente
+  gleich, und Wind und Frost sahen aus wie reiner Nachteil, obwohl ihr ganzer
+  Vorteil genau dort liegt.
+- **`Weisheit` war exakt wirkungslos** (×1,00 in jeder Spalte). Der Zähler für
+  die Gratis-Stufen hing am Kugel-*Objekt*, und das wird beim Abfluss neu
+  erzeugt — alle paar Sekunden stand er wieder auf null. Er hängt jetzt an der
+  Kugel-*Art*.
+- **Ein Aufstieg darf eine Verzauberung nicht schwächen.** Winds Seitendrift
+  wuchs zunächst mit der Stufe; mehr Seitenzug heißt aber weniger Treffer, und
+  der Ertrag fiel von ×0,96 auf ×0,84, je höher die Stufe. Die Drift ist jetzt
+  fest.
+
+**Wind bleibt das schwächste Element** (×0,96 Ertrag). Sein Gewinn — 28 %
+weniger Abflüsse — wiegt in einem Baum mit kurzer Rückkehrverzögerung wenig.
+Wenn es dabei bleibt, braucht Wind eine eigene Belohnung für Verweildauer.
+
+---
 
 ### Leitlinien für spätere Änderungen
 

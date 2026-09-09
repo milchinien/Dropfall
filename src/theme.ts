@@ -32,7 +32,7 @@
 
    Die vier Baum-Slots heissen aus historischen Gruenden `teal`, `amber`,
    `pink` und `magenta`. Das sind SLOT-NAMEN, keine Farbtoene: upgrades.ts
-   verteilt 78 Knoten auf diese vier Slots, und jeder Skin faerbt sie anders.
+   verteilt 90 Knoten auf diese vier Slots, und jeder Skin faerbt sie anders.
    Im Herbst-Skin ist `teal` kein Tuerkis.
    ========================================================================= */
 
@@ -320,6 +320,19 @@ export function rgba(hex: string, a: number): string {
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+/**
+ * Zieht eine Farbe Richtung ihres eigenen Grauwerts. t = 0 laesst sie, t = 1
+ * macht sie farblos. Anders als Abdunkeln bleibt die HELLIGKEIT dabei
+ * stehen — genau das braucht ein "ausgegraut", das den Ton noch erkennen
+ * lassen soll.
+ */
+export function desaturate(hex: string, t: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  const l = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+  const f = (v: number) => Math.max(0, Math.min(255, Math.round(v + (l - v) * t)));
+  return toHex(f(r), f(g), f(b));
+}
+
 /** Mischt zwei Hex-Farben. t = 0 -> a, t = 1 -> b. */
 export function mix(a: string, b: string, t: number): string {
   const [r1, g1, b1] = hexToRgb(a);
@@ -414,6 +427,97 @@ export function longShadow(
   ctx.fill();
 }
 
+/*
+ * DER UMRISS STATT DES STAPELS
+ *
+ * `longShadow` legt die Form alle 1.5 px erneut auf die Diagonale und
+ * füllt die Vereinigung EINMAL. Bei einem Knopfschatten von 86 px sind das
+ * 57 Kopien eines Rundrechtecks je Knopf, mal 78 Knöpfe im Baum — der Pfad
+ * allein kostete mehr als alles andere im Bild zusammen.
+ *
+ * Gebraucht wird davon nur die Hülle. Rundrechteck und Kreis sind konvex,
+ * und die Vereinigung einer konvexen Form entlang einer Strecke ist exakt
+ * ihre konvexe Hülle mit der verschobenen Kopie: die Rückseite der Form am
+ * Anfang, die Vorderseite am Ende, dazwischen zwei gerade Tangenten. Das
+ * sind sechs Bogenstücke statt Hunderter — dasselbe Bild, ein Bruchteil
+ * der Arbeit. Die Trennstellen liegen dort, wo die Tangente parallel zur
+ * Schattenrichtung läuft, also bei 3π/4 und 7π/4.
+ *
+ * Alle Bögen laufen mit wachsendem Winkel, also im selben Umlaufsinn wie
+ * `roundRectPath`. Bei `nonzero` dürfen sich Teilpfade sonst gegenseitig
+ * auslöschen.
+ */
+
+/** Rundrechteck, entlang (1,1) von `von` bis `bis` gezogen. Ein Teilpfad. */
+function sweptRoundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  von: number,
+  bis: number
+): void {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  const P = Math.PI;
+  // Eckmittelpunkte der ruhenden Form, um `von` verschoben.
+  const lx = x + rr + von;
+  const rx = x + w - rr + von;
+  const ty = y + rr + von;
+  const by = y + h - rr + von;
+  const d = bis - von;
+
+  ctx.arc(lx, by, rr, 0.75 * P, P); // untere linke Ecke, hintere Hälfte
+  ctx.arc(lx, ty, rr, P, 1.5 * P); // obere linke Ecke
+  ctx.arc(rx, ty, rr, 1.5 * P, 1.75 * P); // obere rechte Ecke bis zur Tangente
+  ctx.arc(rx + d, ty + d, rr, 1.75 * P, 2 * P); // ... und weiter auf der Kopie
+  ctx.arc(rx + d, by + d, rr, 0, 0.5 * P); // untere rechte Ecke
+  ctx.arc(lx + d, by + d, rr, 0.5 * P, 0.75 * P); // zurück zur zweiten Tangente
+  ctx.closePath();
+}
+
+/** Kreis, entlang (1,1) gezogen: eine Kapsel. Ein Teilpfad. */
+function sweptCirclePath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  von: number,
+  bis: number
+): void {
+  const P = Math.PI;
+  const d = bis - von;
+  ctx.arc(cx + von, cy + von, radius, 0.75 * P, 1.75 * P);
+  ctx.arc(cx + von + d, cy + von + d, radius, 1.75 * P, 0.75 * P);
+  ctx.closePath();
+}
+
+/**
+ * Füllt einen fertigen Schattenpfad mit dem Verlauf entlang der Achse —
+ * dieselbe Rechnung wie in `longShadow`, nur ohne den Stapel davor.
+ */
+function fillLongShadow(
+  ctx: CanvasRenderingContext2D,
+  color: string,
+  anchor: { x: number; y: number; r: number },
+  length: number
+): void {
+  const reichweite = length + anchor.r / Math.SQRT2;
+  const achse = reichweite * Math.SQRT2;
+  const g = ctx.createLinearGradient(
+    anchor.x,
+    anchor.y,
+    anchor.x + reichweite,
+    anchor.y + reichweite
+  );
+  g.addColorStop(0, color);
+  g.addColorStop(Math.min(0.9, anchor.r / achse), color);
+  g.addColorStop(1, transparent(color));
+  ctx.fillStyle = g;
+  ctx.fill();
+}
+
 export function longShadowRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -422,17 +526,17 @@ export function longShadowRect(
   h: number,
   r: number,
   length: number,
-  color: string = C.shadow
+  color: string = C.shadow,
+  /** Wo der Schatten unter dem Objekt hervortritt — wie in `longShadow`. */
+  step = 1.5
 ): void {
+  // Wie im Stapel: unter `step` gaebe es nicht einmal eine erste Kopie.
+  if (length < step) return;
+  ctx.beginPath();
+  sweptRoundRectPath(ctx, x, y, w, h, r, step, length);
   // Der Radius in Schattenrichtung ist die auf die 45°-Achse projizierte
   // Ecke — bis dorthin steckt der Schatten noch unter dem Rechteck.
-  longShadow(
-    ctx,
-    (dx, dy) => roundRectPath(ctx, x + dx, y + dy, w, h, r),
-    length,
-    color,
-    { x: x + w / 2, y: y + h / 2, r: (w / 2 + h / 2) / Math.SQRT2 }
-  );
+  fillLongShadow(ctx, color, { x: x + w / 2, y: y + h / 2, r: (w / 2 + h / 2) / Math.SQRT2 }, length);
 }
 
 export function longShadowCircle(
@@ -441,18 +545,13 @@ export function longShadowCircle(
   cy: number,
   radius: number,
   length: number,
-  color: string = C.shadow
+  color: string = C.shadow,
+  step = 1.5
 ): void {
-  longShadow(
-    ctx,
-    (dx, dy) => {
-      ctx.moveTo(cx + dx + radius, cy + dy);
-      ctx.arc(cx + dx, cy + dy, radius, 0, Math.PI * 2);
-    },
-    length,
-    color,
-    { x: cx, y: cy, r: radius }
-  );
+  if (length < step) return;
+  ctx.beginPath();
+  sweptCirclePath(ctx, cx, cy, radius, step, length);
+  fillLongShadow(ctx, color, { x: cx, y: cy, r: radius }, length);
 }
 
 /* --------------------------------------------------- Extrudierte Formen --- */

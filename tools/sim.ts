@@ -11,12 +11,20 @@
    ========================================================================= */
 
 import { ARENAS, pegCount } from "../src/arenas";
-import { Machine } from "../src/machine";
+import { Machine, type SparkSource } from "../src/machine";
 import { ballCost, emptyBallLevels, type BallKind } from "../src/balls";
-import { SHARD_FROM_LEVEL, SHARD_PER_BUMP, computePayout } from "../src/currency";
+import { edelBonus, emptyEnchant, type EnchantState } from "../src/enchant";
+import {
+  SHARD_FROM_LEVEL,
+  SHARD_PER_BUMP,
+  computePayout,
+  type Payout,
+  shardLevelMult,
+} from "../src/currency";
 import {
   deriveStats,
   drainRate,
+  enduranceMult,
   multiBallHealFactor,
   NODES,
   type Levels,
@@ -40,12 +48,48 @@ export interface RunResult {
   /** Sekunde der Vollabdeckung, sonst Infinity. */
   fullAt: number;
   pegHits: number;
+  directHits: number;
+  /** Wie oft eine Kugel abgeflossen ist. */
+  drains: number;
+  /** Im Lauf verdiente Funken je Quelle — Grundlage des Kugel-Gleichstands. */
+  sparks: Record<SparkSource, number>;
+  /** Die Auszahlung im Einzelnen — Grundlage von tools/money.ts. */
+  payout: Payout;
+  /** Die Leerungsrampe dieses Laufs, in Sekunden. */
+  drainRamp: number;
 }
 
 export interface Purse {
   money: number;
   shards: number;
   crowns: number;
+  sigils: number;
+}
+
+/**
+ * Stellschrauben fuer kontrollierte Experimente (tools/balance.ts). Im
+ * Kampagnenlauf bleiben sie leer — dort soll der Bot ja gerade selbst
+ * entscheiden, was er kauft.
+ */
+export interface RunOptions {
+  maxSeconds?: number;
+  /**
+   * Alle Kugeln auf diese Stufe setzen und im Lauf NICHTS nachkaufen. Nur so
+   * vergleicht man die Kugeln miteinander statt die Kaufreihenfolge des Bots.
+   */
+  forceBallLevel?: number;
+  /**
+   * Lebensleiste ignorieren und exakt `maxSeconds` lang laufen.
+   *
+   * Ohne das misst ein Vergleich zweier Kugeln zwei Dinge auf einmal: wieviel
+   * sie verdienen UND wie lange sie den Lauf am Leben halten. Nimmt man eine
+   * Kugel heraus, faellt die Heilung, der Lauf endet frueher, und der
+   * Funkenverlust wird der Kugel doppelt angerechnet. Fuer die Frage „sind
+   * alle Kugeln gleich stark" zaehlt der Ertrag JE SEKUNDE Arena-Zeit.
+   */
+  ignoreLife?: boolean;
+  /** Verzauberungen fuer diesen Lauf. Ohne Angabe traegt keine Kugel etwas. */
+  enchant?: EnchantState;
 }
 
 /** Ein einzelner Lauf. `preLit` = Level schon einmal abgeschlossen. */
@@ -53,16 +97,30 @@ export function simulateRun(
   levels: Levels,
   arena: number,
   preLit: boolean,
-  maxSeconds = 300
+  maxSeconds = 300,
+  opts: RunOptions = {}
 ): RunResult {
-  const stats = deriveStats(levels);
+  const enchant = opts.enchant ?? emptyEnchant();
+  if (opts.maxSeconds !== undefined) maxSeconds = opts.maxSeconds;
+  const forced = opts.forceBallLevel;
+  const stats = deriveStats(levels, enchant);
   let sparks = stats.startSparks;
   let sparksGross = 0;
   let shards = 0;
   let life = stats.maxLife;
   let elapsed = 0;
+  /** Restzeit, in der die Leiste stillsteht (`Frost`). */
+  let freezeT = 0;
   const ballLevels = emptyBallLevels();
   const shardsActive = arena + 1 >= SHARD_FROM_LEVEL;
+  // Ganzzahlige Splitter mit Uebertrag — dieselbe Rechnung wie in main.ts.
+  let shardCarry = 0;
+  const grantShards = (units: number): number => {
+    shardCarry += units * shardLevelMult(arena);
+    const ganz = Math.floor(shardCarry);
+    shardCarry -= ganz;
+    return ganz;
+  };
 
   const machine = new Machine({
     onGain: (v) => {
@@ -70,18 +128,25 @@ export function simulateRun(
       sparksGross += v;
     },
     onCover: () => {},
-    onTouch: (direkt, marked) => {
+    onTouch: (direkt, marked, healMult = 1) => {
       if (!direkt) return;
-      let heal = stats.healPerHit * multiBallHealFactor(stats.kinds.length);
+      let heal = stats.healPerHit * multiBallHealFactor(stats.kinds.length) * healMult;
       if (marked) heal *= stats.mark.heal;
-      life = Math.min(stats.maxLife, life + heal);
+      life = Math.max(0, Math.min(stats.maxLife, life + heal));
       if (!shardsActive) return;
-      shards += SHARD_PER_BUMP;
-      if (Math.random() < stats.shardLuck) shards += SHARD_PER_BUMP;
-      if (marked && Math.random() < stats.mark.shard) shards += SHARD_PER_BUMP;
+      let units = SHARD_PER_BUMP;
+      if (Math.random() < stats.shardLuck) units += SHARD_PER_BUMP;
+      if (marked && Math.random() < stats.mark.shard) units += SHARD_PER_BUMP;
+      shards += grantShards(units);
     },
     onBumper: () => {
-      if (shardsActive && Math.random() < stats.shardHarvest) shards += SHARD_PER_BUMP;
+      if (shardsActive && Math.random() < stats.shardHarvest) shards += grantShards(SHARD_PER_BUMP);
+    },
+    onFreeze: (sek) => {
+      freezeT = Math.max(freezeT, sek);
+    },
+    onFreeLevel: (kind) => {
+      if (ballLevels[kind] < stats.maxBallLevel) ballLevels[kind]++;
     },
   });
   // Der Bot markiert die wertvollste Kugel, die er hat — dieselbe Wahl, die
@@ -97,14 +162,18 @@ export function simulateRun(
   machine.setArena(arena, preLit);
   machine.ballLevels = ballLevels;
 
+  if (forced !== undefined) for (const k of stats.kinds) ballLevels[k] = forced;
+  else if (stats.headStart > 0) for (const k of stats.kinds) ballLevels[k] = stats.headStart;
+
   const buy = () => {
+    if (forced !== undefined) return;
     for (;;) {
       let best: BallKind | null = null;
       let bestCost = Infinity;
       for (const k of stats.kinds) {
         const l = ballLevels[k];
         if (l >= stats.maxBallLevel) continue;
-        const c = ballCost(k, l, stats.upgradeDiscount);
+        const c = ballCost(k, l, stats.upgradeDiscount * stats.enchant[k].stufenKosten);
         if (c <= sparks && c < bestCost) {
           best = k;
           bestCost = c;
@@ -116,21 +185,25 @@ export function simulateRun(
     }
   };
 
-  while (life > 0 && elapsed < maxSeconds) {
+  while ((life > 0 || opts.ignoreLife) && elapsed < maxSeconds) {
+    machine.lifeFraction = stats.maxLife > 0 ? life / stats.maxLife : 0;
     machine.update(DT, stats);
+    // Die Uhr laeuft immer, nur die Leerung pausiert beim Einfrieren.
     elapsed += DT;
-    life -= DT * drainRate(elapsed, stats.drainRamp);
+    if (freezeT > 0) freezeT = Math.max(0, freezeT - DT);
+    else life -= DT * drainRate(elapsed, stats.drainRamp);
     buy();
   }
 
   const payout = computePayout(
-    sparksGross,
+    sparksGross + edelBonus(machine.runStats.sparks, stats.enchant),
     machine.runCovered,
     arena,
     stats.moneyPerSpark,
     stats.pegBounty,
     stats.payMult,
-    machine.runStats.barrenBroken
+    machine.runStats.barrenBroken,
+    enduranceMult(elapsed, stats.drainRamp)
   );
   return {
     arena,
@@ -146,6 +219,11 @@ export function simulateRun(
     complete: machine.runCovered >= machine.pegTotal,
     fullAt: machine.runFullAt ?? Infinity,
     pegHits: machine.runStats.pegHits,
+    directHits: machine.runStats.directHits,
+    drains: machine.runStats.drains,
+    sparks: { ...machine.runStats.sparks },
+    payout,
+    drainRamp: stats.drainRamp,
   };
 }
 
@@ -201,7 +279,8 @@ function canBuy(id: string, levels: Levels, p: Purse): boolean {
   for (const [req, need] of def.req ?? []) if ((levels[req] ?? 0) < need) return false;
   const cur = currencyOf(def);
   const cost = costOf(def, lv);
-  const have = cur === "money" ? p.money : cur === "shard" ? p.shards : p.crowns;
+  const have =
+    cur === "money" ? p.money : cur === "shard" ? p.shards : cur === "crown" ? p.crowns : p.sigils;
   return have >= cost;
 }
 
@@ -223,7 +302,8 @@ export function shop(levels: Levels, p: Purse): string[] {
     const cost = costOf(def, lv);
     if (cur === "money") p.money -= cost;
     else if (cur === "shard") p.shards -= cost;
-    else p.crowns -= cost;
+    else if (cur === "crown") p.crowns -= cost;
+    else p.sigils -= cost;
     levels[pick] = lv + 1;
     bought.push(`${def.title.replace(/&[a-z]+;/g, "?")} ${lv + 1}`);
   }
@@ -246,7 +326,7 @@ export interface Progress {
 export function newProgress(): Progress {
   return {
     levels: {},
-    purse: { money: 0, shards: 0, crowns: 0 },
+    purse: { money: 0, shards: 0, crowns: 0, sigils: 0 },
     unlocked: 1,
     cleared: ARENAS.map(() => false),
     completed: ARENAS.map(() => false),
@@ -260,9 +340,10 @@ export function newProgress(): Progress {
 export function goalsDone(pr: Progress): number {
   let n = 0;
   for (let i = 0; i < ARENAS.length; i++) {
+    // Drei Ziele je Arena. `speedRun` wird weiter mitgeschrieben, zaehlt aber
+    // nicht mehr — das Tempo-Ziel ist entfallen.
     if (pr.cleared[i]) n++;
     if (pr.completed[i]) n++;
-    if (pr.speedRun[i]) n++;
     if (pr.bonusSurvive[i]) n++;
   }
   return n;
@@ -288,7 +369,7 @@ export function refreshUnlocked(pr: Progress): void {
 function chooseArena(pr: Progress): number {
   const top = pr.unlocked - 1;
   const offen = (i: number) =>
-    !pr.cleared[i] || !pr.completed[i] || !pr.speedRun[i] || !pr.bonusSurvive[i];
+    !pr.cleared[i] || !pr.completed[i] || !pr.bonusSurvive[i];
   if (offen(top)) return top;
   for (let i = 0; i < pr.unlocked; i++) if (offen(i)) return i;
   return top;
@@ -305,20 +386,21 @@ export function playOne(pr: Progress, arena?: number): RunResult & { bought: str
   pr.purse.money += r.money;
   pr.purse.shards += r.shards;
 
-  if (r.cleared && !pr.cleared[a]) pr.cleared[a] = true;
-  if (r.complete && !pr.completed[a]) {
-    pr.completed[a] = true;
+  // Jedes Ziel zahlt genau eine Waehrung: Freischaltung eine Krone,
+  // Meisterschaft und Ausdauer je ein Siegel. Siehe src/currency.ts.
+  if (r.cleared && !pr.cleared[a]) {
+    pr.cleared[a] = true;
     pr.purse.crowns++;
   }
-  // Genau EINE Krone je Arena, fuer die Meisterschaft. Tempo und Ausdauer
-  // zahlen Splitter — siehe speedReward/surviveReward in src/main.ts.
-  if (r.fullAt <= ARENAS[a].speedGoal && !pr.speedRun[a]) {
-    pr.speedRun[a] = true;
-    pr.purse.shards += 60 * (a + 1);
+  if (r.complete && !pr.completed[a]) {
+    pr.completed[a] = true;
+    pr.purse.sigils++;
   }
+  // Nur noch Kennzahl, kein Ziel mehr.
+  if (r.fullAt <= ARENAS[a].speedGoal) pr.speedRun[a] = true;
   if (r.seconds >= ARENAS[a].bonusSurvive && !pr.bonusSurvive[a]) {
     pr.bonusSurvive[a] = true;
-    pr.purse.shards += 45 * (a + 1);
+    pr.purse.sigils++;
   }
   refreshUnlocked(pr);
   return { ...r, bought };

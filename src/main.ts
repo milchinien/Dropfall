@@ -26,6 +26,15 @@ import { grafik, initGrafik, setGrafik } from "./skin";
 import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
 import { drawArenaMiniature } from "./machine";
 import { BARREN_BOUNTY } from "./currency";
+import { edelBonus, emptyEnchant } from "./enchant";
+import { ForgeView } from "./forge";
+import {
+  LEGACY_KEY,
+  SAVE_KEY,
+  migriereV7,
+  type SaveData,
+  type Umrechnung,
+} from "./save";
 import { Machine, type SparkSource } from "./machine";
 import { audio, type SfxId, type SfxOptions } from "./audio";
 import {
@@ -50,6 +59,7 @@ import {
 import {
   deriveStats,
   drainRate,
+  enduranceMult,
   multiBallHealFactor,
   NODES,
   REVIVE_FILL,
@@ -93,7 +103,6 @@ const currencyIcon = (
  * Kronen, wie es jetzt geben darf. Beides liesse sich nur raten — deshalb
  * ein neuer Schluessel statt einer Migration.
  */
-const SAVE_KEY = "dropfall.save.v7";
 
 /*
  * Grafik-Einstellungen ganz frueh: der Skin muss stehen, bevor irgendetwas
@@ -112,32 +121,18 @@ const LAUB_RAND_UM_BAUM = 650;
 
 /* --------------------------------------------------------- Zustand --- */
 
-interface SaveData {
-  levels: Levels;
-  money: number;
-  shards: number;
-  crowns: number;
-  total: number;
-  arena: number;
-  unlocked: number;
-  /** Level, deren Freischaltschwelle einmal erreicht wurde. */
-  cleared: boolean[];
-  /** Level, die schon einmal in einem einzigen Lauf vollständig waren. */
-  completed: boolean[];
-  /** Level, deren Feld einmal innerhalb der Tempo-Vorgabe voll war. */
-  speedRun: boolean[];
-  bonusSurvive: boolean[];
-  time: number;
-}
-
 const state = {
   levels: {} as Levels,
   /** ◆ Geld — wird nach dem Lauf ausgezahlt, kauft die Grundausbauten. */
   money: 0,
   /** ◈ Splitter — fallen je Peg-Bump an, ab Level SHARD_FROM_LEVEL. */
   shards: 0,
-  /** ♛ Kronen — genau eine je gemeisterter Arena, nur fuer Einmalkaeufe. */
+  /** ♛ Kronen — genau eine je FREIGESPIELTER Arena, nur fuer Einmalkaeufe. */
   crowns: 0,
+  /** ❈ Siegel — je Meisterschaft und je Ausdauer eines. Fuer die Esse. */
+  sigils: 0,
+  /** Geschmiedete und getragene Verzauberungen. Siehe enchant.ts. */
+  enchant: emptyEnchant(),
   total: 0,
   rate: 0,
   /** Aktuell in der Level-Auswahl markierte Arena. */
@@ -167,8 +162,25 @@ const state = {
  * passt zu ihnen: beide messen, wie gut ein LAUF laeuft, und Splitter sind
  * die Waehrung der Lauf-Oekonomie.
  */
-const speedReward = (arenaIndex: number) => 60 * (arenaIndex + 1);
-const surviveReward = (arenaIndex: number) => 45 * (arenaIndex + 1);
+/*
+ * DREI ZIELE JE ARENA, JEDES ZAHLT GENAU EINE WAEHRUNG.
+ *
+ *   Freischaltung  Teilabdeckung   -> ♛ 1 Krone     (30 im Spiel)
+ *   Meisterschaft  alle Pegs       -> ❈ 1 Siegel    (30 im Spiel)
+ *   Ausdauer       N Sekunden      -> ❈ 1 Siegel    (30 im Spiel)
+ *
+ * Das TEMPO-Ziel ist entfallen. Es war auf einen Puls kalibriert, der 241 mal
+ * je Sekunde das halbe Feld abdeckte; nach der Anteilsregel war es
+ * unerreichbar, und gemessen blockierte es die halbe Kampagne — der Bot
+ * deckte L6 in 294 von 300 Laeufen vollstaendig ab und kam trotzdem nicht
+ * weiter. Seine Rolle als nicht saettigender Pruefstein uebernimmt die
+ * Ausdauer.
+ *
+ * Die Krone haengt jetzt an der FREISCHALTUNG statt an der Meisterschaft.
+ * Vorher war sie an das schwerste Ziel jeder Arena gebunden: wer es nicht
+ * schaffte, bekam nie eine weitere Kugel. Jetzt zahlt der Weg nach vorn.
+ */
+export const SIGIL_PER_GOAL = 1;
 
 /** Wie viele Pegs ein Lauf abdecken muss, damit das nächste Level aufgeht. */
 const unlockGoal = (arenaIndex: number) =>
@@ -180,7 +192,6 @@ function goalsDone(): number {
   for (let i = 0; i < ARENAS.length; i++) {
     if (state.cleared[i]) n++;
     if (state.completed[i]) n++;
-    if (state.speedRun[i]) n++;
     if (state.bonusSurvive[i]) n++;
   }
   return n;
@@ -224,6 +235,15 @@ const run = {
   revives: 0,
   /** Die gekauften Kugel-Stufen. Wird an die Maschine durchgereicht. */
   ballLevels: emptyBallLevels(),
+  /**
+   * Restzeit, in der die Lebensleiste stillsteht (`Frost`). Sie leert sich
+   * nicht, und die Leerungsrampe laeuft ebenfalls nicht weiter — sonst waere
+   * ein Einfrieren im spaeten Lauf wertlos, weil die Rampe die geschenkte
+   * Zeit sofort wieder auffrisst.
+   */
+  freezeT: 0,
+  /** Kostenlos verdiente Kugel-Stufen (`Weisheit`). Nur fuer die Auswertung. */
+  freeLevels: 0,
 };
 
 /* ------------------------------------------------------------- DOM --- */
@@ -237,6 +257,8 @@ const elSparks = document.getElementById("sparks")!;
 const elRate = document.getElementById("rate")!;
 const elRowMoney = document.getElementById("rowMoney")!;
 const elRowShards = document.getElementById("rowShards")!;
+const elSigils = document.getElementById("sigils")!;
+const elRowSigils = document.getElementById("rowSigils")!;
 const elRowCrowns = document.getElementById("rowCrowns")!;
 const elRowSparks = document.getElementById("rowSparks")!;
 const elRowRate = document.getElementById("rowRate")!;
@@ -276,6 +298,8 @@ const elResult = document.getElementById("result")!;
 const elResTitle = document.getElementById("resTitle")!;
 const elResBadges = document.getElementById("resBadges")!;
 const elResGrid = document.getElementById("resGrid")!;
+const elResGridMore = document.getElementById("resGridMore")!;
+const elResMore = document.getElementById("resMore") as HTMLButtonElement;
 const elResPayout = document.getElementById("resPayout")!;
 const elResReward = document.getElementById("resReward")!;
 const elResSources = document.getElementById("resSources")!;
@@ -318,7 +342,7 @@ const machine = new Machine({
   onCover: () => {
     /* Abschluss wird am Laufende ausgewertet, nicht mittendrin. */
   },
-  onTouch: (direkt, marked) => {
+  onTouch: (direkt, marked, healMult = 1) => {
     if (!run.active) return;
     // Lebensleiste und Splitter hängen ausschließlich am ECHTEN Kontakt.
     // Puls und Blitz decken Pegs ab und zahlen Funken, aber sie verlängern
@@ -326,10 +350,12 @@ const machine = new Machine({
     // selbst und endet nie mehr. Siehe MachineEvents.onTouch.
     if (!direkt) return;
 
-    const vorher = run.life;
-    let heal = stats.healPerHit * multiBallHealFactor(stats.kinds.length);
+    // `healMult` ist normalerweise 1. Eine ueberhitzte `Feuer`-Kugel liefert
+    // -1: ihr Treffer KOSTET dann Lebenszeit, statt welche zu geben.
+    let heal = stats.healPerHit * multiBallHealFactor(stats.kinds.length) * healMult;
     if (marked) heal *= stats.mark.heal;
-    run.life = Math.min(run.maxLife, run.life + heal);
+    const vorher = run.life;
+    run.life = clamp(run.life + heal, 0, run.maxLife);
     run.healed += run.life - vorher;
 
     if (shardsActive()) {
@@ -340,6 +366,19 @@ const machine = new Machine({
       run.shards += n;
       state.shards += n;
     }
+  },
+  onFreeze: (sekunden) => {
+    if (!run.active) return;
+    // Nicht addieren, sondern das Maximum nehmen: zwei Einfrierungen kurz
+    // hintereinander sollen sich nicht zu einem Dauerzustand stapeln.
+    run.freezeT = Math.max(run.freezeT, sekunden);
+  },
+  onFreeLevel: (kind) => {
+    if (!run.active) return;
+    if (run.ballLevels[kind] >= stats.maxBallLevel) return;
+    run.ballLevels[kind]++;
+    run.freeLevels++;
+    audio.play("buy", { level: run.ballLevels[kind] });
   },
   onBumper: () => {
     // Bumper zahlen Funken, aber erst `Splitterernte` macht sie zur
@@ -359,13 +398,21 @@ const debug: Record<string, unknown> = { machine, state, run, NODES, audio, last
 (window as unknown as Record<string, unknown>).dropfall = debug;
 
 function purse(c: TreeCurrency): number {
-  return c === "money" ? state.money : c === "shard" ? state.shards : state.crowns;
+  switch (c) {
+    case "money": return state.money;
+    case "shard": return state.shards;
+    case "crown": return state.crowns;
+    case "sigil": return state.sigils;
+  }
 }
 
 function pay(c: TreeCurrency, amount: number): void {
-  if (c === "money") state.money -= amount;
-  else if (c === "shard") state.shards -= amount;
-  else state.crowns -= amount;
+  switch (c) {
+    case "money": state.money -= amount; break;
+    case "shard": state.shards -= amount; break;
+    case "crown": state.crowns -= amount; break;
+    case "sigil": state.sigils -= amount; break;
+  }
 }
 
 /**
@@ -417,7 +464,7 @@ let hoveredNode: string | null = null;
 /* --------------------------------------------------------- Läufe --- */
 
 function startRun(): void {
-  stats = deriveStats(state.levels);
+  stats = deriveStats(state.levels, wirksameVerzauberungen());
   if (stats.kinds.length === 0) {
     toast("Du hast noch keine Kugel. Kaufe zuerst die <b>wei&szlig;e Kugel</b>.", 6);
     return;
@@ -436,12 +483,17 @@ function startRun(): void {
   run.life = stats.maxLife;
   run.elapsed = 0;
   run.healed = 0;
+  run.freezeT = 0;
   run.sparks = stats.startSparks;
   run.sparksGross = 0;
   run.shards = 0;
   run.upgrades = 0;
   run.revives = stats.revives;
   run.ballLevels = emptyBallLevels();
+  // `Grundstock`: jede Kugel startet auf dieser Stufe statt bei null.
+  if (stats.headStart > 0) {
+    for (const k of stats.kinds) run.ballLevels[k] = stats.headStart;
+  }
 
   // Ein nicht abgeschlossenes Level startet mit kaltem Feld: die Abdeckung
   // muss in EINEM Lauf erreicht werden. Ein bereits geschafftes Level bleibt
@@ -485,34 +537,27 @@ function endRun(): void {
   const freigespielt = machine.runCovered >= ziel;
   const gemeistert = machine.complete;
   let kronen = 0;
+  let siegel = 0;
 
   const vorher = state.unlocked;
   if (freigespielt && !state.cleared[i]) {
     state.cleared[i] = true;
+    kronen++;
+    erfolge.push({ text: `${a.name} freigespielt · ${currencyIcon("crown")}`, haupt: true });
     if (i + 1 >= ARENAS.length) erfolge.push({ text: "Letztes Level bezwungen", haupt: true });
   }
   if (gemeistert && !state.completed[i]) {
     state.completed[i] = true;
-    kronen++;
-    erfolge.push({ text: `${a.name} gemeistert · ${currencyIcon("crown")}`, haupt: true });
-  }
-  if (
-    machine.runFullAt !== null &&
-    machine.runFullAt <= a.speedGoal &&
-    !state.speedRun[i]
-  ) {
-    state.speedRun[i] = true;
-    const n = speedReward(i);
-    state.shards += n;
-    erfolge.push({ text: `Tempo · ${currencyIcon("shard")} ${n}`, haupt: true });
+    siegel += SIGIL_PER_GOAL;
+    erfolge.push({ text: `${a.name} gemeistert · ${currencyIcon("sigil")}`, haupt: true });
   }
   if (run.elapsed >= a.bonusSurvive && !state.bonusSurvive[i]) {
     state.bonusSurvive[i] = true;
-    const n = surviveReward(i);
-    state.shards += n;
-    erfolge.push({ text: `Ausdauer · ${currencyIcon("shard")} ${n}`, haupt: true });
+    siegel += SIGIL_PER_GOAL;
+    erfolge.push({ text: `Ausdauer · ${currencyIcon("sigil")}`, haupt: true });
   }
   state.crowns += kronen;
+  state.sigils += siegel;
 
   // Erst jetzt neu auswerten: die Ziele dieses Laufs koennen mehrere Level
   // auf einmal oeffnen, wenn die Zielzahl dadurch ueberschritten wird.
@@ -522,14 +567,20 @@ function endRun(): void {
   }
 
   // Geld gibt es ausschließlich hier — im Lauf selbst ist es nicht sichtbar.
+  // `Edel` wirkt nicht in der Arena, sondern hier: was ihre Kugel verdient
+  // hat, zaehlt am Laufende mehr. Der Aufschlag wird auf die Funkensumme
+  // gerechnet, damit der Rechenweg in der Auswertung nachvollziehbar bleibt.
+  const edel = edelBonus(machine.runStats.sparks, stats.enchant);
   const payout = computePayout(
-    run.sparksGross,
+    run.sparksGross + edel,
     machine.runCovered,
     run.arena,
     stats.moneyPerSpark,
     stats.pegBounty,
     stats.payMult,
-    machine.runStats.barrenBroken
+    machine.runStats.barrenBroken,
+    // Die Leerung, bei der der Lauf endete — dieselbe Zahl, die im HUD stand.
+    enduranceMult(run.elapsed, stats.drainRamp)
   );
   state.money += payout.total;
   state.total += payout.total;
@@ -552,6 +603,14 @@ interface ShopRow {
   lv: HTMLElement;
   eff: HTMLElement;
   cost: HTMLElement;
+  /*
+   * Zuletzt geschriebener Text je Feld. `updateShop` laeuft in JEDEM Frame
+   * eines Laufs, die Zeilen aendern sich aber nur beim Kauf. Ohne den
+   * Vergleich baut der Preis sechzig Mal in der Sekunde sein `<img>` neu auf
+   * und der Browser rechnet den Shop jedes Mal neu durch — Arbeit fuer ein
+   * Bild, das identisch bleibt.
+   */
+  zuletzt: { lv: string; eff: string; cost: string };
 }
 
 let shopRows: ShopRow[] = [];
@@ -593,23 +652,45 @@ function buildShop(): void {
       lv: el.querySelector<HTMLElement>(".shop-lv")!,
       eff: el.querySelector<HTMLElement>(".shop-eff")!,
       cost: el.querySelector<HTMLElement>(".shop-cost")!,
+      zuletzt: { lv: "", eff: "", cost: "" },
     };
   });
   updateShop();
 }
 
+/**
+ * Kosten der naechsten Kugel-Stufe. `Weisheit` schlaegt hier auf: sie steigt
+ * von allein auf, dafuer kostet jede gekaufte Stufe mehr.
+ */
+const stufenPreis = (kind: BallKind, lvl: number): number =>
+  ballCost(kind, lvl, stats.upgradeDiscount * stats.enchant[kind].stufenKosten);
+
 function updateShop(): void {
   for (const r of shopRows) {
     const lvl = run.ballLevels[r.kind];
     const maxed = lvl >= stats.maxBallLevel;
-    const cost = ballCost(r.kind, lvl, stats.upgradeDiscount);
+    const cost = stufenPreis(r.kind, lvl);
 
-    r.lv.textContent = ` Lv ${lvl}`;
+    const lvText = ` Lv ${lvl}`;
+    if (r.zuletzt.lv !== lvText) {
+      r.zuletzt.lv = lvText;
+      r.lv.textContent = lvText;
+    }
+
     const perk = BALL_UPGRADE[r.kind].perk(lvl, stats);
     const wert =
       r.kind === "buff" ? "" : `Wert ×${ballValue(r.kind, lvl).toFixed(2)}`;
-    r.eff.textContent = [wert, perk].filter(Boolean).join(" · ");
-    r.cost.innerHTML = maxed ? "MAX" : `${currencyIcon("spark")} ${fmt(cost)}`;
+    const effText = [wert, perk].filter(Boolean).join(" · ");
+    if (r.zuletzt.eff !== effText) {
+      r.zuletzt.eff = effText;
+      r.eff.textContent = effText;
+    }
+
+    const costHtml = maxed ? "MAX" : `${currencyIcon("spark")} ${fmt(cost)}`;
+    if (r.zuletzt.cost !== costHtml) {
+      r.zuletzt.cost = costHtml;
+      r.cost.innerHTML = costHtml;
+    }
     r.el.classList.toggle("is-max", maxed);
     r.el.classList.toggle("is-ready", !maxed && run.sparks >= cost);
     // Die Markierung wird in der Arena gesetzt, nicht hier — die Zeile zeigt
@@ -643,7 +724,7 @@ function buyBall(kind: BallKind): void {
   if (!run.active) return;
   const lvl = run.ballLevels[kind];
   if (lvl >= stats.maxBallLevel) return;
-  const cost = ballCost(kind, lvl, stats.upgradeDiscount);
+  const cost = stufenPreis(kind, lvl);
   if (run.sparks < cost) {
     treeSound("denied");
     return;
@@ -676,6 +757,155 @@ function sourceInfo(): Array<{ key: SparkSource; name: string; color: string }> 
   ];
 }
 
+/* =================================== Das Aufdecken der Auszahlung ===
+
+   Die Rechnung stand bisher fertig da, wenn die Auswertung aufging: ein
+   Block Zahlen, den man von oben nach unten abliest. Jetzt laeuft sie ab.
+   Zeile fuer Zeile deckt sie sich auf, die beiden FAKTOREN kommen zuletzt
+   und mit einem Wackler herein — sie sind der Moment, auf den die Rechnung
+   zulaeuft —, und ganz am Ende zaehlt die Gesamtbelohnung hoch.
+
+   DIE REIHENFOLGE BLEIBT FEST. Naheliegend waere, die Posten nach Betrag zu
+   sortieren, damit der groesste zuletzt kommt. Das waere aber keine Rechnung
+   mehr: `Funken`, `Pegs`, `Barren`, dann die Faktoren darauf — diese
+   Reihenfolge IST der Rechenweg, und sie muss zwischen zwei Laeufen gleich
+   bleiben, sonst kann man nichts vergleichen. Das Wertvollste steht ohnehin
+   hinten: die Faktoren vervielfachen alles davor.
+
+   Alle Zeitgeber liegen in `resultTimers`, damit ein schnelles `Erneut
+   spielen` sie abraeumen kann. Ohne das schriebe der Auflauf des alten Laufs
+   noch in die Auswertung des naechsten. */
+
+/** Abstand zwischen zwei aufgedeckten Zeilen. */
+const RES_ZEILE_MS = 240;
+/** Wie lange die Gesamtbelohnung hochzaehlt. */
+const RES_ZAEHL_MS = 950;
+
+const resultTimers: number[] = [];
+let resultCountRaf = 0;
+
+function resultLater(ms: number, fn: () => void): void {
+  resultTimers.push(window.setTimeout(fn, ms));
+}
+
+/** Raeumt einen laufenden Auflauf ab. Vor jedem neuen und beim Schliessen. */
+function stopResultReveal(): void {
+  for (const t of resultTimers) clearTimeout(t);
+  resultTimers.length = 0;
+  if (resultCountRaf) cancelAnimationFrame(resultCountRaf);
+  resultCountRaf = 0;
+}
+
+const reduzierteBewegung = (): boolean =>
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Zaehlt `el` von null auf `ziel`. Mit Auslauf: ein lineares Hochzaehlen
+ * liest sich als Ladebalken, ein auslaufendes als Zaehlwerk, das zur Ruhe
+ * kommt.
+ */
+function zaehleHoch(el: HTMLElement, ziel: number, dauer: number): void {
+  const t0 = performance.now();
+  const schritt = (now: number): void => {
+    const k = Math.min(1, (now - t0) / dauer);
+    const e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(Math.floor(ziel * e));
+    if (k < 1) resultCountRaf = requestAnimationFrame(schritt);
+    else {
+      el.textContent = fmt(ziel);
+      resultCountRaf = 0;
+    }
+  };
+  resultCountRaf = requestAnimationFrame(schritt);
+}
+
+/**
+ * Die Gesamtbelohnung erscheint und das Geld zaehlt hoch. Vorher wird die
+ * Breite der ENDzahl gemessen und festgehalten — sonst waechst die Zahl
+ * waehrend des Zaehlens und schiebt Splitter und Krone zur Seite.
+ *
+ * Gemessen wird erst hier, nicht beim Aufbau: zu dem Zeitpunkt liegt die
+ * Auswertung noch hinter `hidden` und haette die Breite null.
+ */
+function enthuelleBelohnung(total: number, sofort: boolean): void {
+  elResReward.classList.add("is-in");
+  // Ohne Auflauf steht die Endzahl schon im Markup und aendert sich nie —
+  // dann gibt es auch nichts zu reservieren.
+  if (sofort) return;
+  const el = elResReward.querySelector<HTMLElement>(".reward-value--total");
+  if (!el) return;
+  el.textContent = fmt(total);
+  el.style.minWidth = `${Math.ceil(el.getBoundingClientRect().width)}px`;
+  el.textContent = fmt(0);
+  zaehleHoch(el, total, RES_ZAEHL_MS);
+}
+
+/**
+ * Deckt die Zeilen der Rechnung nacheinander auf und laesst danach die
+ * Belohnung hochzaehlen. `ab` ist der Zeitpunkt, zu dem die Plaketten
+ * durch sind — vorher waere die Rechnung im Weg.
+ */
+function enthuelleAuszahlung(total: number, ab: number): void {
+  const zeilen = [...elResPayout.querySelectorAll<HTMLElement>(".pay-row")];
+
+  if (reduzierteBewegung()) {
+    for (const z of zeilen) z.classList.add("is-in");
+    enthuelleBelohnung(total, true);
+    // Der Tonlauf bleibt: abbestellt war Bewegung, nicht der Moment.
+    tickTuete(total, ab);
+    return;
+  }
+
+  zeilen.forEach((z, n) => {
+    const faktor = z.classList.contains("pay-row--mult");
+    resultLater(ab + n * RES_ZEILE_MS, () => {
+      z.classList.add("is-in");
+      // Posten klingeln, Faktoren steigen: man hoert, dass die letzten
+      // beiden Zeilen etwas anderes sind als die davor.
+      if (faktor) audio.play("levelup", { semitones: n * 1.5 });
+      else audio.play("coin", { semitones: n * 1.2 });
+    });
+  });
+
+  const belohnungAb = ab + zeilen.length * RES_ZEILE_MS + 180;
+  resultLater(belohnungAb, () => {
+    audio.play("panel");
+    enthuelleBelohnung(total, false);
+  });
+  tickTuete(total, belohnungAb + 60);
+}
+
+/** Die Muenzfolge unter dem Hochzaehlen. Laenger bei groesseren Betraegen. */
+function tickTuete(total: number, ab: number): void {
+  const ticks = total > 0 ? Math.min(14, 4 + Math.floor(Math.log10(total + 1) * 3)) : 0;
+  const abstand = ticks > 1 ? Math.max(45, RES_ZAEHL_MS / ticks) : 0;
+  for (let n = 0; n < ticks; n++) {
+    resultLater(ab + n * abstand, () => audio.play("coin", { semitones: n * 0.8 }));
+  }
+}
+
+/*
+ * Ob die Nachlese aufgeklappt ist. Die Wahl gilt fuer die Sitzung: wer sie
+ * einmal aufgeklappt hat, will sie beim naechsten Lauf nicht wieder suchen —
+ * und wer sie zugeklappt laesst, will sie nicht jedes Mal wegklicken.
+ */
+let resultDetailsOffen = false;
+
+function setResultDetails(offen: boolean, anzahl: number): void {
+  resultDetailsOffen = offen;
+  elResGridMore.classList.toggle("hidden", !offen);
+  elResMore.setAttribute("aria-expanded", String(offen));
+  elResMore.textContent = offen ? "Weniger anzeigen" : `Mehr anzeigen (${anzahl})`;
+  // Ohne Nachlese waere der Schalter ein Knopf, hinter dem nichts liegt.
+  elResMore.classList.toggle("hidden", anzahl === 0);
+}
+
+elResMore.addEventListener("click", () => {
+  setResultDetails(!resultDetailsOffen, elResGridMore.children.length);
+  audio.play("click");
+});
+
 function showResult(
   gemeistert: boolean,
   payout: Payout,
@@ -684,25 +914,27 @@ function showResult(
 ): void {
   const st = machine.runStats;
 
+  // Ein noch laufender Auflauf des VORIGEN Laufs wuerde sonst in diesen
+  // hineinschreiben — `Erneut spielen` ist schneller als die Tonfolge.
+  stopResultReveal();
+
   /*
    * Die Auswertung ist der einzige Moment im Spiel, in dem Toene NACH-
    * EINANDER kommen statt uebereinander. Deshalb wird hier gestaffelt und
    * nicht alles auf einmal ausgeloest — sonst faellt der groesste Moment
-   * des Spiels in ein einziges Geraeusch zusammen.
+   * des Spiels in ein einziges Geraeusch zusammen. Das Bild folgt derselben
+   * Staffelung: was man hoert, deckt sich zugleich auf.
    *
    *   0 ms   Grundton: Krone bei Meisterschaft, sonst das Auslaufen
    *   ab 260 ms  je erfuelltem Ziel eine Plakette, 190 ms auseinander
-   *   danach     die Auszahlung als kurze Tickfolge
+   *   danach     die Rechnung Zeile fuer Zeile, Faktoren zuletzt
+   *   zum Schluss die Belohnung, die hochzaehlt
    */
   audio.play(gemeistert ? "crown" : "runend");
   erfolge.forEach((_, n) => {
-    window.setTimeout(() => audio.play("goal", { semitones: n * 1.5 }), 260 + n * 190);
+    resultLater(260 + n * 190, () => audio.play("goal", { semitones: n * 1.5 }));
   });
-  const coinsAt = 260 + erfolge.length * 190 + 120;
-  const ticks = payout.total > 0 ? Math.min(14, 4 + Math.floor(Math.log10(payout.total + 1) * 3)) : 0;
-  for (let n = 0; n < ticks; n++) {
-    window.setTimeout(() => audio.play("coin", { semitones: n * 0.8 }), coinsAt + n * 55);
-  }
+  const rechnungAb = 260 + erfolge.length * 190 + 120;
 
   elResTitle.textContent = gemeistert ? "Level gemeistert!" : "Lauf beendet";
   elResTitle.classList.toggle("is-plain", !gemeistert);
@@ -723,42 +955,63 @@ function showResult(
   const kugelFunken =
     st.sparks.white + st.sparks.pulse + st.sparks.lightning + st.sparks.fire;
 
-  const karten: string[] = [
-    karte("Laufzeit", `${run.elapsed.toFixed(1)} s`),
-    karte("Pegs getroffen", `${st.pegHits}`, `${currencyIcon("spark")} ${fmt(kugelFunken)}`),
+  /*
+   * DREI KARTEN OBEN, DER REST AUF ZURUF.
+   *
+   * Vorher standen bis zu fuenfzehn Karten gleichrangig nebeneinander. Wer
+   * gerade gestorben ist, will aber zuerst drei Dinge wissen: wie weit bin
+   * ich gekommen, habe ich das Freischaltziel geschafft, und was hat es
+   * gebracht. Alles andere ist Nachlese — sie bleibt vollstaendig erhalten,
+   * nur eine Zeile tiefer. Genau drei, weil das Raster drei Spalten hat:
+   * eine volle Reihe, kein angebrochener Rest.
+   */
+  const kern: string[] = [
+    // Der Faktor steht im Wert, sein Name in der Ueberschrift: sonst braucht
+    // die Zeile zwei Zeilen, waehrend die beiden Nachbarkarten eine haben.
+    karte(
+      "Laufzeit · Ausdauer",
+      `${run.elapsed.toFixed(1)} s`,
+      `×${payout.endurance.toFixed(2)}`
+    ),
     karte(
       "Pegs abgedeckt",
       `${machine.runCovered} / ${machine.pegTotal}`,
       `Ziel ${unlockGoal(run.arena)}`
     ),
     karte("Funken verdient", `${currencyIcon("spark")} ${fmt(payout.sparks)}`),
+  ];
+
+  const mehr: string[] = [
+    karte("Pegs getroffen", `${st.pegHits}`, `${currencyIcon("spark")} ${fmt(kugelFunken)}`),
     karte("Kugel-Stufen gekauft", `${run.upgrades}`),
     karte("Bumper", `${st.bumperHits}`, `${currencyIcon("spark")} ${fmt(st.sparks.bumper)}`),
     karte("Lebenszeit geheilt", `+${run.healed.toFixed(1)} s`),
     karte("Kugeln verloren", `${st.drains}`),
+    // Reine Kennzahl, kein Ziel mehr — deshalb ohne Vorgabe darunter.
     karte(
       "Feld voll nach",
-      machine.runFullAt === null ? "—" : `${machine.runFullAt.toFixed(1)} s`,
-      `Ziel ${ARENAS[run.arena].speedGoal} s`
+      machine.runFullAt === null ? "—" : `${machine.runFullAt.toFixed(1)} s`
     ),
   ];
-  if (st.pulses > 0) karten.push(karte("Pulse ausgelöst", `${st.pulses}`, `${st.pulseHits} Pegs`));
-  if (st.strikes > 0) karten.push(karte("Blitzeinschläge", `${st.strikes}`, `${st.strikeHits} Pegs`));
-  if (st.ignites > 0) karten.push(karte("Pegs entzündet", `${st.ignites}`, `${currencyIcon("spark")} ${fmt(st.sparks.burn)}`));
-  if (st.buffsApplied > 0) karten.push(karte("Buffs gesetzt", `${st.buffsApplied}`));
+  if (st.pulses > 0) mehr.push(karte("Pulse ausgelöst", `${st.pulses}`, `${st.pulseHits} Pegs`));
+  if (st.strikes > 0) mehr.push(karte("Blitzeinschläge", `${st.strikes}`, `${st.strikeHits} Pegs`));
+  if (st.ignites > 0) mehr.push(karte("Pegs entzündet", `${st.ignites}`, `${currencyIcon("spark")} ${fmt(st.sparks.burn)}`));
+  if (st.buffsApplied > 0) mehr.push(karte("Buffs gesetzt", `${st.buffsApplied}`));
   if (machine.barrenTotal > 0) {
-    karten.push(
+    mehr.push(
       karte("Barren zerschlagen", `${st.barrenBroken} / ${machine.barrenTotal}`, `${st.barrenHits} Treffer`)
     );
   }
-  if (run.shards > 0) karten.push(karte("Splitter gesammelt", `${currencyIcon("shard")} ${fmt(run.shards)}`));
+  if (run.shards > 0) mehr.push(karte("Splitter gesammelt", `${currencyIcon("shard")} ${fmt(run.shards)}`));
 
-  elResGrid.innerHTML = karten.join("");
+  elResGrid.innerHTML = kern.join("");
+  elResGridMore.innerHTML = mehr.join("");
+  setResultDetails(resultDetailsOffen, mehr.length);
 
   // Wie aus Funken Geld wurde. Ohne diese Rechnung wäre die Auszahlung eine
   // Zahl, die aus dem Nichts kommt — und kein Upgrade wäre lesbar.
-  const zeile = (name: string, links: string, rechts: string) => `
-    <div class="pay-row">
+  const zeile = (name: string, links: string, rechts: string, faktor = false) => `
+    <div class="pay-row${faktor ? " pay-row--mult" : ""}">
       <span class="pay-name">${name}</span>
       <span class="pay-in">${links}</span>
       <span class="pay-out">${rechts}</span>
@@ -790,13 +1043,24 @@ function showResult(
     zeile(
       "Faktor",
       `Level ${run.arena + 1} × Baum ${stats.payMult.toFixed(2)}`,
-      `×${payout.mult.toFixed(2)}`
+      `×${payout.mult.toFixed(2)}`,
+      true
+    ) +
+    // Die Ausdauer steht als EIGENE Zeile und nennt ihre Herkunft. Waere sie
+    // in den Faktor eingerechnet, saehe man nur eine groessere Zahl und
+    // wuesste nicht, dass das Durchhalten sie verdient hat.
+    zeile(
+      "Ausdauer",
+      `Leerung nach ${run.elapsed.toFixed(1)} s`,
+      `×${payout.endurance.toFixed(2)}`,
+      true
     );
 
   const belohnung = [
+    // `reward-value--total` ist der Griff fuer das Hochzaehlen.
     `<div class="reward-item">
        ${currencyIcon("money", "reward-icon", "Geld")}
-       <span class="reward-value">${fmt(payout.total)}</span>
+       <span class="reward-value reward-value--total">${fmt(payout.total)}</span>
      </div>`,
   ];
   if (run.shards > 0) {
@@ -813,6 +1077,8 @@ function showResult(
      </div>`);
   }
   elResReward.innerHTML = belohnung.join("");
+  elResReward.classList.remove("is-in");
+  enthuelleAuszahlung(payout.total, rechnungAb);
 
   const quellen = sourceInfo();
   const gesamt = quellen.reduce((sum, q) => sum + st.sparks[q.key], 0);
@@ -851,6 +1117,7 @@ function showResult(
 }
 
 function closeResult(): void {
+  stopResultReveal();
   hideOverlay(elResult);
 }
 
@@ -966,47 +1233,38 @@ function renderSelect(): void {
     karte(
       "main",
       "Freischaltung",
-      "▶",
+      currencyIcon("crown", "goal-currency-icon"),
       `Decke <b>${ziel} der ${total} Pegs</b> in einem <b>einzigen Lauf</b> ab.<br>` +
         (letztes
           ? `Danach gilt dieses Level als bezwungen.`
-          : `Das &ouml;ffnet <b>Level ${i + 2}</b>.`),
+          : `Das &ouml;ffnet <b>Level ${i + 2}</b>.`) +
+        `<br>` +
+        (state.cleared[i]
+          ? `Die <b>Krone</b> daf&uuml;r hast du bereits.`
+          : `Beim ersten Mal gibt es daf&uuml;r <b>eine Krone</b>.`),
       state.cleared[i]
     ) +
     karte(
       "main",
       "Meisterschaft",
-      currencyIcon("crown", "goal-currency-icon"),
+      currencyIcon("sigil", "goal-currency-icon"),
       `Triff <b>alle ${total} Pegs</b> in einem <b>einzigen Lauf</b>.<br>` +
         `Nach jedem Lauf erlischt das Feld wieder &mdash; erst der vollst&auml;ndige ` +
         `Durchgang l&auml;sst es dauerhaft leuchten.<br>` +
         (fertig
-          ? `Die <b>Krone</b> daf&uuml;r hast du bereits.`
-          : `Beim ersten Mal gibt es daf&uuml;r <b>eine Krone</b> &mdash; die ` +
-            `einzige Kronenquelle im Spiel. Kein Muss: komm sp&auml;ter mit ` +
-            `mehr Kugeln wieder.`),
+          ? `Das <b>Siegel</b> daf&uuml;r hast du bereits.`
+          : `Beim ersten Mal gibt es daf&uuml;r <b>ein Siegel</b>. Kein Muss: ` +
+            `komm sp&auml;ter mit mehr Kugeln wieder.`),
       fertig
     ) +
     karte(
       "bonus",
-      "Tempo",
-      currencyIcon("shard", "goal-currency-icon"),
-      `Mach das Feld <b>innerhalb von ${a.speedGoal} Sekunden</b> vollst&auml;ndig.<br>` +
-        (state.speedRun[i]
-          ? `Die <b>${speedReward(i)} Splitter</b> daf&uuml;r hast du bereits.`
-          : `Nicht die Abdeckung z&auml;hlt hier, sondern <b>wie schnell</b>: ` +
-            `Pulsradius, Takt und die Zahl deiner Kugeln.<br>` +
-            `Beim ersten Mal gibt es <b>${speedReward(i)} Splitter</b>.`),
-      state.speedRun[i]
-    ) +
-    karte(
-      "bonus",
       "Ausdauer",
-      currencyIcon("shard", "goal-currency-icon"),
+      currencyIcon("sigil", "goal-currency-icon"),
       `Halte einen Lauf <b>${a.bonusSurvive} Sekunden</b> am Leben.<br>` +
         (state.bonusSurvive[i]
-          ? `Die <b>${surviveReward(i)} Splitter</b> daf&uuml;r hast du bereits.`
-          : `Beim ersten Mal gibt es daf&uuml;r <b>${surviveReward(i)} Splitter</b>.`),
+          ? `Das <b>Siegel</b> daf&uuml;r hast du bereits.`
+          : `Beim ersten Mal gibt es daf&uuml;r <b>ein Siegel</b>.`),
       state.bonusSurvive[i]
     ) +
     karte(
@@ -1163,6 +1421,8 @@ function save(): void {
     completed: state.completed,
     speedRun: state.speedRun,
     bonusSurvive: state.bonusSurvive,
+    sigils: state.sigils,
+    enchant: state.enchant,
     time: Date.now(),
   };
   try {
@@ -1172,8 +1432,11 @@ function save(): void {
   }
 }
 
+/** Gesetzt, wenn beim Laden ein v7-Stand umgerechnet wurde. */
+let migriert: Umrechnung | null = null;
+
 function load(): void {
-  const raw = localStorage.getItem(SAVE_KEY);
+  const raw = localStorage.getItem(SAVE_KEY) ?? localStorage.getItem(LEGACY_KEY);
   if (!raw) return;
   try {
     const d = JSON.parse(raw) as SaveData;
@@ -1188,6 +1451,21 @@ function load(): void {
     state.completed = ARENAS.map((_, i) => d.completed?.[i] ?? false);
     state.speedRun = ARENAS.map((_, i) => d.speedRun?.[i] ?? false);
     state.bonusSurvive = ARENAS.map((_, i) => d.bonusSurvive?.[i] ?? false);
+    // Kein `sigils`-Feld heisst: der Stand stammt aus v7 und muss umgerechnet
+    // werden. Ein v8-Stand mit null Siegeln traegt das Feld trotzdem.
+    if (d.sigils === undefined) {
+      migriert = migriereV7(state);
+      state.crowns = migriert.crowns;
+      state.sigils = migriert.sigils;
+    } else {
+      state.sigils = d.sigils;
+    }
+    // Ein Stand ohne Verzauberungen ist voellig in Ordnung — die Esse wird
+    // erst mit einer Krone freigeschaltet.
+    state.enchant = {
+      besessen: d.enchant?.besessen ?? {},
+      getragen: d.enchant?.getragen ?? {},
+    };
   } catch {
     /* defekter Spielstand — frisch anfangen */
   }
@@ -1218,12 +1496,27 @@ function tick(): void {
   last = now;
 
   gainedThisFrame = 0;
-  stats = deriveStats(state.levels);
+  stats = deriveStats(state.levels, wirksameVerzauberungen());
 
   if (run.active) {
+    // `Herzschlag` liest den Stand der Leiste; die Machine fuehrt sie nicht
+    // selbst, also wird er hier gemeldet — vor dem Schritt, nicht danach.
+    machine.lifeFraction = run.maxLife > 0 ? run.life / run.maxLife : 0;
     machine.update(dt, stats);
+    /*
+     * Die Uhr laeuft IMMER weiter, auch waehrend `Frost` die Leiste einfriert
+     * — nur die Leerung setzt aus. Anfangs stand hier auch `elapsed` still,
+     * und damit hielt jedes Einfrieren zugleich die Leerungsrampe an: bei
+     * hoher Einfrierrate stieg die Rampe kaum noch, und der Lauf konnte
+     * unbegrenzt weiterlaufen. Eingefroren heisst „die Leiste steht", nicht
+     * „die Zeit steht".
+     */
     run.elapsed += dt;
-    run.life -= dt * drainRate(run.elapsed, stats.drainRamp);
+    if (run.freezeT > 0) run.freezeT = Math.max(0, run.freezeT - dt);
+    else run.life -= dt * drainRate(run.elapsed, stats.drainRamp);
+
+    // Die gesammelte Heilung des Frames, gedeckelt. Nur nach oben: eine
+    // ueberhitzte Feuer-Kugel darf die Leiste ungebremst kosten.
 
     // Feuer ist ein Zustand, kein Ereignis: der Loop wird ueber die Zahl
     // brennender Pegs gefahren, nicht ueber die einzelnen Brand-Ticks.
@@ -1341,6 +1634,16 @@ function schedule(): void {
 }
 
 /**
+ * Text nur schreiben, wenn er sich geaendert hat. `updateHud` laeuft in jedem
+ * Frame; ein `textContent`, das denselben Wert setzt, tauscht trotzdem den
+ * Textknoten aus und laesst den Browser die Leiste neu vermessen. Dieselbe
+ * Vorsicht wie in `setLoaderValue`.
+ */
+function setText(el: HTMLElement, text: string): void {
+  if (el.textContent !== text) el.textContent = text;
+}
+
+/**
  * Im Lauf zählen nur Funken, im Baum nur das Bleibende. Geld taucht während
  * eines Laufs bewusst nirgends auf — es steht erst in der Auswertung fest.
  */
@@ -1350,14 +1653,22 @@ function updateHud(): void {
   elRowMoney.classList.toggle("hidden", inRun);
   elRowCrowns.classList.toggle("hidden", inRun || state.crowns === 0);
   elRowShards.classList.toggle("hidden", (inRun && !shardsActive()) || (!inRun && state.shards === 0));
+  // Siegel gibt es nur ausserhalb des Laufs und erst, wenn eines verdient
+  // wurde — dieselbe Regel wie bei Kronen und Splittern. Fuenf Zahlen im HUD
+  // waeren von der ersten Sekunde an zu viel.
+  elRowSigils.classList.toggle("hidden", inRun || state.sigils === 0);
+  setText(elSigils, fmt(state.sigils));
+  // Auch hier, nicht nur in setView: die Esse wird mitten im Baum gekauft,
+  // und der Reiter soll im selben Moment erscheinen.
+  elViewTabs.classList.toggle("hidden", inRun || !essOffen());
   elRowSparks.classList.toggle("hidden", !inRun);
   elRowRate.classList.toggle("hidden", !inRun);
 
-  elMoney.textContent = fmt(state.money);
-  elCrowns.textContent = fmt(state.crowns);
-  elShards.textContent = inRun ? `+${fmt(run.shards)}` : fmt(state.shards);
-  elSparks.textContent = fmt(run.sparks);
-  elRate.textContent = `${fmt(state.rate)} /s`;
+  setText(elMoney, fmt(state.money));
+  setText(elCrowns, fmt(state.crowns));
+  setText(elShards, inRun ? `+${fmt(run.shards)}` : fmt(state.shards));
+  setText(elSparks, fmt(run.sparks));
+  setText(elRate, `${fmt(state.rate)} /s`);
 
   if (inRun) {
     const k = run.maxLife > 0 ? run.life / run.maxLife : 0;
@@ -1368,11 +1679,20 @@ function updateHud(): void {
     // und waere dort immer voll.
     const ziel = unlockGoal(run.arena);
     const c = machine.runCovered;
-    elLifeCover.textContent =
+    setText(
+      elLifeCover,
       c >= machine.pegTotal
         ? `Pegs ${c} / ${machine.pegTotal} ✓`
-        : `Pegs ${c} / ${machine.pegTotal}  ·  Ziel ${ziel}${c >= ziel ? " ✓" : ""}`;
-    elLifeDrain.textContent = `Leerung ×${drainRate(run.elapsed, stats.drainRamp).toFixed(1)}`;
+        : `Pegs ${c} / ${machine.pegTotal}  ·  Ziel ${ziel}${c >= ziel ? " ✓" : ""}`
+    );
+    // Beide Seiten derselben Zahl: die Leerung ist die Bedrohung, die
+    // Ausdauer der Lohn dafuer, ihr standgehalten zu haben. Sie stehen
+    // nebeneinander, damit man beim Zusehen begreift, dass Durchhalten zahlt.
+    setText(
+      elLifeDrain,
+      `Leerung ×${drainRate(run.elapsed, stats.drainRamp).toFixed(1)}` +
+        `  ·  Ausdauer ×${enduranceMult(run.elapsed, stats.drainRamp).toFixed(2)}`
+    );
   }
 }
 
@@ -1441,9 +1761,68 @@ canvas.addEventListener("pointerup", (e) => {
   save();
 });
 
+/* ------------------------------------------------------------ Esse --- */
+
+/** Ist die Esse gekauft? Vorher gibt es die Reiter gar nicht. */
+const essOffen = () => (state.levels["forge"] ?? 0) > 0;
+
+/**
+ * Verzauberungen wirken nur, solange die Esse gekauft ist.
+ *
+ * Ohne diesen Riegel wirkt ein Element weiter, das irgendwann einmal im Stand
+ * gelandet ist — auch wenn der Knoten dafuer gar nicht (mehr) da ist. Das ist
+ * genau die Sorte stiller Zustand, die man beim Suchen eines Fehlers zuletzt
+ * vermutet: eine Kugel verhaelt sich anders, und im Baum steht nichts davon.
+ */
+const wirksameVerzauberungen = () => (essOffen() ? state.enchant : emptyEnchant());
+
+const elViewTabs = document.getElementById("viewTabs")!;
+const elViewTree = document.getElementById("viewTree")!;
+const elViewForge = document.getElementById("viewForge")!;
+
+const forge = new ForgeView(document.getElementById("forge")!, {
+  kinds: () => stats.kinds,
+  state: () => state.enchant,
+  sigils: () => state.sigils,
+  pay: (n) => {
+    if (state.sigils < n) return false;
+    state.sigils -= n;
+    return true;
+  },
+  changed: () => {
+    save();
+    updateHud();
+  },
+  sound: (ok) => treeSound(ok ? "buy" : "denied"),
+});
+
+/** Welcher Reiter gerade offen ist. Im Lauf ist keiner offen. */
+let baumReiter: "tree" | "forge" = "tree";
+
+function setReiter(r: "tree" | "forge"): void {
+  baumReiter = r;
+  elViewTree.classList.toggle("is-on", r === "tree");
+  elViewForge.classList.toggle("is-on", r === "forge");
+  forge.setVisible(r === "forge" && state.view === "tree");
+}
+
+elViewTree.addEventListener("click", () => {
+  audio.play("ui");
+  setReiter("tree");
+});
+elViewForge.addEventListener("click", () => {
+  audio.play("ui");
+  setReiter("forge");
+});
+
 function setView(v: "tree" | "run"): void {
   state.view = v;
   const inRun = v === "run";
+  // Die Reiter erscheinen erst, wenn es eine zweite Ansicht gibt, und im
+  // Lauf gar nicht: dort gibt es nichts zu wechseln.
+  elViewTabs.classList.toggle("hidden", inRun || !essOffen());
+  if (inRun) forge.setVisible(false);
+  else setReiter(essOffen() ? baumReiter : "tree");
   elMainBtn.textContent = inRun ? "LAUF BEENDEN" : "SPIELEN";
   canvas.style.cursor = inRun ? "default" : "grab";
   // Die Panels kommen von der Seite herein, an der sie sitzen.
@@ -1478,6 +1857,38 @@ document.getElementById("resAgain")!.addEventListener("click", () => {
   startRun();
 });
 document.getElementById("selStart")!.addEventListener("click", startRun);
+
+/*
+ * Der Hinweis zur Umrechnung. Er erscheint genau einmal — beim ersten Start
+ * nach der Umstellung — und nennt die Betraege, damit niemand raten muss, wo
+ * seine Kronen geblieben sind. Wer nichts umzurechnen hatte, sieht ihn nie.
+ */
+const elMigrate = document.getElementById("migrate")!;
+document.getElementById("closeMigrate")!.addEventListener("click", () => {
+  audio.play("ui");
+  hideOverlay(elMigrate);
+});
+
+function zeigeUmrechnung(u: Umrechnung): void {
+  const zeile = (c: Parameters<typeof currencyIcon>[0], n: number, was: string) =>
+    `<p class="setting-hint">${currencyIcon(c)} <b>${fmt(n)} ${CURRENCY[c].name}</b> &mdash; ${was}</p>`;
+
+  document.getElementById("migrateBody")!.innerHTML =
+    `<p class="setting-hint">` +
+    `Die Ziele zahlen jetzt andere W&auml;hrungen. Die <b>Freischaltung</b> einer ` +
+    `Arena bringt eine <b>Krone</b>, <b>Meisterschaft</b> und <b>Ausdauer</b> je ` +
+    `ein <b>Siegel</b>. Das Tempo-Ziel gibt es nicht mehr.` +
+    `</p>` +
+    zeile("crown", u.crowns, "neu berechnet aus deinen freigespielten Arenen, abz&uuml;glich dessen, was du bereits ausgegeben hast") +
+    zeile("sigil", u.sigils, "f&uuml;r jede Meisterschaft und jedes Ausdauer-Ziel, das du schon hast") +
+    `<p class="setting-hint">` +
+    (u.fehlbetrag > 0
+      ? `Du hast ${u.fehlbetrag} Kronen mehr ausgegeben, als die neue Rechnung ergeben ` +
+        `h&auml;tte. <b>Behalten darfst du alles</b> &mdash; es wird nichts zur&uuml;ckgenommen.`
+      : `Alle gekauften Knoten bleiben unver&auml;ndert.`) +
+    `</p>`;
+  showOverlay(elMigrate);
+}
 
 document.getElementById("settings")!.addEventListener("click", () => {
   audio.play("ui");
@@ -1653,6 +2064,9 @@ renderGrafik();
 document.getElementById("wipe")!.addEventListener("click", () => {
   wiping = true;
   localStorage.removeItem(SAVE_KEY);
+  // Auch der alte Stand muss weg — sonst laedt der naechste Start ihn wieder
+  // und rechnet ihn erneut um, und der Knopf hat nichts bewirkt.
+  localStorage.removeItem(LEGACY_KEY);
   location.reload();
 });
 
@@ -1683,6 +2097,9 @@ window.addEventListener("beforeunload", save);
 load();
 refreshUnlocked();
 setView("tree");
+// Erst nach setView: der Hinweis liegt ueber dem Skill Tree, nicht ueber
+// einem leeren Bildschirm.
+if (migriert) zeigeUmrechnung(migriert);
 // Der Ton legt sofort los: Kontext anlegen und alle Dateien dekodieren.
 // Klingen darf er erst nach der ersten Eingabe — das regelt audio.ts
 // selbst, weil Browser einen AudioContext ohne Nutzergeste stumm halten.

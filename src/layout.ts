@@ -1,7 +1,7 @@
 /* =========================================================================
    layout.ts — Wo die Knoten des Skill Trees liegen.
 
-   Die Positionen stehen NICHT von Hand in upgrades.ts. Bei 78 Knoten war
+   Die Positionen stehen NICHT von Hand in upgrades.ts. Bei 90 Knoten war
    das nicht zu halten: jede eingefuegte Verzweigung schob irgendwo zwei
    Kanten uebereinander, und man sah es erst im Spiel.
 
@@ -63,7 +63,20 @@ const KANTE = 148;
  * gegen den halben Knopf, nicht gegen einen festen Mittenabstand — die
  * Schlussknoten sind groesser als die anderen und brauchen mehr Platz.
  */
-const LUFT_KNOTEN = 58;
+/*
+ * Luft zwischen zwei Knoepfen. Der Zielabstand ist HALB + HALB + LUFT, also
+ * 30 + 30 + 96 = 156.
+ *
+ * Hier stand 58, und damit lag das Ziel bei 118 — unter den 130, die
+ * `tools/layout.ts` verlangt. Die Pruefung meldete deshalb dauerhaft
+ * Dutzende zu enger Paare, zuletzt 95 bei 98 Knoten, und niemand konnte
+ * sagen, ob das ein Fehler oder der Normalzustand war. Mit 96 sind es drei.
+ *
+ * Der Baum wird dadurch groesser (2485 x 1891 statt 1576 x 1717). Das ist
+ * der Tausch, den das Design-Dokument ohnehin vorgibt: lieber ein grosser
+ * Baum als ein gedraengter.
+ */
+const LUFT_KNOTEN = 96;
 
 /** Luft zwischen einer Linie und einem Knopf, an dem sie nur vorbeilaeuft. */
 const LUFT_LINIE = 34;
@@ -125,7 +138,7 @@ const KREUZ_TAKT = 12;
 /**
  * Runden und groesster Schritt je Runde. Der Schritt wird linear kleiner:
  * am Anfang darf sich viel bewegen, am Ende wackelt nichts mehr. 900 Runden
- * ueber 78 Knoten sind ein paar Millisekunden, und das einmal beim Start.
+ * ueber 90 Knoten sind ein paar Millisekunden, und das einmal beim Start.
  */
 const RUNDEN = 1500;
 const SCHRITT_MAX = 12;

@@ -44,14 +44,22 @@
     <canvas id="stage"></canvas>
 
     <div class="hud">
-      <!-- Waehrungen. Im Lauf zaehlen nur Funken (und Splitter ab Level 5),
+      <!-- Waehrungen. Im Lauf zaehlen nur Funken (und Splitter ab Level 3),
            im Skill Tree nur das Bleibende — die Zeilen schalten sich um. -->
       <div class="panel panel--res">
         <div class="res-row" id="rowMoney"><img class="currency-icon" src="./assets/currency-icons/money.png" alt="Geld"><span id="money">0</span></div>
         <div class="res-row" id="rowCrowns"><img class="currency-icon" src="./assets/currency-icons/crown.png" alt="Kronen"><span id="crowns">0</span></div>
+        <div class="res-row" id="rowSigils"><img class="currency-icon" src="./assets/currency-icons/sigil.png" alt="Siegel"><span id="sigils">0</span></div>
         <div class="res-row" id="rowShards"><img class="currency-icon" src="./assets/currency-icons/shard.png" alt="Splitter"><span id="shards">0</span></div>
         <div class="res-row" id="rowSparks"><img class="currency-icon" src="./assets/currency-icons/spark.png" alt="Funken"><span id="sparks">0</span></div>
         <div class="res-row res-row--sub" id="rowRate"><span class="glyph glyph--teal">&#9650;</span><span id="rate">0 /s</span></div>
+      </div>
+
+      <!-- Reiter unter der Waehrungsanzeige. Erscheint erst, wenn es mehr als
+           eine Ansicht gibt — vorher waere ein Reiter ohne Auswahl nur Zierat. -->
+      <div class="panel panel--views hidden" id="viewTabs">
+        <button class="view-tab is-on" id="viewTree">Skill Tree</button>
+        <button class="view-tab" id="viewForge">Esse</button>
       </div>
 
       <div class="arena-title hidden" id="arenaTitle">ARENA 1 &middot; KAMMER</div>
@@ -122,7 +130,20 @@
         <div class="result-main">
           <h2 class="result-title" id="resTitle">Lauf beendet</h2>
           <div class="result-badges" id="resBadges"></div>
-          <div class="result-grid" id="resGrid"></div>
+          <!-- Die Kernkarten stehen immer da, alles Weitere klappt auf. Nach
+               einem Lauf will man drei Dinge sofort wissen; der Rest ist
+               Nachlese und soll den Blick nicht zustellen. -->
+          <div class="result-stats">
+            <div class="result-grid" id="resGrid"></div>
+            <button
+              class="stat-more"
+              id="resMore"
+              type="button"
+              aria-expanded="false"
+              aria-controls="resGridMore"
+            >Mehr anzeigen</button>
+            <div class="result-grid result-grid--more hidden" id="resGridMore"></div>
+          </div>
 
           <div class="result-reward">
             <div class="result-kicker">Gesamtbelohnung</div>
@@ -140,6 +161,29 @@
           <h3 class="result-sidetitle">Funken nach Quelle</h3>
           <div id="resSources"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Einmaliger Hinweis nach der Umrechnung eines v7-Standes. Steht nicht
+         in den Einstellungen, weil er genau einmal erscheint und gelesen
+         werden soll, bevor man weiterspielt. -->
+    <!-- Die Esse. Eigene Ansicht neben dem Skill Tree, kein Overlay: man
+         haelt sich hier laenger auf und wechselt bewusst hin und zurueck. -->
+    <div class="forge hidden" id="forge">
+      <div class="forge-inner">
+        <h2 class="forge-title">Die Esse</h2>
+        <p class="forge-sub" id="forgeSub"></p>
+        <div class="forge-balls" id="forgeBalls"></div>
+        <div class="forge-elements" id="forgeElements"></div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="migrate">
+      <div class="modal-card">
+        <h2>Dein Spielstand wurde umgestellt</h2>
+        <p class="modal-sub">Nichts ging verloren &mdash; alles Gekaufte ist geblieben.</p>
+        <div id="migrateBody"></div>
+        <button class="ghost-btn" id="closeMigrate">Weiter</button>
       </div>
     </div>
 

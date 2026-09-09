@@ -14,6 +14,8 @@ import { deriveStats } from "../src/upgrades";
 import { costOf, currencyOf } from "../src/tree";
 
 const TRACE = process.argv.includes("--trace");
+/** Nur die statische Kostentabelle, ohne Kampagne — fuers Preis-Tuning. */
+const STATIC = process.argv.includes("--static");
 const SEEDS = TRACE ? [1] : [1, 2, 3];
 const MAX_RUNS = 420;
 /** Nach dem Freispielen aller Arenen noch so viele Laeufe weiter beobachten. */
@@ -59,7 +61,7 @@ for (const a of ARENAS) {
 }
 
 console.log("\n=== BAUM: Gesamtkosten je Node ===");
-const totals: Record<string, number> = { money: 0, shard: 0, crown: 0 };
+const totals: Record<string, number> = { money: 0, shard: 0, crown: 0, sigil: 0 };
 for (const n of NODES) {
   let sum = 0;
   for (let l = 0; l < n.max; l++) sum += costOf(n, l);
@@ -71,9 +73,13 @@ for (const n of NODES) {
   );
 }
 console.log(
-  `SUMME  ◆ ${num(totals.money)}   ◈ ${num(totals.shard)}   ♛ ${totals.crown}` +
-    `   (Kronen im Spiel: ${ARENAS.length}, eine je Meisterschaft)`
+  `SUMME  ◆ ${num(totals.money)}   ◈ ${num(totals.shard)}   ` +
+    `♛ ${totals.crown}   ❈ ${totals.sigil}\n` +
+    `       im Spiel: ♛ ${ARENAS.length} (je Freischaltung), ` +
+    `❈ ${ARENAS.length * 2} (je Meisterschaft und Ausdauer)`
 );
+
+if (STATIC) process.exit(0);
 
 /* --------------------------------------------------------- Kampagne --- */
 
@@ -91,6 +97,10 @@ interface Zeile {
 
 const alle: Zeile[][] = [];
 const dauer: number[] = [];
+/** Funken je Quelle ueber die ganze Kampagne — welche Kugel traegt das Spiel? */
+const quellen: Record<string, number> = {};
+/** Verdiente Splitter je Seed, gegen die Gesamtkosten aller ◈-Knoten. */
+const splitterVerdient: number[] = [];
 /** Laeufe, bis alle Arenen freigespielt waren. */
 const bisFreiAlle: number[] = [];
 /** Laeufe, bis JEDES Ziel erfuellt war (100 %). */
@@ -101,19 +111,22 @@ for (const seed of SEEDS) {
   const pr: Progress = newProgress();
   const log: Array<ReturnType<typeof playOne>> = [];
   let fertig = -1;
+  let splitter = 0;
 
   if (TRACE) console.log(`\n=== KAMPAGNE (Seed ${seed}, Bot spielt stets das hoechste Level) ===`);
 
   for (let i = 0; i < MAX_RUNS; i++) {
     const r = playOne(pr);
     log.push(r);
+    splitter += r.shards;
+    for (const [q, v] of Object.entries(r.sparks)) quellen[q] = (quellen[q] ?? 0) + v;
     if (TRACE) {
       const flag = (r.cleared ? " ▶FREI" : "") + (r.complete ? " ★MEISTER" : "");
       console.log(
         `#${pad(i + 1, 3)} L${r.arena + 1} ${pad(r.seconds.toFixed(1), 6)}s  ` +
           `Pegs ${pad(r.covered, 3)}/${pad(r.pegTotal, 3)} (Ziel ${pad(r.unlockGoal, 3)})  ` +
           `✦${pad(num(r.sparksGross), 7)}  ◆${pad(num(r.money), 7)}  ` +
-          `Konto ◆${pad(num(pr.purse.money), 7)} ◈${pad(num(pr.purse.shards), 6)} ♛${pr.purse.crowns}  ` +
+          `Konto ◆${pad(num(pr.purse.money), 7)} ◈${pad(num(pr.purse.shards), 6)} ♛${pr.purse.crowns} ❈${pr.purse.sigils}  ` +
           `${r.bought.slice(0, 3).join(", ") || "-"}${flag}`
       );
     }
@@ -121,7 +134,6 @@ for (const seed of SEEDS) {
     if (
       pr.cleared.every(Boolean) &&
       pr.completed.every(Boolean) &&
-      pr.speedRun.every(Boolean) &&
       pr.bonusSurvive.every(Boolean)
     ) {
       alleZiele.push(i + 1);
@@ -131,6 +143,7 @@ for (const seed of SEEDS) {
   }
 
   dauer.push(pr.seconds);
+  splitterVerdient.push(splitter);
   bisFreiAlle.push(fertig >= 0 ? fertig + 1 : MAX_RUNS);
   const zeilen: Zeile[] = [];
   for (let a = 0; a < ARENAS.length; a++) {
@@ -189,3 +202,32 @@ console.log(
     `${(avg(dauer) / 60).toFixed(1)} min reine Laufzeit ` +
     `(Spanne ${Math.min(...gesamtRuns)}–${Math.max(...gesamtRuns)} Laeufe)`
 );
+
+/* ------------------------------------------------- Funken nach Quelle --- */
+
+console.log("\n=== FUNKEN NACH QUELLE (ganze Kampagne, alle Seeds) ===");
+console.log("Wer traegt das Spiel? Eine Quelle ueber 60 % ist ein Warnzeichen.");
+const quellSumme = Object.values(quellen).reduce((a, b) => a + b, 0);
+for (const [q, v] of Object.entries(quellen).sort((a, b) => b[1] - a[1])) {
+  const p = quellSumme > 0 ? (v / quellSumme) * 100 : 0;
+  console.log(
+    `${q.padEnd(10)} ${pad(num(v), 9)}  ${pad(p.toFixed(1) + " %", 8)}  ` +
+      "█".repeat(Math.round(p / 2))
+  );
+}
+
+/* ----------------------------------------------------- Splitterbilanz --- */
+
+console.log("\n=== SPLITTERBILANZ ===");
+const verdient = avg(splitterVerdient);
+console.log(
+  `Verdient in einer ganzen Kampagne : ◈ ${num(verdient)}\n` +
+    `Kosten aller ◈-Knoten zusammen    : ◈ ${num(totals.shard)}\n` +
+    `Davon bezahlbar                   : ${((verdient / totals.shard) * 100).toFixed(4)} %`
+);
+if (verdient < totals.shard) {
+  console.log(
+    `\n  ACHTUNG: der Splitter-Ast ist mit den Einnahmen einer Kampagne nicht\n` +
+      `  auszubauen. Es fehlt der Faktor ${(totals.shard / Math.max(1, verdient)).toFixed(0)}.`
+  );
+}

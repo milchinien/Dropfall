@@ -303,6 +303,9 @@ body {
 .glyph--pink { color: var(--pink); }
 .glyph--magenta { color: var(--magenta); }
 .glyph--blue { color: var(--blue); }
+/* Siegel: die einzige Waehrung ohne eigene Palettenfarbe — sie nimmt die
+   Textfarbe, weil teal, amber, blau und magenta bereits vergeben sind. */
+.glyph--silver { color: #e8e4f2; }
 
 .currency-icon,
 .currency-inline {
@@ -1157,12 +1160,44 @@ body {
   color: var(--teal);
 }
 
+/* Der Rollbereich sitzt um BEIDE Raster und den Schalter dazwischen. Lag er
+   auf dem Raster selbst, rollte im aufgeklappten Zustand nur die zweite
+   Haelfte, und der Schalter waere mit nach oben gewandert. */
+.result-stats {
+  margin-top: 18px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
 .result-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-top: 18px;
-  overflow-y: auto;
+}
+
+.result-grid--more {
+  margin-top: 12px;
+}
+
+/* Bewusst leise: der Schalter ist eine Einladung, keine Handlungsaufforderung.
+   Die beiden grossen Knoepfe unten sollen die einzigen bleiben, die rufen. */
+.stat-more {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: none;
+  border: 2px dashed rgba(var(--text-rgb), 0.22);
+  border-radius: 9px;
+}
+
+.stat-more:hover {
+  color: var(--text);
+  border-color: rgba(var(--text-rgb), 0.45);
 }
 
 .stat {
@@ -1180,10 +1215,18 @@ body {
 .stat-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   font-size: 19px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+/* Umbrochen wird zwischen den Teilen, nie INNERHALB eines Wertes: „62.3 s"
+   auf zwei Zeilen liest sich als zwei Angaben statt als eine. */
+.stat-in,
+.stat-out {
+  white-space: nowrap;
 }
 
 .stat-in {
@@ -1240,6 +1283,11 @@ body {
   font-size: 32px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  /* Waehrend des Hochzaehlens haelt main.ts hier eine `min-width` fest, die
+     fuer die ENDzahl reicht. Ohne sie wuechse die Zahl beim Zaehlen und
+     schoebe Splitter und Krone neben sich zur Seite. `text-align` haelt die
+     kuerzeren Zwischenstaende in der Mitte dieses reservierten Platzes. */
+  text-align: center;
 }
 
 .reward-label {
@@ -1286,6 +1334,105 @@ body {
   flex: 0 0 auto;
   font-weight: 800;
   color: var(--amber);
+  /* Der Wackler dreht und skaliert um die rechte Kante — dort steht die Zahl,
+     dort soll sie auch stehen bleiben. (Als Flex-Kind ist die Zeile ohnehin
+     blockartig, `display` muss nicht gesetzt werden.) */
+  transform-origin: right center;
+}
+
+/* ------------------------------------------ Das Aufdecken der Auszahlung ---
+
+   Die Rechnung steht nicht fertig da, sie deckt sich Zeile fuer Zeile auf.
+   Jede Zeile ist von Anfang an IM FLUSS, nur unsichtbar — waere sie
+   `display: none`, wuechse die Karte beim Aufdecken und die Knoepfe darunter
+   wanderten bei jeder Zeile ein Stueck nach unten. */
+
+.pay-row {
+  opacity: 0;
+}
+
+.pay-row.is-in {
+  animation: pay-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.result-reward-box {
+  opacity: 0;
+}
+
+.result-reward-box.is-in {
+  animation: reward-pop 0.42s cubic-bezier(0.2, 1.1, 0.3, 1) both;
+}
+
+/* Der Wackler sitzt auf dem WERT, nicht auf der Zeile. Eine volle Zeile, die
+   sich dreht, sieht nach Fehler aus; eine Zahl, die zappelt, nach Gewicht.
+   Er gilt nur den beiden Faktoren — sie sind der Moment, auf den die ganze
+   Rechnung zulaeuft. */
+.pay-row--mult.is-in .pay-out {
+  animation: pay-wackel 0.52s cubic-bezier(0.2, 1.1, 0.3, 1) both;
+}
+
+@keyframes pay-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pay-wackel {
+  0% {
+    transform: scale(0.6) rotate(-9deg);
+  }
+  38% {
+    transform: scale(1.34) rotate(5deg);
+  }
+  58% {
+    transform: scale(0.94) rotate(-3.5deg);
+  }
+  76% {
+    transform: scale(1.11) rotate(1.8deg);
+  }
+  90% {
+    transform: scale(0.98) rotate(-0.6deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes reward-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Wer Bewegung abbestellt hat, bekommt dieselbe Auswertung ohne Auflauf —
+   main.ts deckt dann alles auf einen Schlag auf. Die Regeln hier sorgen
+   dafuer, dass nichts unsichtbar liegen bleibt, falls doch eine Zeile ohne
+   `is-in` uebrig ist. */
+@media (prefers-reduced-motion: reduce) {
+  .pay-row,
+  .result-reward-box {
+    opacity: 1;
+  }
+
+  .pay-row.is-in,
+  .result-reward-box.is-in,
+  .pay-row--mult.is-in .pay-out {
+    animation: none;
+  }
 }
 
 .reward-icon--blue {
@@ -1612,3 +1759,177 @@ body {
 .modal-card h2 {
   font-family: var(--font-display);
 }
+
+/* ===================================================== Reiter & Esse === */
+
+/*
+ * Die Reiterleiste sitzt direkt unter der Waehrungsanzeige. Sie erscheint
+ * erst, wenn es ueberhaupt eine zweite Ansicht gibt — ein Reiter ohne
+ * Auswahl ist nur Zierat.
+ */
+.panel--views {
+  top: 22px;
+  left: 22px;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+}
+
+.view-tab {
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: color 0.14s, background 0.14s;
+}
+
+.view-tab:hover { color: var(--text); }
+
+.view-tab.is-on {
+  color: var(--bg-deep);
+  background: var(--amber);
+}
+
+/* ---------------------------------------------------------- Die Esse --- */
+
+.forge {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: var(--bg-deep);
+}
+
+.forge-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 96px 32px 64px;
+}
+
+.forge-title {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: 0.04em;
+}
+
+.forge-sub {
+  margin: 6px 0 34px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+/* Die sieben Kugeln in einer Reihe: hier steckt man um. */
+.forge-balls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 44px;
+}
+
+.forge-ball {
+  flex: 1 1 150px;
+  min-width: 150px;
+  background: var(--bg);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  /* Der Sockel aus der Formsprache: gefuellt hoch, leer flach. */
+  box-shadow: 0 6px 0 0 var(--bg-deep);
+  transition: transform 0.12s, border-color 0.14s, box-shadow 0.12s;
+}
+
+.forge-ball:hover { transform: translateY(-2px); }
+.forge-ball.is-target { border-color: var(--amber); }
+.forge-ball.is-empty { opacity: 0.55; }
+
+.forge-ball-name {
+  font-size: 15px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.forge-ball-el {
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forge-ball-el .glyph { font-size: 22px; }
+
+/* Die sechs Elementbecken. */
+.forge-elements {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.forge-el {
+  background: var(--bg);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 6px 0 0 var(--bg-deep);
+}
+
+.forge-el.is-owned { border-color: currentColor; }
+.forge-el.is-locked { opacity: 0.6; }
+
+.forge-el-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.forge-el-glyph { font-size: 26px; }
+.forge-el-name { font-size: 21px; letter-spacing: 0.03em; }
+.forge-el-stufe { margin-left: auto; font-size: 15px; color: var(--muted); }
+
+.forge-el-kurz { color: var(--text); font-size: 15px; margin: 0 0 10px; }
+.forge-el-body { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.forge-el-body b { color: var(--text); font-weight: 600; }
+
+/* Der Haken steht optisch abgesetzt: er ist kein Kleingedrucktes, sondern
+   die halbe Entscheidung. */
+.forge-el-haken {
+  margin-top: 8px;
+  padding-left: 10px;
+  border-left: 3px solid var(--pink);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.forge-el-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.forge-btn {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-lift);
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.forge-btn:hover { background: var(--line); }
+.forge-btn[disabled] { opacity: 0.4; cursor: default; }
+.forge-btn img { width: 15px; height: 15px; }

@@ -113,8 +113,15 @@ export interface ArenaDef {
   requiredGoals: number;
 }
 
-/** Ziele je Arena: Freischaltung, Meisterschaft, Tempo, Ausdauer. */
-export const GOALS_PER_ARENA = 4;
+/**
+ * Ziele je Arena: Freischaltung (Krone), Meisterschaft (Siegel), Ausdauer
+ * (Siegel). Das TEMPO-Ziel ist entfallen — es war auf einen Puls kalibriert,
+ * der 241 mal je Sekunde das halbe Feld abdeckte, und wurde nach der
+ * Anteilsregel unerreichbar. `speedGoal` und `speedRun` bleiben als reine
+ * Kennzahl erhalten (die Auswertung zeigt weiter „Feld voll nach"), zaehlen
+ * aber nicht mehr als Ziel.
+ */
+export const GOALS_PER_ARENA = 3;
 
 export const BUMPER_R = 20;
 export const PEG_R = 6.5;
@@ -504,39 +511,55 @@ export function mobilePegCount(a: ArenaDef): number {
 
 /**
  * Die Zutrittsschwelle wächst schneller als die Zahl der Level: man kommt
- * nicht durch, indem man nur vorwärts rennt. Bis Level 12 wie bisher (drei
- * bis vier je Level), danach zwei je Level — bei 30 Arenen mit je vier
- * Zielen liegt der Endwert bei 78 von 116 erreichbaren. Die alten neun
- * verlangten 25 von 32; das strengere Verhältnis zwingt spät zu viele
+ * nicht durch, indem man nur vorwärts rennt. Bei 30 Arenen mit je DREI Zielen
+ * liegt der Endwert bei 59 von 90 erreichbaren — dasselbe Verhältnis wie
+ * zuvor (78 von 120), nur auf die neue Zielzahl umgerechnet. Die alten neun
+ * Arenen verlangten 25 von 32; das strengere Verhältnis zwingt spät zu viele
  * Ausdauer-Ziele, die erst mit dem ausgebauten Baum fallen.
  */
 const REQUIRED = [
-  0, 1, 2, 5, 8, 12, 16, 20, 24, 28,
-  32, 36, 39, 42, 45, 48, 51, 54, 56, 58,
-  60, 62, 64, 66, 68, 70, 72, 74, 76, 78,
+  0, 1, 2, 4, 6, 9, 12, 15, 18, 21,
+  24, 27, 29, 32, 34, 36, 38, 40, 42, 44,
+  45, 46, 48, 50, 51, 52, 54, 56, 57, 58,
 ];
 
 /**
- * Ausdauer in Sekunden. Kalibriert auf die gemessene Laufzeit beim ersten
- * Freispielen (tools/report.ts) mal 0.9 — vorher standen hier die Werte der
- * alten Arenen, und der Bot wiederholte Level 3 und 7 dutzendfach, nur um
- * das Ausdauer-Ziel zu holen. Ab Level 13 wächst die Vorgabe um 8 je Level;
- * die späten Ziele holt man mit dem ausgebauten Baum, nicht beim Durchmarsch.
+ * Ausdauer in Sekunden — seit dem Wegfall des Tempo-Ziels der einzige
+ * Prüfstein, der nicht sättigt.
+ *
+ * Kalibriert auf die gemessene Laufzeit beim ERSTEN Besuch (tools/report.ts)
+ * mal 1.12. Vorher lag der Faktor bei 0.9, und das Ziel fiel dadurch in fast
+ * jeder Arena im ersten Lauf nebenbei mit ab — als Prüfstein taugte es
+ * nicht. Mit 1.12 braucht es einen spürbar besseren Lebensleisten-Ausbau,
+ * bleibt aber erreichbar; genau das ist der Vorrat an offenen Zielen, der die
+ * Zutrittsschwellen trägt.
+ *
+ * Die Reihe ist bewusst NICHT monoton. Die Arenen sind verschieden geformt,
+ * und ein enger Schlund trägt einen Lauf kürzer als eine weite Halle. Eine
+ * geglättete Kurve hätte in genau diesen Arenen ein unerfüllbares Ziel
+ * gesetzt.
  */
 const SURVIVE = [
-  16, 18, 24, 36, 44, 56, 68, 84, 100, 112,
-  120, 128, 136, 144, 152, 160, 168, 176, 184, 192,
-  200, 208, 216, 224, 232, 240, 248, 256, 264, 272,
+  19, 19, 20, 19, 36, 46, 43, 44, 66, 76,
+  78, 129, 95, 118, 128, 125, 127, 136, 137, 148,
+  163, 153, 175, 196, 207, 213, 241, 233, 252, 252,
 ];
 
 /**
  * Tempo in Sekunden bis zum vollen Feld. Absolut, deshalb wächst es mit der
  * Peg-Zahl mit — anders als die Freischaltung, die ein Anteil ist.
+ *
+ * NEU KALIBRIERT nach dem Puls-Umbau. Die alten Werte stammten aus einer Zeit,
+ * in der ein voll ausgebauter Puls 241 mal je Sekunde das halbe Feld abdeckte;
+ * Vollabdeckung in neun Sekunden war damit Routine. Mit der Anteilsregel ist
+ * sie es nicht mehr: gemessen deckte der Bot L6 in 294 von 300 Läufen
+ * vollständig ab und blieb trotzdem 300 Läufe dort hängen, weil er die 13 s
+ * nie schaffte — ein Nadelöhr, das die halbe Kampagne blockierte.
  */
 const SPEED = [
-  9, 10, 10, 12, 13, 13, 12, 12, 12, 13,
-  13, 14, 14, 15, 15, 16, 16, 17, 17, 18,
-  18, 19, 19, 20, 20, 21, 21, 22, 22, 24,
+  18, 20, 20, 24, 26, 26, 24, 24, 24, 26,
+  26, 28, 28, 30, 30, 32, 32, 34, 34, 36,
+  36, 38, 38, 40, 40, 42, 42, 44, 44, 48,
 ];
 
 const COVER = [
@@ -720,10 +743,10 @@ function kaskade(): ArenaDef {
   sims(546, 214, 322, 66);
   sims(66, 400, 486, 60);
   sims(556, 250, 636, 56);
-  pegs.push(...arc(408, 262, 52, -0.5 * Math.PI, 0.55 * Math.PI, 7));
-  pegs.push(...arc(180, 416, 52, 0.45 * Math.PI, 1.5 * Math.PI, 7));
-  pegs.push(...arc(436, 574, 52, -0.5 * Math.PI, 0.55 * Math.PI, 7));
-  pegs.push(...arc(216, 720, 46, 0.5 * Math.PI, 1.45 * Math.PI, 6));
+  pegs.push(...arc(408, 262, 60, -0.55 * Math.PI, 0.6 * Math.PI, 8));
+  pegs.push(...arc(180, 416, 60, 0.4 * Math.PI, 1.55 * Math.PI, 8));
+  pegs.push(...arc(436, 574, 60, -0.55 * Math.PI, 0.6 * Math.PI, 8));
+  pegs.push(...arc(216, 720, 52, 0.45 * Math.PI, 1.5 * Math.PI, 7));
   return build({
     id: 5, name: "Kaskade", charakter: "die Schräge", w, h,
     left: [[0, 0.03], [1, 0.11]],
@@ -1632,8 +1655,8 @@ function herzkammer(): ArenaDef {
 /* ------------------------------------------------------------ Liste --- */
 
 /**
- * Level 1–8 stehen in erzählter Reihenfolge: vom kleinen Kasten über
- * Kessel, Turm und Halle bis zur Kathedrale. Ab 9 sind die Räume gleichwertig,
+ * Level 1–3 stehen fest: Kiste, Sturz, Kessel — der zahme Anfang. Ab 4 sind
+ * die Räume gleichwertig,
  * und dort entscheidet die gemessene Dichte über den Platz — so bleibt die
  * Peg-Zahl streng monoton, ohne dass jedes Motiv auf eine Zahl gepresst
  * werden muss. Die Herzkammer steht immer zuletzt: sie ist der Fächer aus
@@ -1641,9 +1664,9 @@ function herzkammer(): ArenaDef {
  *
  * Die Ziele (Ausdauer, Tempo, Zutritt) hängen am PLATZ, nicht am Motiv.
  */
-const ERZAEHLT = [kammer, schacht, kessel, turm, halle, kaskade, schlund, kathedrale];
+const ERZAEHLT = [kammer, schacht, kessel];
 const FREI = [
-  abgrund, mahlwerk, zitadelle, kern,
+  turm, halle, kaskade, schlund, kathedrale, abgrund, mahlwerk, zitadelle, kern,
   wabe, geflecht, karussell, sternwarte, schmelze, irrgarten, uhrwerk, orgel, walzwerk,
   krater, dornenfeld, katakombe, wirbel, hochofen, konstellation, presse, kaleidoskop,
 ];

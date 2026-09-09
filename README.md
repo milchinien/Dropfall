@@ -66,6 +66,11 @@ Die Leerung beschleunigt sich überproportional mit der Laufzeit
 linear mit der Zahl der Kugeln — wäre die Rampe ebenfalls linear, schöbe jede
 weitere Kugel das Laufende ins Endlose.
 
+Dieselbe Zahl ist am Ende die Belohnung: die Auszahlung wird mit
+`Ausdauer = Leerung ^ 0.5` multipliziert. Wer sich tief in die Rampe
+hineingespielt hat, bekommt dafür bezahlt. Beide stehen nebeneinander im HUD
+(`Leerung ×5.4 · Ausdauer ×2.31`).
+
 ## Kugel-Upgrades im Lauf
 
 Kugeln steigen **nicht mehr von allein** auf. Rechts neben der Arena steht eine
@@ -85,19 +90,33 @@ Lauf nicht. Was bleibt, ist die Auszahlung am Ende.
 
 Nach jedem Lauf erscheint ein Abschlussbildschirm: Titel (`Level gemeistert!`
 oder `Lauf beendet`), Plaketten für Freischaltungen und erstmals erfüllte Ziele,
-eine Kartenübersicht (Laufzeit, Peg-Treffer, Abdeckung gegen das Freischaltziel,
-verdiente Funken, gekaufte Kugel-Stufen, Bumper, geheilte Lebenszeit, verlorene
-Kugeln, *Feld voll nach … s*, Pulse, Blitze, Entzündungen, Buffs, Splitter), der
-**Rechenweg der Auszahlung**,
+drei Kernkarten (Laufzeit mit Ausdauer-Faktor, Abdeckung gegen das
+Freischaltziel, verdiente Funken) und dahinter `Mehr anzeigen` für die Nachlese
+(Peg-Treffer, gekaufte Kugel-Stufen, Bumper, geheilte Lebenszeit, verlorene
+Kugeln, *Feld voll nach … s*, Pulse, Blitze, Entzündungen, Buffs, Barren,
+Splitter), der **Rechenweg der Auszahlung**,
 die Gesamtbelohnung und rechts **Funken nach Quelle** als Balkendiagramm.
+
+Der Rechenweg läuft ab, statt fertig dazustehen: die Zeilen decken sich
+nacheinander auf, die beiden **Faktoren** kommen zuletzt und wackeln beim
+Erscheinen, und zum Schluss **zählt die Gesamtbelohnung hoch**. Rund 2,8 s
+insgesamt; bei `prefers-reduced-motion` steht alles sofort da.
 
 Die Auszahlung:
 
 ```
-Geld = ( verdiente Funken × Ertrag + abgedeckte Pegs × 10 ) × Levelfaktor
-Ertrag = 5 % + 1.2 %-Punkte je Stufe `Auszahlung`
+Geld = ( verdiente Funken × Ertrag + abgedeckte Pegs × Prämie )
+       × Levelfaktor × Baum-Faktor × Ausdauer
+Ertrag      = 15 % + 0.8 %-Punkte je `Zoll` + 1.2 %-Punkte je `Auszahlung`
+Prämie      = 4 + 2 je `Prämie` + 4 je `Kopfgeld`
 Levelfaktor = 1.3 ^ (Levelnummer − 1)
+Ausdauer    = Leerung am Laufende ^ 0.5
 ```
+
+Das Geld kommt aus **Funken**, nicht aus Abdeckung. Gemessen stammte die
+Auszahlung in Level 1 zu 98 % aus abgedeckten Pegs — und die Abdeckung ist eine
+einmalige Größe, gegen die kein Upgrade etwas ausrichtet. Der Grundsatz je
+Funken ist deshalb verdreifacht, die Prämie je Peg mehr als halbiert.
 
 Letzteres ist die eigentliche Build-Rückmeldung — man sieht sofort, welche Kugel
 den Lauf getragen hat. Unten `Erneut spielen` (startet denselben Level neu) und
@@ -228,14 +247,14 @@ sh tools/build-and-run.sh tools/report.ts           # Kurzfassung je Arena
 sh tools/build-and-run.sh tools/report.ts --trace   # Lauf für Lauf
 ```
 
-Stand jetzt: **123 Läufe** und rund **216 Minuten** reine Arena-Zeit, bis alle
-dreißig Arenen freigespielt sind (Spanne über drei Seeds: 114–129 Läufe). Danach
+Stand jetzt: **133 Läufe** und rund **169 Minuten** reine Arena-Zeit, bis alle
+dreißig Arenen freigespielt sind (Spanne über drei Seeds: 125–144 Läufe). Danach
 stehen die offenen Meisterschafts-, Tempo- und Ausdauer-Ziele noch aus.
 
-Die Verteilung ist bewusst ungleich. Früh bremsen **Kessel (13 Läufe)**, **Halle
-(21)**, **Kaskade (19)** und **Mahlwerk (18)** — dort holt der Bot Meisterschaft
-und Ausdauer nach, weil die Zutrittsschwelle der nächsten Level sie verlangt;
-ab Level 11 fällt fast jede Arena im ersten Anlauf.
+Die Verteilung ist bewusst ungleich. Früh bremsen **Kessel, Kaskade, Halle und
+Kathedrale** mit je 9–15 Läufen — dort holt der Bot Meisterschaft und Ausdauer
+nach, weil die Zutrittsschwelle der nächsten Level sie verlangt; ab Level 12
+fällt fast jede Arena im ersten Anlauf.
 
 Zwei weitere Werkzeuge messen, was man den Arenen ansehen soll:
 

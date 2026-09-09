@@ -10,8 +10,12 @@
    Sichtbar ist immer nur, was man KAUFEN KANN, dazu genau eine Schicht
    Fragezeichen dahinter. Siehe `sicht()`.
 
+   Woher die Farbe kommt, haengt am Skin: klassisch vom Ast, im Herbst von
+   der WAEHRUNG. Siehe `slotOf()`. Was man sich gerade nicht leisten kann,
+   verliert Saettigung — siehe `klamm()`.
+
    Die Positionen kommen aus layout.ts und stehen nicht in den Definitionen:
-   bei 78 Knoten laesst sich von Hand nicht mehr sicherstellen, dass sich
+   bei 90 Knoten laesst sich von Hand nicht mehr sicherstellen, dass sich
    keine zwei Linien kreuzen.
    ========================================================================= */
 
@@ -23,9 +27,11 @@ import {
   sh,
   PaletteKey,
   approach,
+  desaturate,
   easeInOutCubic,
   easeOutCubic,
   extrudedRect,
+  getSkin,
   lerp,
   longShadowRect,
   mix,
@@ -111,6 +117,42 @@ const T_OPEN = 0.34;
 const T_OWN = 0.4;
 const T_MAX = 0.5;
 const T_HOVER = 0.11;
+const T_AFFORD = 0.24;
+
+/*
+ * WAS MAN SICH NICHT LEISTEN KANN
+ *
+ * Der Knopf wird stumpf, nicht blass: er verliert Saettigung und etwas
+ * Licht, behaelt aber seinen Ton. Nur so bleibt die Aussage doppelt lesbar
+ * — "zu teuer" am Grauschleier, "kostet Splitter" an der Glutfarbe
+ * darunter. Ueber die Deckkraft geregelt waere der Knopf stattdessen ein
+ * Loch im Baum, und ueber reines Abdunkeln haetten Gold und Glut sich bei
+ * genau den Knoten angeglichen, bei denen der Unterschied zaehlt.
+ */
+const KLAMM_SAT = 0.45;
+const KLAMM_DARK = -0.14;
+/** Auch das weisse Piktogramm nimmt sich zurueck, sonst leuchtet es allein. */
+const KLAMM_ICON = 0.74;
+
+/**
+ * Gold, Glut, Krone. Slot-NAMEN und keine Farbwerte — die duerfen als
+ * einzige auf Modulebene stehen, ohne den Skin einzufrieren, der beim Laden
+ * aktiv war. Siehe `slotOf()`.
+ *
+ * Bewusst nicht vollstaendig: das Siegel hat unter den vier Ast-Slots keinen
+ * ehrlichen Ton — es ist silbern, und `pink` waere ein rotes Ahornblatt.
+ * Eine Waehrung ohne Eintrag behaelt die Farbe aus ihrer Definition. Wenn
+ * die Esse Siegel-Knoten in den Baum bringt, braucht der Skin dafuer einen
+ * eigenen Slot; bis dahin luegt hier nichts.
+ */
+const WAEHRUNGS_SLOT: Partial<Record<TreeCurrency, PaletteKey>> = {
+  money: "amber",
+  shard: "teal",
+  crown: "magenta",
+};
+
+const klamm = (color: string, k: number): string =>
+  k < 0.002 ? color : shade(desaturate(color, KLAMM_SAT * k), KLAMM_DARK * k);
 
 /**
  * Der Zustand eines Knotens als vier Fortschritte von 0 bis 1.
@@ -119,6 +161,7 @@ const T_HOVER = 0.11;
  *   open — vom Fragezeichen (0) zum erkannten, kaufbaren Knoten (1).
  *   own  — vom leeren Umriss (0) zum gefuellten Knopf (1).
  *   max  — vom abgerundeten Quadrat (0) zum Kreis (1).
+ *   afford — von "zu teuer" (0) zu "bezahlbar" (1). Traegt den Grauschleier.
  */
 interface NodeAnim {
   show: number;
@@ -126,6 +169,7 @@ interface NodeAnim {
   own: number;
   max: number;
   hov: number;
+  afford: number;
 }
 
 /**
@@ -246,6 +290,29 @@ export class TreeView {
 
   private size(def: TreeNodeDef): number {
     return def.capstone ? NODE * CAP_SCALE : NODE;
+  }
+
+  /**
+   * Welchen Palettenslot ein Knoten traegt.
+   *
+   * Klassisch ist das seine Definition: die vier Farben stehen dort fuer
+   * AESTE. Im Herbst-Skin tragen sie stattdessen die WAEHRUNG — `amber` ist
+   * das Gold des Geldes, `teal` die Glut der Splitter, `magenta` die Krone.
+   *
+   * Der Grund fuer den Tausch: die Astzugehoerigkeit sieht man ohnehin an
+   * der Verbindung, die Waehrung dagegen stand nirgends am Knopf. Man musste
+   * jeden einzeln antippen, um zu erfahren, ob man ihn ueberhaupt in der
+   * richtigen Waehrung bezahlt. Im Klassiker bleibt es bei den Aesten: dort
+   * sind Gold und Glut Gelb und Gruen und liegen weit genug auseinander,
+   * dass die Astfarbe ihren eigenen Wert behaelt.
+   *
+   * `pink` kommt im Herbst dadurch nicht mehr vor. Das ist kein Verlust,
+   * sondern der Preis dafuer, dass drei Farben jetzt drei Waehrungen sind
+   * und nichts sonst.
+   */
+  private slotOf(def: TreeNodeDef): PaletteKey {
+    if (getSkin() !== "herbst") return def.color;
+    return WAEHRUNGS_SLOT[currencyOf(def)] ?? def.color;
   }
 
   /** Wo dieser Knoten liegt. */
@@ -403,12 +470,21 @@ export class TreeView {
   private targets(def: TreeNodeDef): NodeAnim {
     const sicht = this.sicht(def);
     const lvl = this.hooks.getLevel(def.id);
+    /*
+     * Ausgegraut wird nur, was man JETZT kaufen koennte und nicht bezahlen
+     * kann. Ein gemaxter Knoten hat keinen Preis mehr, und ein Fragezeichen
+     * ist schon grau — beide bekaemen sonst einen Schleier, der eine Aussage
+     * ueber ein Geschaeft macht, das gar nicht zur Debatte steht.
+     */
+    const offen = sicht === "offen" && lvl < def.max;
     return {
       show: sicht === "keine" ? 0 : 1,
       open: sicht === "offen" ? 1 : 0,
       own: lvl > 0 ? 1 : 0,
       max: lvl >= def.max ? 1 : 0,
       hov: this.hovered === def ? 1 : 0,
+      afford:
+        !offen || this.hooks.getCurrency(currencyOf(def)) >= costOf(def, lvl) ? 1 : 0,
     };
   }
 
@@ -426,6 +502,7 @@ export class TreeView {
       a.own = approach(a.own, to.own, dt / T_OWN);
       a.max = approach(a.max, to.max, dt / T_MAX);
       a.hov = approach(a.hov, to.hov, dt / T_HOVER);
+      a.afford = approach(a.afford, to.afford, dt / T_AFFORD);
     }
     this.primed = true;
   }
@@ -679,7 +756,6 @@ export class TreeView {
     if (!a || a.show < 0.004) return;
 
     const lvl = this.hooks.getLevel(def.id);
-    const slot = pal(def.color);
     const { s, half, p, x, y, r, depth, sink, ys, cys, grow } = this.geom(def, a);
 
     const eShow = easeOutCubic(a.show);
@@ -688,13 +764,14 @@ export class TreeView {
     const eMax = easeInOutCubic(a.max);
 
     /* Farben. Jede ist eine Strecke zwischen "noch nichts" und "gekauft". */
-    const affordable =
-      a.open > 0.5 &&
-      lvl < def.max &&
-      this.hooks.getCurrency(currencyOf(def)) >= costOf(def, lvl);
-    const tint = affordable || a.own > 0 ? slot.top : shade(slot.top, -0.45);
-    // Die Ahnung ist grau; mit dem Erkennen laeuft die Astfarbe ein.
-    const col = mix(C.lineDim, tint, eOpen);
+    // Der Schleier liegt auf der Palette, nicht auf den fertigen Flaechen:
+    // so bekommen Deckel, Wand und Kontur denselben Ton ab und der Knopf
+    // bleibt ein Koerper, statt in drei verschieden graue Teile zu zerfallen.
+    const roh = pal(this.slotOf(def));
+    const kk = 1 - easeOutCubic(a.afford);
+    const slot = { top: klamm(roh.top, kk), base: klamm(roh.base, kk) };
+    // Die Ahnung ist grau; mit dem Erkennen laeuft die Knopffarbe ein.
+    const col = mix(C.lineDim, slot.top, eOpen);
     const face = mix(C.faceEmpty, slot.top, eOwn);
     // Die Wand geht noch etwas tiefer als der Palettenton: bei 18 px Hoehe
     // ist sie eine grosse Flaeche und muss sich von der Deckflaeche loesen.
@@ -726,7 +803,7 @@ export class TreeView {
       this.glyph(ctx, "?", p.x, cys, s * 0.44, C.lineDim);
     }
     if (eOpen > 0.002) {
-      ctx.globalAlpha = eShow * eOpen;
+      ctx.globalAlpha = eShow * eOpen * lerp(1, KLAMM_ICON, kk);
       this.icon(ctx, def, p.x, cys, s * lerp(0.64, 0.66, eOwn), C.text);
     }
 
@@ -815,7 +892,7 @@ export class TreeView {
       const at = this.at(def);
       ctx.beginPath();
       ctx.arc(at.x, at.y, r, 0, Math.PI * 2);
-      ctx.strokeStyle = rgba(pal(def.color).top, (1 - k) * 0.8);
+      ctx.strokeStyle = rgba(pal(this.slotOf(def)).top, (1 - k) * 0.8);
       ctx.lineWidth = 4 * (1 - k) + 1;
       ctx.stroke();
     }

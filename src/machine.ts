@@ -6,6 +6,7 @@
    steuerbar bleiben, weil das gesamte Balancing daran hängt.
    ========================================================================= */
 
+import { FEUER_SCHWELLE, FROST_DAUER } from "./enchant";
 import {
   ARENAS,
   BARREN_COOLDOWN,
@@ -28,11 +29,13 @@ import {
   PULSE_INTERVAL,
   ballValue,
   buffDuration,
+  BUFF_BOTH,
   buffMult,
   emptyBallLevels,
   fireDuration,
   fireStacks,
   lightningChance,
+  fireMaxPegs,
   lightningTargets,
   pulseInterval,
   pulseRadius,
@@ -42,6 +45,7 @@ import {
 import {
   CHARGE_TIME,
   MARK_GROWTH_CAP,
+  HEARTBEAT_BELOW,
   MAX_CHAIN_DEPTH,
   type Stats,
 } from "./upgrades";
@@ -64,11 +68,28 @@ import {
 } from "./theme";
 
 const FRAME = 24;
+/** Abklingzeit des `Lichtbogens` in Sekunden. */
+const ARC_COOLDOWN = 0.3;
+/** Wie weit ein Peg von der Bogenstrecke entfernt sein darf. */
+const ARC_WIDTH = 30;
+/** Anteil des Feldes, der gleichzeitig als Sender pulsen darf. */
+const NODE_SHARE = 0.05;
+/** Naehe, ab der die Buff-Kugel eine fremde Faehigkeit aufnimmt. */
+const BOND_RANGE = 120;
 const SIM_HZ = 180;
 const SIM_DT = 1 / SIM_HZ;
 const MAX_SPEED = 1700;
 
 const GRAVITY = 1500;
+/** Fester Phasenversatz je Kugelart fuer den Wind-Drift. Nicht zufaellig:
+    das Feld soll nach jedem Neuladen gleich aussehen. */
+const BALL_PHASE: Record<BallKind, number> = {
+  white: 0,
+  pulse: 1.2,
+  lightning: 2.4,
+  fire: 3.6,
+  buff: 4.8,
+};
 const PEG_REST = 0.72;
 const BUMPER_REST = 1.3;
 const BALL_R = 9;
@@ -320,6 +341,12 @@ interface Ball {
   combo: number;
   /** Sekunden im Feld seit dem Erscheinen — Grundlage von `Beharrung`. */
   aliveT: number;
+  /**
+   * Fremde Faehigkeit, die die Buff-Kugel gerade traegt (`Buendnis`), und wie
+   * lange noch. Sie pulst, zuendet oder blitzt dann selbst.
+   */
+  bondKind: BallKind | null;
+  bondT: number;
   /** Ziel des `Spuersinns`, alle paar Zehntel neu gesucht. */
   seekX: number;
   seekY: number;
@@ -343,6 +370,22 @@ interface Peg {
   rotor: Rotor | null;
   /** Restzeit, in der ein weiterer direkter Treffer NICHT heilt. */
   healT: number;
+  /**
+   * Eigener Platz im Feld. Ohne ihn suchte `touchPeg` sich den Index bei
+   * JEDEM Kontakt ueber `indexOf` — also linear ueber alle Pegs. Solange nur
+   * echte Treffer durchliefen, fiel das nicht auf; die `Schneise` beruehrt
+   * aber dutzende Pegs je Simulationsschritt, und daraus wurde quadratischer
+   * Aufwand.
+   */
+  idx: number;
+  /** Wie oft dieser Peg schon ausgebrannt ist (`Schmelze`). */
+  burned: number;
+  /** Weggeschmolzen: zaehlt als abgedeckt, ist aber nicht mehr treffbar. */
+  melted: boolean;
+  /** Wie lange dieser Peg ununterbrochen geladen ist (`Stehende Welle`). */
+  chargeAcc: number;
+  /** Eigener Puls-Takt, sobald er zum Sender geworden ist. */
+  nodeT: number;
 }
 
 interface Bumper {
@@ -438,6 +481,8 @@ interface Emitter {
   buffT: number;
   aliveT: number;
   combo: number;
+  /** Geborgte Faehigkeit (`Buendnis`). Nur echte Kugeln koennen eine haben. */
+  bondKind?: BallKind | null;
 }
 
 /** Ein angekündigter Nachhall-Puls (Puls-Node `Nachhall`). */
@@ -536,9 +581,24 @@ export interface MachineEvents {
    * sinnvoller Zeit. Genau das ist vorher passiert: mit der zweiten Kugel
    * sprangen die Peg-Kontakte je Lauf von 81 auf 1256.
    */
-  onTouch: (direkt: boolean, marked: boolean) => void;
+  onTouch: (direkt: boolean, marked: boolean, healMult?: number) => void;
   /** Ein Bumper wurde beruehrt. Quelle der `Splitterernte`. */
   onBumper: () => void;
+  /**
+   * Die Lebensleiste soll fuer `sekunden` stehen bleiben — sie leert sich
+   * nicht und laeuft auch nicht auf der Rampe weiter. Kommt von `Frost`.
+   */
+  onFreeze?: (sekunden: number) => void;
+  /**
+   * Lebenszeit ausserhalb der normalen Heilung. Negativ, wenn sie kostet:
+   * eine ueberhitzte `Feuer`-Kugel verbrennt die Leiste, statt sie zu fuellen.
+   */
+  onLife?: (sekunden: number) => void;
+  /**
+   * Diese Kugel hat sich eine Kugel-Stufe verdient — ohne Funken. Kommt von
+   * `Weisheit`. Wer die Stufen fuehrt (main.ts oder der Bot), erhoeht sie.
+   */
+  onFreeLevel?: (kind: BallKind) => void;
   /**
    * Ton-Kanal. `x` ist die Position im Feld als Anteil 0..1 (Stereo-Ortung),
    * `level` die Stufe der beteiligten Kugel (Tonhoehe).
@@ -570,6 +630,18 @@ export class Machine {
   runFullAt: number | null = null;
   /** Zählwerk des laufenden Durchgangs — Grundlage der Auswertung. */
   runStats: RunStats = emptyRunStats();
+  /** Fortschritt zur naechsten Gratis-Stufe je Kugelart (`Weisheit`). */
+  private gelernt = new Map<BallKind, number>();
+  /**
+   * Anteil der Lebensleiste, von aussen gesetzt. Die Machine fuehrt die
+   * Leiste nicht selbst — fuer `Herzschlag` muss sie aber wissen, wie voll
+   * sie ist.
+   */
+  lifeFraction = 1;
+  /** Kontakte der Blitzkugel ohne Ausloesung (`Ladung`). */
+  private pity = 0;
+  /** Abklingzeit des Lichtbogens, damit er nicht jedes Bild feuert. */
+  private arcT = 0;
   /**
    * Die im Lauf gekauften Kugel-Stufen. Sie gehören dem Lauf, nicht der
    * Maschine: main kauft sie mit Funken und reicht das Objekt hier herein.
@@ -584,6 +656,16 @@ export class Machine {
    */
   markedKind: BallKind | null = null;
   private runHit: boolean[] = [];
+  /**
+   * Pegs, die in diesem Lauf NUR von der `Schneise` erfasst wurden.
+   *
+   * Sie zaehlen fuer die Abdeckung, gelten aber nicht als getroffen. Der
+   * Unterschied ist noetig, weil `Spuersinn` die weisse Kugel zu noch nicht
+   * getroffenen Pegs zieht: markierte die Spur sie als getroffen, naehme sie
+   * der Kugel ihre Ziele. Gemessen wurde das Feld dadurch spaeter voll statt
+   * frueher (19 s -> 55 s).
+   */
+  private runSwath: boolean[] = [];
 
   private def: ArenaDef = ARENAS[0];
   private pegs: Peg[] = [];
@@ -648,6 +730,47 @@ export class Machine {
     this.ev.onSfx?.(cue, clamp(x / this.def.w, 0, 1), level);
   }
 
+  /**
+   * Was eine Verzauberung bei einem DIREKTEN Treffer ausloest. Steht an einer
+   * Stelle, damit die weisse Kugel und die Buff-Kugel nicht auseinanderlaufen.
+   */
+  private enchantAufTreffer(b: Ball, s: Stats): void {
+    const en = s.enchant[b.kind];
+
+    // `Frost`: die Lebensleiste steht kurz still. Nur die Haeufigkeit waechst
+    // mit der Stufe, nie die Dauer — sonst ueberlappen sich zwei Einfrierungen
+    // und werden zum Dauerzustand.
+    if (en.frostChance > 0 && Math.random() < en.frostChance) {
+      this.ev.onFreeze?.(FROST_DAUER);
+    }
+
+    // `Weisheit`: sie lernt aus ihren Treffern und steigt von allein auf.
+    //
+    // Der Zaehler haengt an der KUGELART, nicht am Kugel-Objekt. Beim Abfluss
+    // wird das Objekt verworfen und neu erzeugt; ein Zaehler darauf waere alle
+    // paar Sekunden wieder bei null gewesen, und die Verzauberung blieb
+    // gemessen exakt wirkungslos. Gelernt ist gelernt.
+    if (en.treffelProStufe > 0) {
+      const n = (this.gelernt.get(b.kind) ?? 0) + 1;
+      if (n >= en.treffelProStufe) {
+        this.gelernt.set(b.kind, 0);
+        this.ev.onFreeLevel?.(b.kind);
+      } else {
+        this.gelernt.set(b.kind, n);
+      }
+    }
+  }
+
+  /**
+   * Der Hitze-Aufschlag der `Feuer`-Verzauberung: er waechst mit der Zeit im
+   * Feld und faellt beim Abfluss auf null zurueck, weil `aliveT` das tut.
+   */
+  private hitze(b: Ball, s: Stats): number {
+    const en = s.enchant[b.kind];
+    if (en.hitzeProSekunde <= 0) return 0;
+    return Math.min(en.hitzeDeckel, en.hitzeProSekunde * b.aliveT);
+  }
+
   private lvl(kind: BallKind): number {
     return this.ballLevels[kind] ?? 0;
   }
@@ -663,13 +786,18 @@ export class Machine {
     this.def = def;
 
     const raw = buildPegs(def);
-    this.pegs = raw.map((p) => ({
+    this.pegs = raw.map((p, i) => ({
       x: p.x,
       y: p.y,
+      idx: i,
       hit: false,
       flash: 0,
       fireT: 0,
       fireTick: 0,
+      burned: 0,
+      melted: false,
+      chargeAcc: 0,
+      nodeT: 0,
       fireStacks: 0,
       buffT: 0,
       chargeT: 0,
@@ -710,10 +838,15 @@ export class Machine {
       ? this.pegs.map((_, i) => preLit[i] ?? false)
       : new Array(this.pegs.length).fill(preLit);
     this.runHit = new Array(this.pegs.length).fill(false);
+    this.runSwath = new Array(this.pegs.length).fill(false);
     this.runCovered = 0;
     this.runTime = 0;
     this.runFullAt = null;
     this.runStats = emptyRunStats();
+    this.gelernt.clear();
+    this.pity = 0;
+    this.arcT = 0;
+    this.lifeFraction = 1;
     this.covered = this.coverage.filter(Boolean).length;
     this.pegs.forEach((p, i) => { p.hit = this.coverage[i]; });
 
@@ -823,12 +956,54 @@ export class Machine {
     }
     if (steps >= 24) this.acc = 0;
 
+    /*
+     * Wieviele Pegs gleichzeitig als Sender pulsen duerfen (`Stehende Welle`).
+     *
+     * Ohne Deckel wird JEDER lange geladene Peg zum Sender — gemessen ergab
+     * das den 9.27fachen Ertrag, weil in einer spaeten Arena hunderte Pegs
+     * gleichzeitig takten. Wie beim Brand ist die Grenze ein ANTEIL des
+     * Feldes, damit sie mit der Arena mitwaechst (siehe Anteilsregel in
+     * balls.ts).
+     */
+    const senderMax = Math.max(1, Math.round(this.pegs.length * NODE_SHARE));
+    let sender = 0;
+
     // Kosmetik und Zeitgeber laufen in Echtzeit
     for (const p of this.pegs) {
       p.flash = Math.max(0, p.flash - dtReal * 6);
       if (p.healT > 0) p.healT = Math.max(0, p.healT - dtReal);
       if (p.buffT > 0) p.buffT = Math.max(0, p.buffT - dtReal);
-      if (p.chargeT > 0) p.chargeT = Math.max(0, p.chargeT - dtReal);
+      if (p.chargeT > 0) {
+        p.chargeT = Math.max(0, p.chargeT - dtReal);
+        /*
+         * `Stehende Welle`: ein Peg, der lange genug geladen bleibt, wird
+         * selbst zum Sender. Das ist das einzige Aufbauziel INNERHALB eines
+         * Laufs — der Puls hoert auf, nur eine Zahl zu sein, und wird zu
+         * etwas, das man im Feld waechst.
+         */
+        if (s.pulse.nodeAfter > 0) {
+          p.chargeAcc += dtReal;
+          if (p.chargeAcc >= s.pulse.nodeAfter && sender < senderMax) {
+            sender++;
+            p.nodeT -= dtReal;
+            if (p.nodeT <= 0) {
+              p.nodeT = pulseInterval(this.lvl("pulse"), s.pulse);
+              // Der Peg pulst als eigener Sender. Er erbt weder Buff noch
+              // Serie der Kugel — er ist ja keine.
+              this.pulseAt(
+                { kind: "pulse", buffT: 0, aliveT: 0, combo: 0 },
+                p.x,
+                p.y,
+                pulseRadius(this.lvl("pulse"), s.pulse, this.def.w),
+                s.pulse.nodePower,
+                s
+              );
+            }
+          }
+        }
+      } else {
+        p.chargeAcc = 0;
+      }
       if (p.fireT > 0) {
         p.fireT = Math.max(0, p.fireT - dtReal);
         p.fireTick -= dtReal;
@@ -839,6 +1014,20 @@ export class Machine {
         if (p.fireT === 0) {
           p.fireStacks = 0;
           this.burning = Math.max(0, this.burning - 1);
+          /*
+           * `Schmelze`: der erste Knoten, der das FELD dauerhaft veraendert.
+           * Ein geschmolzener Peg zaehlt fuer immer als abgedeckt — das hilft
+           * der Meisterschaft — ist aber weg. Weniger Feld heisst weniger
+           * Treffer und weniger Heilung; genau das ist der Tausch.
+           */
+          if (s.fire.meltAfter > 0) {
+            p.burned++;
+            if (p.burned >= s.fire.meltAfter && !p.melted) {
+              p.melted = true;
+              this.touchPeg(p, false, false);
+              this.sfx("cover", p.x);
+            }
+          }
         }
       }
     }
@@ -879,14 +1068,55 @@ export class Machine {
   private step(dt: number, s: Stats): void {
     this.syncBalls(dt, s);
     this.spinRotors(dt);
+    this.arc(dt, s);
+    this.bonds(s);
 
     for (let i = this.balls.length - 1; i >= 0; i--) {
       const b = this.balls[i];
 
-      b.vy += GRAVITY * dt;
+      if (b.bondT > 0) {
+        b.bondT = Math.max(0, b.bondT - dt);
+        if (b.bondT === 0) b.bondKind = null;
+      }
+
+      const en = s.enchant[b.kind];
+      b.vy += GRAVITY * en.gravity * dt;
+      if (en.drift > 0) {
+        // Der Wind traegt, er weht nicht zufaellig: die Richtung folgt einer
+        // langsamen Schwingung, damit die Kugel eine Bahn zieht statt zu
+        // zittern. Die Phase haengt an der Kugelart, sonst driften alle
+        // gleichzeitig in dieselbe Richtung.
+        const phase = this.runTime * 0.22 + BALL_PHASE[b.kind];
+        b.vx += Math.sin(phase) * en.drift * dt;
+      }
+      if (en.bremse < 1) {
+        const k = Math.pow(en.bremse, dt);
+        b.vx *= k;
+        b.vy *= k;
+      }
       if (b.kind === "white" && s.white.seek > 0) this.seek(b, s.white.seek, dt);
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+
+      /*
+       * `Schneise`: ab einer hohen Serie zieht die weisse Kugel eine
+       * gluehende Spur. Pegs, die sie streift, gelten als ABGEDECKT — sie
+       * zahlen aber nichts. Damit hilft der Knoten Meisterschaft und
+       * Freischaltung, ohne die Ertragskurve zu drehen.
+       */
+      if (
+        b.kind === "white" &&
+        s.white.swathFrom > 0 &&
+        b.combo >= s.white.swathFrom
+      ) {
+        const w = s.white.swathWidth;
+        for (const p of this.pegs) {
+          if (p.melted) continue;
+          if (Math.hypot(p.x - b.x, p.y - b.y) <= w) {
+            this.touchPeg(p, false, false, true, 1, true);
+          }
+        }
+      }
 
       const sp = Math.hypot(b.vx, b.vy);
       if (sp > MAX_SPEED) {
@@ -910,8 +1140,11 @@ export class Machine {
 
       // `Wucht` gilt nur fuer die weisse Kugel und nur an Pegs — an den
       // Bumpern sitzt mit `Schleuder` ein eigener, fuer alle geltender Node.
-      const pegRest = PEG_REST + (b.kind === "white" ? s.white.rest : 0);
+      const pegRest = (PEG_REST + (b.kind === "white" ? s.white.rest : 0)) * en.restitution;
       for (const p of this.pegs) {
+        // Geschmolzene Pegs sind aus dem Feld: sie zaehlen als abgedeckt,
+        // lassen sich aber nicht mehr treffen.
+        if (p.melted) continue;
         if (this.hitCircle(b, p.x, p.y, PEG_R, pegRest)) {
           this.onPegHit(b, p, s);
           if (p.rotor) this.fling(b, p.rotor, p.x, p.y);
@@ -954,8 +1187,8 @@ export class Machine {
 
       for (const sg of this.segs) this.hitSegment(b, sg);
 
-      // Puls-Kugel
-      if (b.kind === "pulse") {
+      // Puls-Kugel — und die Buff-Kugel, solange sie den Puls geborgt hat.
+      if (b.kind === "pulse" || b.bondKind === "pulse") {
         b.pulseT -= dt;
         if (b.pulseT <= 0) {
           b.pulseT = pulseInterval(this.lvl("pulse"), s.pulse);
@@ -1084,6 +1317,8 @@ export class Machine {
       trail: [],
       combo: 0,
       aliveT: 0,
+      bondKind: null,
+      bondT: 0,
       seekX: 0,
       seekY: 0,
       seekT: 0,
@@ -1097,7 +1332,11 @@ export class Machine {
 
   private onPegHit(b: Ball, p: Peg, s: Stats): void {
     this.sfx("peg", p.x, this.lvl(b.kind));
-    this.touchPeg(p, true, this.isMarked(b));
+    const en = s.enchant[b.kind];
+    // Ueberhitzt kehrt sich die Heilung um: der Treffer KOSTET Lebenszeit.
+    // Das ist der Haken von `Feuer`, und er waechst mit dem Vorteil mit.
+    const heil = this.hitze(b, s) >= FEUER_SCHWELLE ? -1 : 1;
+    this.touchPeg(p, true, this.isMarked(b), en.decktAb, heil);
 
     // `Ansteckung`: wer einen gebufften Peg trifft, nimmt den Buff mit.
     // Der Effekt wandert damit durchs Feld, statt am Peg kleben zu bleiben.
@@ -1111,21 +1350,36 @@ export class Machine {
       this.applyBuff(p, s);
       this.runStats.buffsApplied++;
       this.runStats.directHits++;
+      this.enchantAufTreffer(b, s);
       this.award(b, p, s, 1, p.x, p.y, "buff", true);
       return;
     }
 
     b.combo++;
     this.runStats.directHits++;
+    this.enchantAufTreffer(b, s);
     this.award(b, p, s, 1, p.x, p.y, b.kind as SparkSource, true);
 
-    if (b.kind === "fire") this.ignite(p, s);
+    if (b.kind === "fire" || b.bondKind === "fire") this.ignite(p, s);
 
-    if (
-      b.kind === "lightning" &&
-      Math.random() < lightningChance(this.lvl("lightning"), s.bolt)
-    ) {
-      this.strike(b, p, s, 0);
+    if (b.kind === "lightning" || b.bondKind === "lightning") {
+      if (Math.random() < lightningChance(this.lvl("lightning"), s.bolt)) {
+        this.pity = 0;
+        this.strike(b, p, s, 0);
+      } else if (s.bolt.pity > 0) {
+        /*
+         * `Ladung`. Die Ausloesechance ist Zufall, und Zufall hat
+         * Durststrecken: bei 40 % kommen zwanzig Kontakte ohne einen Schlag
+         * durchaus vor. Der Zaehler nimmt der Verteilung diesen Schwanz,
+         * ohne den Schnitt zu erhoehen — der erzwungene Schlag zahlt dafuer
+         * mehr, sonst waere die Sicherheit wertlos.
+         */
+        this.pity++;
+        if (this.pity >= s.bolt.pity) {
+          this.pity = 0;
+          this.strike(b, p, s, 0, s.bolt.pityValue);
+        }
+      }
     }
   }
 
@@ -1151,18 +1405,38 @@ export class Machine {
    * genau dafür sind die Flächenkugeln da. Für Lebensleiste und Splitter
    * zählt nur `direkt`; siehe MachineEvents.onTouch.
    */
-  private touchPeg(p: Peg, direkt: boolean, marked: boolean): void {
+  private touchPeg(
+    p: Peg,
+    direkt: boolean,
+    marked: boolean,
+    decktAb = true,
+    healMult = 1,
+    /*
+     * Nur fuer DIESEN Lauf zaehlen, das Feld aber nicht dauerhaft anzuenden.
+     *
+     * Die `Schneise` streift dutzende Pegs je Sekunde. Zaehlte das als
+     * echter Treffer, verloere `Spuersinn` seine Ziele — er zieht die weisse
+     * Kugel ja zu noch NICHT getroffenen Pegs. Gemessen wurde das Feld mit
+     * Schneise dadurch spaeter voll statt frueher (19 s -> 55 s).
+     */
+    nurLauf = false
+  ): void {
     p.flash = 1;
     this.runStats.pegHits++;
-    const i = this.pegs.indexOf(p);
-    if (i >= 0 && !this.runHit[i]) {
-      this.runHit[i] = true;
+    const i = p.idx;
+    // `Edel` nimmt der Kugel die Abdeckung: sie verdient, aber ihre Treffer
+    // zaehlen weder fuer die Freischaltung noch fuer die Meisterschaft. Der
+    // Peg leuchtet trotzdem kurz auf — sonst sieht es nach einem Fehler aus.
+    if (!decktAb) return;
+    if (i >= 0 && !this.runHit[i] && !this.runSwath[i]) {
+      if (nurLauf) this.runSwath[i] = true;
+      else this.runHit[i] = true;
       this.runCovered++;
       if (this.runCovered >= this.pegs.length && this.runFullAt === null) {
         this.runFullAt = this.runTime;
       }
     }
-    if (!p.hit) {
+    if (!p.hit && !nurLauf) {
       p.hit = true;
       if (i >= 0 && !this.coverage[i]) {
         this.coverage[i] = true;
@@ -1177,11 +1451,11 @@ export class Machine {
     // — die Lebensleiste fuellte sich schneller, als sie leert, und der Lauf
     // endete nie. Gemessen: ab Level 5 lief jeder Lauf in die Kappung.
     if (direkt && p.healT > 0) {
-      this.ev.onTouch(false, marked);
+      this.ev.onTouch(false, marked, healMult);
       return;
     }
     if (direkt) p.healT = HEAL_COOLDOWN;
-    this.ev.onTouch(direkt, marked);
+    this.ev.onTouch(direkt, marked, healMult);
   }
 
   /**
@@ -1194,7 +1468,7 @@ export class Machine {
   private ignite(p: Peg, s: Stats): void {
     const l = this.lvl("fire");
     if (p.fireT <= 0) {
-      if (this.burning >= s.fire.maxPegs) return;
+      if (this.burning >= fireMaxPegs(s.fire, this.pegs.length)) return;
       this.burning++;
       this.runStats.ignites++;
       this.sfx("ignite", p.x, this.lvl("fire"));
@@ -1228,7 +1502,7 @@ export class Machine {
 
   /** Sucht den nächsten noch kalten Peg in Reichweite und zündet ihn an. */
   private spreadFire(from: Peg, s: Stats): void {
-    if (this.burning >= s.fire.maxPegs) return;
+    if (this.burning >= fireMaxPegs(s.fire, this.pegs.length)) return;
     let best: Peg | null = null;
     let bestD = FIRE_SPREAD_RANGE;
     for (const p of this.pegs) {
@@ -1250,11 +1524,11 @@ export class Machine {
    * Sonst verzweigt die Kette exponentiell — bei 14 Zielen und 54 % Chance
    * wären das mehrere tausend Treffer aus einem einzigen Kontakt.
    */
-  private strike(b: Ball, from: Peg, s: Stats, depth: number): void {
+  private strike(b: Ball, from: Peg, s: Stats, depth: number, boost = 1): void {
     // Nur der erste Schlag einer Kette klingt. Jedes Kettenglied einzeln
     // waere bei `Gabelung` ein Dauerzischen statt eines Blitzes.
     if (depth === 0) this.sfx("zap", from.x, this.lvl("lightning"));
-    const want = lightningTargets(this.lvl("lightning"), s.bolt);
+    const want = lightningTargets(this.lvl("lightning"), s.bolt, this.pegs.length);
     const targets: Peg[] = [];
     for (const p of this.pegs) {
       if (p === from) continue;
@@ -1271,9 +1545,9 @@ export class Machine {
     // Jedes weitere Glied zahlt nur noch einen Anteil — `Verlustarm` hebt ihn.
     const keep = Math.pow(s.bolt.chainKeep, depth);
     for (const p of chosen) {
-      this.touchPeg(p, false, false);
+      this.touchPeg(p, false, false, s.enchant[b.kind].decktAb);
       this.runStats.strikeHits++;
-      this.award(b, p, s, s.bolt.value * keep, p.x, p.y, "lightning", false);
+      this.award(b, p, s, s.bolt.value * keep * boost, p.x, p.y, "lightning", false);
     }
     this.runStats.strikes++;
     this.zaps.push({
@@ -1292,7 +1566,7 @@ export class Machine {
   }
 
   private pulse(b: Ball, s: Stats): void {
-    const radius = pulseRadius(this.lvl("pulse"), s.pulse);
+    const radius = pulseRadius(this.lvl("pulse"), s.pulse, this.def.w);
     this.pulseAt(b, b.x, b.y, radius, 1, s);
 
     // `Nachhall`: ein zweiter, schwächerer Puls vom selben Ort. Er merkt
@@ -1324,7 +1598,7 @@ export class Machine {
 
     for (const p of this.pegs) {
       if (Math.hypot(p.x - x, p.y - y) > radius) continue;
-      this.touchPeg(p, false, false);
+      this.touchPeg(p, false, false, s.enchant[src.kind].decktAb);
       this.runStats.pulseHits++;
       // `Bannkreis`: der Peg bleibt geladen und zahlt beim nächsten DIREKTEN
       // Treffer mehr. Der Puls selbst profitiert davon nicht.
@@ -1376,11 +1650,28 @@ export class Machine {
     // Die Buff-Kugel verteilt nur ihren Effekt — verdienen darf sie erst,
     // wenn ihr Node `Mitverdienst` gekauft ist, und auch dann nur anteilig.
     if (b.kind === "buff") {
-      if (s.buff.self <= 0) return;
-      factor *= s.buff.self;
+      /*
+       * Der `Mitverdienst`-Riegel gilt fuer das, was die Buff-Kugel ALS
+       * Buff-Kugel tut. Handelt sie unter einem `Buendnis`, also mit
+       * geborgter Faehigkeit, verdient sie wie die Kugel, deren Faehigkeit
+       * sie traegt — sonst waere der ganze Knoten wirkungslos, solange
+       * `Mitverdienst` nicht gekauft ist. Gemessen stand er bei x1.00.
+       */
+      const geborgt = !!b.bondKind && source !== "buff";
+      if (!geborgt) {
+        if (s.buff.self <= 0) return;
+        factor *= s.buff.self;
+      }
     }
 
-    let v = s.bounceValue * s.yieldMult * factor * ballValue(b.kind, this.lvl(b.kind));
+    const en = s.enchant[b.kind];
+    let v =
+      s.bounceValue *
+      s.yieldMult *
+      factor *
+      ballValue(b.kind, this.lvl(b.kind)) *
+      en.wert *
+      (1 + this.hitze(b as Ball, s));
 
     if (b.kind === "white") {
       v *= s.white.mult;
@@ -1389,14 +1680,31 @@ export class Machine {
       }
     }
 
+    /*
+     * `Herzschlag`: im roten Bereich zahlt ALLES mehr. Der Knoten macht aus
+     * der Bedrohung eine Belohnung — und aus dem Audio-Puls unter 25 %, den
+     * es laengst gibt, ein Signal, auf das man hinspielt.
+     */
+    if (s.heartbeat > 0 && this.lifeFraction < HEARTBEAT_BELOW) v *= 1 + s.heartbeat;
+
     v *= this.markMult(b, s);
 
-    const bm = buffMult(this.lvl("buff"), s.buff);
-    if (b.buffT > 0) v *= bm;
-    if (peg) {
-      if (peg.buffT > 0) v *= bm;
-      if (direct && peg.chargeT > 0) v *= 1 + s.pulse.charge;
+    /*
+     * Der Buff zaehlt EINMAL, nicht zweimal.
+     *
+     * Vorher wurde derselbe Faktor sowohl fuer die gebuffte Kugel als auch
+     * fuer den gebufften Peg angewandt — und damit quadriert. Bei vollem
+     * Ausbau war das 16.28² = 265x, aus einer einzigen Kugel, die selbst
+     * nichts sammelt; gemessen hob die Buff-Kugel den Ertrag der weissen um
+     * das 214fache. Sind beide gebufft, gibt es jetzt einen deutlichen, aber
+     * kleinen Zuschlag statt eines zweiten vollen Faktors.
+     */
+    const ballBuffed = b.buffT > 0;
+    const pegBuffed = !!peg && peg.buffT > 0;
+    if (ballBuffed || pegBuffed) {
+      v *= buffMult(this.lvl("buff"), s.buff) * (ballBuffed && pegBuffed ? BUFF_BOTH : 1);
     }
+    if (peg && direct && peg.chargeT > 0) v *= 1 + s.pulse.charge;
 
     this.runStats.sparks[source] += v;
     this.ev.onGain(v);
@@ -1607,6 +1915,94 @@ export class Machine {
     return true;
   }
 
+  /**
+   * `Lichtbogen`: kommt die Blitzkugel einer anderen nahe genug, spannt sich
+   * ein Bogen zwischen beiden, und die Pegs auf der Strecke werden getroffen.
+   *
+   * Der erste Effekt im Spiel, der zwei Kugeln miteinander verbindet — er
+   * belohnt damit etwas, wofuer es bisher keinen Grund gab: dass die Kugeln
+   * beieinander bleiben. Mit Abklingzeit, sonst feuert er in jedem Bild.
+   */
+  private arc(dt: number, s: Stats): void {
+    if (s.bolt.arcRange <= 0) return;
+    this.arcT -= dt;
+    if (this.arcT > 0) return;
+
+    const bolt = this.balls.find((b) => b.kind === "lightning");
+    if (!bolt) return;
+    let partner: Ball | null = null;
+    let best = s.bolt.arcRange;
+    for (const o of this.balls) {
+      if (o === bolt) continue;
+      const d = Math.hypot(o.x - bolt.x, o.y - bolt.y);
+      if (d < best) {
+        best = d;
+        partner = o;
+      }
+    }
+    if (!partner) return;
+
+    this.arcT = ARC_COOLDOWN;
+    const dx = partner.x - bolt.x;
+    const dy = partner.y - bolt.y;
+    const len = Math.max(1e-6, Math.hypot(dx, dy));
+    let traf = false;
+    for (const p of this.pegs) {
+      if (p.melted) continue;
+      // Abstand des Pegs zur Strecke zwischen den beiden Kugeln.
+      const t = clamp(((p.x - bolt.x) * dx + (p.y - bolt.y) * dy) / (len * len), 0, 1);
+      const cx = bolt.x + dx * t;
+      const cy = bolt.y + dy * t;
+      if (Math.hypot(p.x - cx, p.y - cy) > ARC_WIDTH) continue;
+      this.touchPeg(p, false, false, s.enchant.lightning.decktAb);
+      this.award(bolt, p, s, s.bolt.arcValue, p.x, p.y, "lightning", false);
+      traf = true;
+    }
+    if (traf) {
+      this.zaps.push({
+        from: [bolt.x, bolt.y],
+        to: [[partner.x, partner.y]],
+        t: 0,
+      });
+      this.sfx("zap", bolt.x, this.lvl("lightning"));
+    }
+  }
+
+  /**
+   * `Buendnis` greift schon bei NAEHE, nicht erst bei Beruehrung.
+   *
+   * Zuerst hing es an der echten Kugelkollision. Die ist bei fuenf Kugeln in
+   * einer weiten Arena so selten, dass der Knoten gemessen exakt nichts tat
+   * (x1.00 in jeder Spalte). Naehe ist haeufig genug, um spuerbar zu sein,
+   * und bleibt trotzdem eine Entscheidung: die Kugeln muessen beieinander
+   * bleiben.
+   */
+  private bonds(s: Stats): void {
+    if (s.buff.bond <= 0) return;
+    const buff = this.balls.find((b) => b.kind === "buff");
+    if (!buff) return;
+    let naechste: Ball | null = null;
+    let best = BOND_RANGE;
+    for (const o of this.balls) {
+      if (o === buff) continue;
+      const d = Math.hypot(o.x - buff.x, o.y - buff.y);
+      if (d < best) {
+        best = d;
+        naechste = o;
+      }
+    }
+    if (naechste) this.bind(buff, naechste.kind, s);
+  }
+
+  /** Die Buff-Kugel nimmt eine fremde Faehigkeit auf (`Buendnis`). */
+  private bind(buff: Ball, kind: BallKind, s: Stats): void {
+    buff.bondKind = kind;
+    buff.bondT = s.buff.bond;
+    // Mit dem Puls-Buendnis faengt sie sofort an zu takten, sonst wartet sie
+    // die halbe Bindung ab und es passiert sichtbar nichts.
+    if (kind === "pulse") buff.pulseT = Math.min(buff.pulseT, 0.15);
+  }
+
   /** Kugel gegen Kugel — nötig, damit die Buff-Kugel andere Kugeln treffen kann. */
   private ballCollisions(s: Stats): void {
     for (let i = 0; i < this.balls.length; i++) {
@@ -1648,6 +2044,18 @@ export class Machine {
         if (b.kind === "buff" && a.kind !== "buff") {
           a.buffT = bd * (1 + (this.isMarked(a) ? s.buff.markBonus : 0));
         }
+
+        /*
+         * `Buendnis`: die Buff-Kugel uebernimmt kurz die Faehigkeit der
+         * Kugel, die sie beruehrt. Damit ist sie nicht mehr nur ein
+         * wandelnder Multiplikator, sondern hat einen eigenen Charakter —
+         * sie pulst, zuendet oder blitzt dann selbst.
+         */
+        if (s.buff.bond > 0) {
+          if (a.kind === "buff" && b.kind !== "buff") this.bind(a, b.kind, s);
+          if (b.kind === "buff" && a.kind !== "buff") this.bind(b, a.kind, s);
+        }
+
       }
     }
   }
