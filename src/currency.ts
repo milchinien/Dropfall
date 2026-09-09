@@ -96,12 +96,24 @@ export const MONEY_PER_NEW_PEG = 4;
 
 /**
  * Geld je zerschlagenem Barren, vor dem Levelfaktor. Ein Barren braucht zwei
- * DIREKTE Treffer und ist danach weg — er ist also rund zwei bis drei Pegs
- * wert, aber nur einmal je Lauf. Ueber die Auszahlung abgerechnet, nicht
+ * DIREKTE Treffer und ist danach weg — er ist also rund zehn Pegs wert, aber
+ * nur einmal je Lauf. Ueber die Auszahlung abgerechnet, nicht
  * live: so bleibt „Geld gibt es nur am Laufende" wahr, und ein Barren in
  * Level 30 ist automatisch mehr wert als einer in Level 3.
+ *
+ * VON 10 AUF 40 GEHOBEN. Bei 10 trug der Barren gemessen (tools/money.ts)
+ * 8.9 % der Auszahlung in Level 3 und 9.5 % in Level 4 — sichtbar, aber ohne
+ * Gewicht. Dabei ist er die einzige Einnahme, die man sich AKTIV holt: er
+ * verlangt zwei direkte Treffer auf dasselbe Ziel, waehrend Funken und
+ * Abdeckung nebenbei anfallen. Bei 40 traegt er 18–22 % und ist damit ein
+ * Grund, eine Arena wegen ihrer Barren zu waehlen.
+ *
+ * Er bleibt dabei von selbst frueh-lastig, ohne Sonderregel: ab Level 6 liegt
+ * sein Anteil unter 3 %, ab Level 12 unter 0.5 % — nicht weil der Barren
+ * schlechter wird, sondern weil die Funken exponentiell wachsen und er
+ * linear bleibt. Genau deshalb ist er der richtige Hebel fuer den Anfang.
  */
-export const BARREN_BOUNTY = 10;
+export const BARREN_BOUNTY = 40;
 
 /**
  * Der Levelfaktor waechst geometrisch, nicht linear: ein neues Level muss ein

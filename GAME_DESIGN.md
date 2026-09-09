@@ -959,12 +959,12 @@ multipliziert mit dem Werkstatt-Rabatt.
 
 ```
 Geld = ( verdiente Funken × Ertrag  +  abgedeckte Pegs × Prämie
-         + zerschlagene Barren × 10 )
+         + zerschlagene Barren × 40 )
        × Levelfaktor × Baum-Faktor × Ausdauer
 
-Ertrag      = 15 % + 0.8 %-Punkte je `Zoll` + 1.2 %-Punkte je `Auszahlung`
-Prämie      = 4 + 2 je `Prämie` + 4 je `Kopfgeld`
-Levelfaktor = 1.3 ^ (Levelnummer − 1)
+Ertrag      = 30 % + 1.9 %-Punkte je `Zoll` + 2.8 %-Punkte je `Auszahlung`
+Prämie      = 4 + 6 je `Prämie` + 10 je `Kopfgeld`
+Levelfaktor = 1.18 ^ min(n, 8) × 1.03 ^ max(0, n − 8),  n = Levelnummer − 1
 Baum-Faktor = (1 + 0.05 × `Handelsposten`) × 1.12 ^ `Börse`
 Ausdauer    = Leerung am Laufende ^ 0.5   (siehe Abschnitt 4)
 ```
@@ -979,12 +979,50 @@ zahlen sich am Konto nicht aus. Funken dagegen sind das, was der Lauf
 tatsächlich leistet.
 
 Verschoben wurde deshalb nicht die Summe, sondern die Herkunft. Der Grundsatz
-je Funken verdreifacht sich (5 % → 15 %) und wirkt genau dort, wo Funken bisher
-wertlos waren: am Anfang, ohne Knoten. Der Zuwachs je Knoten wird dafür
+je Funken versechsfacht sich (5 % → 15 % → **30 %**) und wirkt genau dort, wo
+Funken bisher wertlos waren: am Anfang, ohne Knoten. Der Zuwachs je Knoten wird dafür
 flacher — voll ausgebaut liegt der Ertrag bei 39 % statt 35 %, das Spätspiel
 bleibt also, wo es war. Die Prämie je Peg fällt von 10 auf 4 im Grund und von
 136 auf 72 voll ausgebaut: eine echte Einnahme, deren beide Knoten kaufenswert
 bleiben, aber nicht mehr die tragende.
+
+### Der Frühstart, zweiter Anlauf
+
+Auch danach blieb der Anfang zu knapp. Gemessen (`tools/report.ts`) hing der
+Bot **49 Läufe in Level 3** fest — die Sparphase für die Puls-Kugel — und die
+ganze Kampagne brauchte 106 Läufe. Zwei Zahlen wurden gehoben:
+
+| | vorher | jetzt | Wirkung |
+|---|---|---|---|
+| Ertrag je Funken (Grundsatz) | 15 % | **30 %** | Level 3: ◆ 313 → 500 je Lauf |
+| Geld je zerschlagenem Barren | 10 | **40** | Barren tragen in Level 3/4 statt 9 % nun 18–22 % |
+
+Ergebnis: Level 3 fällt von 49,3 auf **30,0 Läufe**, die Kampagne von 106 auf
+**90**.
+
+**Warum ausgerechnet diese beiden.** Beide sind von selbst frühlastig, ohne
+dass eine Sonderregel nötig wäre. Der Grundsatz je Funken ist der Anteil, den
+*niemand* gekauft hat: `Zoll` hat vier Stufen, voll ausgebaut steigt der Ertrag
+von 39 % auf 54 % — wer nichts besitzt, bekommt doppelt so viel, wer alles
+besitzt, ein Drittel mehr. Und der Barren ist die einzige Einnahme, die man
+sich *aktiv* holt: er verlangt zwei direkte Treffer auf dasselbe Ziel, während
+Funken und Abdeckung nebenbei anfallen. Sein Anteil fällt ab Level 6 unter 3 %
+und ab Level 12 unter 0,5 % — nicht weil er schlechter wird, sondern weil die
+Funken exponentiell wachsen und er linear bleibt.
+
+**Was nicht angefasst wurde.** Die Prämie je Peg wäre der stärkste Hebel für
+Level 1 und 2 gewesen (dort stammen 78–90 % des Geldes aus Abdeckung, im
+Endspiel 0 %). Sie bleibt bei 4, weil eine Anhebung genau die Entscheidung
+zurückdrehte, die einen Absatz weiter oben steht: Abdeckung ist eine einmalige
+Größe, und wer sein Geld daraus bezieht, spielt auf eine Obergrenze zu, die
+kein Upgrade verschieben kann.
+
+**Der Preis steht am anderen Ende.** In Level 21–30 stammt die Auszahlung zu
+100 % aus Funken, und dort wirkt derselbe Grundsatz mit der Rückkopplung über
+`Ausbeute`: Level 30 zahlt statt 10,1 G nun 17,3 G je Lauf. Das ist
+hingenommen, nicht übersehen — die späten Beträge liegen ohnehin weit über
+allem, was der Baum kostet, und die offene Senke für spätes Geld ist eine
+eigene Frage (Abschnitt 8).
 
 Der Levelfaktor wächst geometrisch, aber mit kleinem Schritt. Ein höheres Level
 bringt ohnehin schon mehr Pegs, mehr Kontakte und längere Läufe; käme ein

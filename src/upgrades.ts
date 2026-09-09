@@ -241,8 +241,26 @@ const shardHarvest = (l: number) => 0.28 * l;
  *   - Die Praemie je Peg faellt von 10 auf 4 im Grund und von 136 auf 72 voll
  *     ausgebaut. Sie bleibt eine echte Einnahme und ihre beiden Knoten
  *     bleiben kaufenswert, aber sie traegt den Lauf nicht mehr allein.
+ *
+ * NACHTRAG: 15 % -> 30 %. Der Fruehstart blieb auch danach zu knapp. Gemessen
+ * (tools/report.ts) hing der Bot 49 Laeufe in Level 3 fest — die Sparphase
+ * fuer die Puls-Kugel — und die ganze Kampagne brauchte 106 Laeufe. Mit dem
+ * verdoppelten Grundsatz sind es 30 und 90.
+ *
+ * Der Grundsatz ist bewusst der Hebel und nicht der Zuwachs je Knoten: `Zoll`
+ * hat vier Stufen, der Ertrag reicht voll ausgebaut von 39 % auf 54 %. Wer
+ * nichts gekauft hat, bekommt also doppelt so viel; wer alles gekauft hat,
+ * ein Drittel mehr. Die Anhebung liegt damit von selbst am Anfang, wo sie
+ * gebraucht wird.
+ *
+ * DER PREIS DAFUER STEHT AM ANDEREN ENDE. In Level 21–30 stammt die
+ * Auszahlung zu 100 % aus Funken, und dort wirkt derselbe Grundsatz mit einer
+ * Rueckkopplung ueber `Ausbeute`: Level 30 zahlt statt 10.1G nun 17.3G je
+ * Lauf. Das ist hingenommen, nicht uebersehen — die spaeten Betraege liegen
+ * ohnehin weit ueber allem, was der Baum kostet, und die offene Senke fuer
+ * spaetes Geld ist eine eigene Frage (siehe GAME_DESIGN.md, Abschnitt 8).
  */
-const moneyPerSpark = (l: number) => 0.15 + 0.0187 * l;
+const moneyPerSpark = (l: number) => 0.30 + 0.0187 * l;
 const moneyPerSparkII = (l: number) => 0.0281 * l;
 const moneyPerSparkIII = (l: number) => 0.0132 * l;
 const pegBounty = (l: number) => MONEY_PER_NEW_PEG + 6 * l;
