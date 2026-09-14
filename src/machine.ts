@@ -67,6 +67,76 @@ import {
   sh,
 } from "./theme";
 
+/**
+ * DIE FREIE FLAECHE FUER DIE ARENA
+ *
+ * Frueher stand hier eine einzige Zahl: `vw - 560`. Die 560 waren die beiden
+ * HUD-Spalten, die am PC LINKS und RECHTS neben der Arena stehen. Auf einem
+ * Handy im Hochformat ist der Bildschirm schmaler als diese Reserve — der
+ * Maszstab wurde dort NEGATIV und die Arena verschwand. Das Spiel war auf
+ * einem hochkant gehaltenen Telefon nicht unschoen, sondern kaputt.
+ *
+ * Es gibt jetzt zwei Anordnungen, und `hudSchmal` entscheidet zwischen
+ * ihnen:
+ *
+ *   breit   Panels stehen NEBEN der Arena   -> Reserve links und rechts
+ *   schmal  Panels stehen DARUEBER/DARUNTER -> Reserve oben und unten
+ *
+ * Entschieden wird am Seitenverhaeltnis, nicht an der Breite allein. Ein
+ * iPad hochkant ist mit 820 px breiter als ein Handy quer mit 844 — nach
+ * reiner Breite bekaemen beide dieselbe Anordnung, obwohl das eine hoch und
+ * das andere flach ist. Nach dem Verhaeltnis bekommt das iPad die gestapelte
+ * (Arena wird 3x so gross) und das Handy quer die spaltige.
+ */
+export const hudSchmal = (vw: number, vh: number): boolean => vw < vh * 1.2 || vw < 620;
+
+/**
+ * Was oben und unten fuer das HUD reserviert ist, in Pixeln.
+ *
+ * Die EINZIGE Quelle fuer diese Zahlen. `freieFlaeche()` gibt der Arena, was
+ * uebrig bleibt, und `resize()` in main.ts schreibt dieselben Werte als
+ * CSS-Variablen an das <html> — die Shop-Schublade waechst damit genau bis
+ * an die Unterkante der Arena und keinen Pixel weiter. Stuenden die Zahlen
+ * zweimal da, schoebe sich die Schublade beim naechsten Anfassen der einen
+ * Stelle ueber das Spielfeld.
+ */
+export function hudMasse(vw: number, vh: number): { oben: number; unten: number } {
+  // Zwei Zeilen oben: Waehrungen, darunter Arenatitel und Lebensring.
+  return { oben: 112, unten: Math.min(300, Math.max(190, vh * 0.34)) };
+}
+
+/**
+ * Ein FLACHER Schirm — ein Telefon quer. Breit genug fuer die Spalten, aber
+ * zu niedrig fuer sie: die Waehrungsanzeige oben und der Lebensring unten
+ * treffen sich in der Mitte, und die Arena lag zwischen ihnen mitten in den
+ * Panels. Die Spalten werden hier per CSS schmaler (siehe `max-height` dort),
+ * und die Arena ruecken wir entsprechend.
+ */
+const KURZ_BIS = 520;
+
+/**
+ * `klassisch` heisst: die Arena wird wie vor dem Handy-Umbau platziert —
+ * im GANZEN Fenster zentriert und um `80 * scale` nach rechts gerueckt,
+ * weil links nur die schmale Waehrungsspalte steht und rechts die breite
+ * Shop-Spalte. Das ist bewusst KEINE Zentrierung im Restband: die haette
+ * die Arena am Schreibtisch um rund 300 px nach links geschoben, und der
+ * PC sollte sich nicht bewegen.
+ */
+function freieFlaeche(
+  vw: number,
+  vh: number
+): { x: number; y: number; w: number; h: number; klassisch: boolean } {
+  if (!hudSchmal(vw, vh)) {
+    if (vh <= KURZ_BIS) return { x: 190, y: 50, w: vw - 450, h: vh - 100, klassisch: false };
+    // Wie gehabt: 560 px Reserve fuer die Spalten.
+    return { x: 80, y: 60, w: vw - 560, h: vh - 120, klassisch: true };
+  }
+  // Gestapelt. Oben die Waehrungsleiste, unten Kugel-Shop und der grosse
+  // Knopf — der Shop ist dort eine Schublade.
+  const { oben, unten } = hudMasse(vw, vh);
+  return { x: 12, y: oben, w: vw - 24, h: Math.max(120, vh - oben - unten), klassisch: false };
+}
+
 const FRAME = 24;
 /** Abklingzeit des `Lichtbogens` in Sekunden. */
 const ARC_COOLDOWN = 0.3;
@@ -584,6 +654,16 @@ export interface MachineEvents {
   onTouch: (direkt: boolean, marked: boolean, healMult?: number) => void;
   /** Ein Bumper wurde beruehrt. Quelle der `Splitterernte`. */
   onBumper: () => void;
+  /**
+   * Ein Barren ist zerschlagen. Quelle der `Scherben`.
+   *
+   * Das Geld eines Barren wird erst in der Auswertung abgerechnet (siehe
+   * BARREN_BOUNTY), seine Splitter fallen dagegen SOFORT an — Splitter sind
+   * eine Laufwaehrung und ticken im HUD mit, waehrend man spielt. Ein
+   * Barren, der still liegen bleibt und erst am Laufende zahlt, saehe aus
+   * wie einer, der nichts abwirft.
+   */
+  onBarren?: () => void;
   /**
    * Die Lebensleiste soll fuer `sekunden` stehen bleiben — sie leert sich
    * nicht und laeuft auch nicht auf der Rampe weiter. Kommt von `Frost`.
@@ -1815,6 +1895,7 @@ export class Machine {
     if (br.hits >= BARREN_HITS) {
       br.gone = true;
       this.runStats.barrenBroken++;
+      this.ev.onBarren?.();
       this.sfx("smash", x);
       // Die Zahl, die der Spieler sieht, ist der Wert MIT Levelfaktor — der
       // Baumfaktor kommt in der Auswertung noch obendrauf.
@@ -2071,14 +2152,15 @@ export class Machine {
   bounds(vw: number, vh: number): { x: number; y: number; w: number; h: number; scale: number } {
     const totalW = this.def.w + FRAME * 2;
     const totalH = this.def.h + FRAME * 2;
-    const scale = Math.min((vw - 560) / totalW, (vh - 120) / totalH, 1.35);
-    return {
-      x: (vw - totalW * scale) / 2 + 80 * scale,
-      y: (vh - totalH * scale) / 2,
-      w: totalW * scale,
-      h: totalH * scale,
-      scale,
-    };
+    const r = freieFlaeche(vw, vh);
+    const scale = Math.min(r.w / totalW, r.h / totalH, 1.35);
+    const x = r.klassisch
+      ? (vw - totalW * scale) / 2 + 80 * scale
+      : r.x + (r.w - totalW * scale) / 2;
+    const y = r.klassisch
+      ? (vh - totalH * scale) / 2
+      : r.y + (r.h - totalH * scale) / 2;
+    return { x, y, w: totalW * scale, h: totalH * scale, scale };
   }
 
   render(ctx: CanvasRenderingContext2D, vw: number, vh: number): void {

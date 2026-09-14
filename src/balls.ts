@@ -118,7 +118,10 @@ export const PULSE_RADIUS_SHARE = 0.22;
 /** Kein Puls deckt je mehr als diesen Anteil der Arenabreite ab. */
 export const PULSE_RADIUS_SHARE_MAX = 0.35;
 /** Ein Puls trifft viele Pegs gleichzeitig, zahlt pro Peg deshalb anteilig. */
-export const PULSE_VALUE_FACTOR = 0.55;
+// Ein Puls trifft mehrere Pegs auf einmal. Der Einzelwert muss deshalb klar
+// unter einem direkten Treffer liegen; sonst ueberholt die Puls-Kugel die
+// weisse bereits ohne Ausbau um ein Mehrfaches.
+export const PULSE_VALUE_FACTOR = 0.26;
 /** Sekunden zwischen einem Puls und seinem Nachhall. */
 export const PULSE_ECHO_DELAY = 0.42;
 
@@ -130,13 +133,18 @@ export const LIGHTNING_TARGET_SHARE = 0.06;
 export const LIGHTNING_TARGET_SHARE_MAX = 0.25;
 /** So viele Ziele gibt es immer, auch in einer winzigen Arena. */
 export const LIGHTNING_TARGETS_MIN = 3;
-export const LIGHTNING_VALUE_FACTOR = 0.8;
+// Ein Blitz trifft mindestens mehrere Ziele und skaliert mit der Feldgroesse.
+// Sein Basiswert bleibt deshalb unter dem einer einzelnen Kugelberuehrung.
+export const LIGHTNING_VALUE_FACTOR = 0.55;
 
 /** Feuer-Kugel: Brenndauer, Auszahltakt und Abnahme pro zusätzlichem Stapel. */
 export const FIRE_DURATION = 4.5;
 export const FIRE_TICK = 0.5;
 /** Brand ist Zusatzverdienst; auf Stufe 0 darf er die anderen Kugeln nicht dominieren. */
-export const FIRE_VALUE_FACTOR = 0.35;
+// Brand zahlt wiederholt und auf mehreren Pegs. Der Grundwert ist daher
+// niedriger als bei einem direkten Kontakt, damit Feuer ein Aufbauwerkzeug
+// bleibt statt die fruehe Wahl eindeutig zu dominieren.
+export const FIRE_VALUE_FACTOR = 0.18;
 export const FIRE_FALLOFF = 0.6;
 export const FIRE_MAX_STACKS = 4;
 /** Reichweite, in der `Übersprung` einen Nachbarn entzünden kann. */

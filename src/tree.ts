@@ -247,6 +247,19 @@ export class TreeView {
   private pressK = 0;
   private pressHold = false;
   private pulses: Array<{ id: string; t: number }> = [];
+  /**
+   * Der per FINGER ausgewaehlte Knoten.
+   *
+   * Am Zeiger gibt es zwei getrennte Gesten: der Hover zeigt, der Klick
+   * kauft. Ein Finger kann das nicht — er beruehrt und loest aus, und ein
+   * Tippen waere damit ein Kauf, bevor man Preis oder Wirkung je gesehen
+   * hat. Deshalb tippt man hier ZWEIMAL: das erste Tippen waehlt aus und
+   * zeigt den Tooltip, das zweite auf denselben Knoten kauft.
+   *
+   * Am Zeiger bleibt alles, wie es war — `pointerUp` bekommt mitgeteilt,
+   * womit geklickt wurde, und nur ein grober Zeiger geht diesen Weg.
+   */
+  private tapId: string | null = null;
   private centered = false;
   /** Laufender Zustand je Knoten, siehe NodeAnim. */
   private anim = new Map<string, NodeAnim>();
@@ -411,15 +424,65 @@ export class TreeView {
     this.panY = y - wy * this.zoom;
   }
 
-  pointerUp(x: number, y: number): void {
-    const wasDrag = this.dragMoved > 6;
+  pointerUp(x: number, y: number, grob = false): void {
+    // Mit dem Finger darf die Hand mehr wackeln als mit der Maus, sonst
+    // zaehlt jedes Tippen als Ziehen und es passiert nie etwas.
+    const wasDrag = this.dragMoved > (grob ? 12 : 6);
     this.dragging = false;
     this.pressHold = false;
     if (wasDrag) return;
 
     const hit = this.hitTest(x, y);
-    if (!hit) return;
+    if (!hit) {
+      // Daneben getippt hebt die Auswahl auf — sonst kauft das naechste
+      // Tippen irgendwo im Baum den Knoten von vorhin.
+      if (grob) this.clearTap();
+      return;
+    }
+    if (!grob) {
+      this.tryBuy(hit);
+      return;
+    }
+    if (this.tapId !== hit.id) {
+      // Erstes Tippen: auswaehlen und zeigen, was er kann.
+      this.tapId = hit.id;
+      this.hovered = hit;
+      this.hooks.onHover(hit, x, y);
+      return;
+    }
+    // Zweites Tippen auf denselben Knoten kauft. Die Auswahl bleibt stehen,
+    // damit man eine Stufe nach der anderen nachlegen kann, ohne jedes Mal
+    // neu anzuvisieren.
     this.tryBuy(hit);
+    this.hooks.onHover(hit, x, y);
+  }
+
+  /** Hebt die Fingerauswahl auf und raeumt den Tooltip weg. */
+  clearTap(): void {
+    if (this.tapId === null) return;
+    this.tapId = null;
+    this.hovered = null;
+    this.hooks.onHover(null, 0, 0);
+  }
+
+  /**
+   * Zwei Finger: zoomt um ihre Mitte. Dieselbe Rechnung wie beim Mausrad —
+   * der Weltpunkt unter der Mitte soll dort bleiben, wo er ist.
+   */
+  pinch(cx: number, cy: number, faktor: number): void {
+    const next = clampZoom(this.zoom * faktor);
+    if (next === this.zoom) return;
+    const wx = (cx - this.panX) / this.zoom;
+    const wy = (cy - this.panY) / this.zoom;
+    this.zoom = next;
+    this.panX = cx - wx * this.zoom;
+    this.panY = cy - wy * this.zoom;
+  }
+
+  /** Schiebt den Ausschnitt, ohne etwas auszuwaehlen. Fuer die Zwei-Finger-Geste. */
+  pan(dx: number, dy: number): void {
+    this.panX += dx;
+    this.panY += dy;
   }
 
   tryBuy(def: TreeNodeDef): boolean {
@@ -456,6 +519,7 @@ export class TreeView {
 
   clearHover(): void {
     this.hovered = null;
+    this.tapId = null;
     this.pressId = null;
     this.pressK = 0;
     this.pressHold = false;
@@ -525,9 +589,23 @@ export class TreeView {
       this.panX = w / 2 - start.x * this.zoom;
       this.panY = h / 2 - start.y * this.zoom;
       this.centered = true;
+    } else if (w !== this.lastW || h !== this.lastH) {
+      /*
+       * Aendert sich die Bildgroesse, wandert der Ausschnitt mit der Mitte
+       * mit. Ohne das bleibt der Baum am alten Bildpunkt kleben: wer sein
+       * Telefon dreht, hat den Ast, den er gerade ansah, ausserhalb des
+       * Bildes — und weil der Baum 1600 Einheiten breit ist, findet man ihn
+       * nicht ohne langes Schieben wieder.
+       */
+      this.panX += (w - this.lastW) / 2;
+      this.panY += (h - this.lastH) / 2;
     }
+    this.lastW = w;
+    this.lastH = h;
     return { x: this.panX, y: this.panY, zoom: this.zoom };
   }
+  private lastW = 0;
+  private lastH = 0;
 
   /** Umschliessendes Rechteck aller Knoten, in Weltkoordinaten. */
   worldBounds(): { x: number; y: number; w: number; h: number } {

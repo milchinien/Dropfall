@@ -1933,3 +1933,427 @@ body {
 .forge-btn:hover { background: var(--line); }
 .forge-btn[disabled] { opacity: 0.4; cursor: default; }
 .forge-btn img { width: 15px; height: 15px; }
+
+/* ================================================= Schmale Schirme ====
+
+   Eine zweite Anordnung fuer alles, was hochkant gehalten wird: Handy,
+   Tablet im Hochformat, schmales Fenster. Der PC bleibt unberuehrt — jede
+   Regel hier haengt an `[data-hud="schmal"]`, und dieses Attribut setzt
+   `resize()` in main.ts aus `hudSchmal()` in machine.ts. Dieselbe Funktion
+   entscheidet, welche Flaeche die Arena bekommt; Panels und Arena koennen
+   deshalb nicht auseinanderlaufen.
+
+   Die Anordnung dreht sich um 90 Grad: was am PC LINKS und RECHTS neben der
+   Arena steht, liegt hier DARUEBER und DARUNTER.
+
+     oben    Waehrungen als waagerechte Leiste, daneben Reiter und Zahnrad
+     Mitte   die Arena beziehungsweise der Skill Tree
+     unten   Lebensring, Kugel-Shop als Schublade, der grosse Knopf
+
+   Nichts wird ausgeblendet. Alle Funktionen bleiben erreichbar — das war
+   die Vorgabe, und es ist auch der Grund, warum der Shop hier eine
+   scrollbare Schublade ist und keine gekuerzte Liste.
+   ==================================================================== */
+
+/* Kein Gummiband, kein Doppeltipp-Zoom, kein Textmarkieren beim Ziehen.
+   Steht ausserhalb der Anordnung, weil es fuer JEDEN Touchscreen gilt —
+   auch fuer ein Touch-Notebook im Spaltenlayout. */
+#stage {
+  touch-action: none;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
+@media (pointer: coarse) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Fingerkuppen sind rund 9 mm breit. Alles, was man treffen muss, bekommt
+     mindestens 44 px — das ist keine Zierde, darunter tippt man daneben. */
+  .icon-btn,
+  .view-tab,
+  .ghost-btn,
+  .prev-nav,
+  .sel-tab {
+    min-height: 44px;
+  }
+  .view-tab {
+    padding: 11px 16px;
+  }
+}
+
+html[data-hud="schmal"] .hud {
+  padding: 10px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+/* --- oben: Waehrungen waagerecht statt untereinander --- */
+html[data-hud="schmal"] .panel--res {
+  top: max(8px, env(safe-area-inset-top));
+  left: 8px;
+  right: 64px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding: 7px 12px;
+}
+
+html[data-hud="schmal"] .res-row {
+  margin: 0;
+  font-size: 15px;
+}
+
+html[data-hud="schmal"] .res-row--sub {
+  font-size: 12px;
+}
+
+html[data-hud="schmal"] .icon-btn {
+  top: max(8px, env(safe-area-inset-top));
+  right: 8px;
+  width: 44px;
+  height: 44px;
+}
+
+/* Reiter unter die Waehrungsleiste, waagerecht mittig. */
+html[data-hud="schmal"] .panel--views {
+  top: auto;
+  left: 50%;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 6;
+}
+
+/*
+ * Zweite Zeile unter den Waehrungen: links der Arenatitel, rechts der
+ * Lebensring. Beide standen zuerst unten — dort lagen sie uebereinander
+ * und ueber der Shop-Schublade. Hochkant ist der untere Rand der einzige
+ * Platz, den der Daumen bequem erreicht; er gehoert dem Shop und dem
+ * grossen Knopf, nicht der Anzeige.
+ */
+html[data-hud="schmal"] .arena-title {
+  top: calc(max(8px, env(safe-area-inset-top)) + 52px);
+  left: 12px;
+  right: 150px;
+  bottom: auto;
+  transform: none;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  line-height: 42px;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html[data-hud="schmal"] .panel--life {
+  left: auto;
+  right: 8px;
+  top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+  bottom: auto;
+  min-width: 0;
+  gap: 8px;
+  padding: 4px 10px;
+}
+
+html[data-hud="schmal"] .life-ring .ldr {
+  --ldr-size: 38px;
+}
+
+html[data-hud="schmal"] .life-ring .ldr__center {
+  font-size: 11px;
+}
+
+/* Die Beschriftung faellt weg, die ZAHL bleibt — sie ist das, was man im
+   Lauf aus dem Augenwinkel liest. */
+html[data-hud="schmal"] .life-info {
+  font-size: 11px;
+  gap: 0;
+}
+
+html[data-hud="schmal"] .life-label {
+  display: none;
+}
+
+/* --- die Kugel-Shop-Schublade --- */
+html[data-hud="schmal"] .panel--shop {
+  top: auto;
+  right: 8px;
+  left: 8px;
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px);
+  width: auto;
+  /* Genau die Reserve, die `freieFlaeche()` unten frei haelt, minus dem,
+     was darunter schon der grosse Knopf belegt. Die Variable setzt
+     `resize()` aus `hudMasse()` — hier steht keine zweite Zahl. */
+  max-height: calc(var(--hud-unten, 287px) - 70px);
+  padding: 10px 12px 8px;
+  overscroll-behavior: contain;
+}
+
+html[data-hud="schmal"] .shop-row {
+  padding: 8px 10px;
+}
+
+/* --- der grosse Knopf: volle Breite, Daumen unten --- */
+html[data-hud="schmal"] .big-btn {
+  left: 8px;
+  right: 8px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  min-width: 0;
+  width: auto;
+  padding: 14px 20px;
+  font-size: 18px;
+}
+
+/* Reiter und grosser Knopf teilen sich die unterste Zeile. */
+html[data-hud="schmal"] .big-btn:not(.hidden) ~ .panel--views,
+html[data-hud="schmal"] .panel--views:has(~ .big-btn:not(.hidden)) {
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px);
+  left: auto;
+  right: 8px;
+  transform: none;
+}
+
+/* --- Dialoge: auf einem Handy fast bildschirmfuellend --- */
+
+html[data-hud="schmal"] .modal-card {
+  width: min(360px, calc(100vw - 20px));
+  max-height: min(calc(100dvh - 24px), 760px);
+  padding: 20px;
+  overscroll-behavior: contain;
+}
+
+/*
+ * Die Level-Auswahl ist am PC zweispaltig: links die Ziele, rechts die
+ * Miniatur der Arena. Nebeneinander braucht das 1100 px. Hochkant stehen
+ * beide untereinander, und die Miniatur kommt NACH OBEN — man erkennt ein
+ * Level am Bild schneller als an seinem Namen.
+ */
+html[data-hud="schmal"] .select-card {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  width: calc(100vw - 16px);
+  height: min(calc(100dvh - 16px), 900px);
+}
+
+/*
+ * `min-width: 0` ist hier kein Feinschliff, sondern die ganze Sache: ein
+ * Grid-Kind darf sich von Haus aus nicht unter seine Inhaltsbreite
+ * druecken lassen (`min-width: auto`). Die beiden Spalten blieben deshalb
+ * 572 px breit und ragten aus einer 374 px schmalen Karte heraus — die
+ * Knoepfe „Schliessen" und „Start" lagen neben dem Bildschirm.
+ */
+html[data-hud="schmal"] .select-left,
+html[data-hud="schmal"] .select-right {
+  min-width: 0;
+}
+
+html[data-hud="schmal"] .select-left {
+  order: 2;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html[data-hud="schmal"] .select-right {
+  order: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/*
+ * Die Miniatur nimmt, was zwischen den Pfeilen uebrig bleibt. `width: 100%`
+ * waere falsch: die Vorschau ist eine Flex-Reihe aus [<-] [Bild] [->], und
+ * volle Breite fuer das Bild schiebt beide Pfeile aus dem Schirm — der linke
+ * stand bei x = -29.
+ */
+html[data-hud="schmal"] .select-preview {
+  position: relative;
+  gap: 0;
+}
+
+/*
+ * Die Pfeile LIEGEN AUF der Vorschau, statt neben ihr zu stehen. Daneben
+ * kosten sie zusammen mit ihren Abstaenden rund 130 der 374 px Breite —
+ * ein Drittel des Schirms fuer zwei Pfeile, und die Vorschau wurde dadurch
+ * kleiner statt groesser. Auf den Raendern des Bildes stoeren sie nicht:
+ * dort ist die Arena ohnehin Rahmen.
+ */
+html[data-hud="schmal"] .prev-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 46px;
+  height: 46px;
+  font-size: 20px;
+  background: var(--ink);
+}
+
+html[data-hud="schmal"] .prev-nav--left {
+  left: 0;
+}
+
+html[data-hud="schmal"] .prev-nav--right {
+  right: 0;
+}
+
+html[data-hud="schmal"] #selCanvas {
+  width: auto;
+  height: 46dvh;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/*
+ * Die Levelreiter fallen hochkant weg.
+ *
+ * Dreissig Reiter nebeneinander sind auf einem Telefon eine Reihe aus
+ * Stummeln — „1.. 2.. 3..", jeder zu schmal fuer seine eigene Zahl und zu
+ * schmal fuer einen Daumen. Sie sagen dort nichts, was die Pfeile daneben
+ * nicht besser sagen, und sie nehmen der Vorschau den Platz weg, an der man
+ * ein Level tatsaechlich erkennt.
+ *
+ * Es geht dabei KEINE Funktion verloren: `←` und `→` erreichen jedes
+ * freigespielte Level, und die Vorschau zeigt beim Blaettern, wo man ist.
+ * Am PC bleibt die Leiste, dort ist sie eine echte Abkuerzung.
+ */
+html[data-hud="schmal"] .select-tabs {
+  display: none;
+}
+
+/* Schliessen und Start nebeneinander, aber beide schrumpfbar. */
+html[data-hud="schmal"] .select-actions {
+  display: flex;
+  gap: 8px;
+}
+
+html[data-hud="schmal"] .select-actions .big-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 14px 8px;
+  font-size: 16px;
+}
+
+/*
+ * Der Tooltip des Skill Trees wird zur Leiste am unteren Rand.
+ *
+ * Am PC folgt er dem Zeiger — das geht hochkant nicht: der Finger steht auf
+ * dem Knopf, ueber den der Tooltip gelegt wuerde, und 310 px breit ist er
+ * ohnehin fast der ganze Schirm. Unten angeschlagen verdeckt er nie das,
+ * worueber er spricht. Die Lage setzt main.ts nicht mehr, wenn diese Regel
+ * gilt — siehe `showTooltip`.
+ */
+html[data-hud="schmal"] .tooltip {
+  left: 8px;
+  right: 8px;
+  top: auto;
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px);
+  width: auto;
+  max-height: 42dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html[data-hud="schmal"] .forge-inner {
+  padding: 72px 14px 120px;
+}
+
+html[data-hud="schmal"] .forge-title {
+  font-size: 25px;
+}
+
+html[data-hud="schmal"] .forge-sub {
+  font-size: 14px;
+  margin-bottom: 22px;
+}
+
+/* Die Auswertung nach dem Lauf: zwei Spalten statt drei. Eine einzige
+   waere eine sehr lange Liste — zwei passen nebeneinander, weil in jeder
+   Kachel nur eine Zahl steht. */
+html[data-hud="schmal"] .result-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+/*
+ * Die Karte selbst steht hochkant untereinander: oben die Auswertung, unten
+ * „Funken nach Quelle". Wieder `min-width: 0` an den Grid-Kindern — ohne das
+ * bleibt die 340-px-Spalte 340 px breit und schiebt die Karte auseinander.
+ */
+html[data-hud="schmal"] .result-card {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto;
+  width: calc(100vw - 16px);
+  height: min(calc(100dvh - 16px), 900px);
+}
+
+html[data-hud="schmal"] .result-main,
+html[data-hud="schmal"] .result-side {
+  min-width: 0;
+  padding: 18px 14px;
+  overscroll-behavior: contain;
+}
+
+html[data-hud="schmal"] .result-main {
+  overflow-y: auto;
+}
+
+html[data-hud="schmal"] .result-side {
+  max-height: 30dvh;
+}
+
+/* --- flache Schirme: Telefon quer --- */
+/* Passt zu KURZ_BIS in machine.ts: dort ruecken Arena und Reserve mit. */
+@media (max-height: 520px) and (min-aspect-ratio: 6/5) {
+  .panel--res {
+    top: 10px;
+    left: 10px;
+    min-width: 0;
+    padding: 8px 12px;
+  }
+  .res-row {
+    font-size: 14px;
+  }
+  .panel--life {
+    left: 10px;
+    bottom: 10px;
+    min-width: 0;
+    gap: 10px;
+    padding: 8px 12px;
+  }
+  .life-ring .ldr {
+    --ldr-size: 52px;
+  }
+  .life-label {
+    display: none;
+  }
+  .panel--shop {
+    top: 62px;
+    right: 10px;
+    width: 240px;
+    max-height: calc(100dvh - 140px);
+  }
+  .big-btn {
+    right: 10px;
+    bottom: 10px;
+    min-width: 200px;
+    padding: 12px 22px;
+    font-size: 17px;
+  }
+  .icon-btn {
+    top: 10px;
+    right: 10px;
+  }
+  .arena-title {
+    top: 12px;
+  }
+}

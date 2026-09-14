@@ -116,7 +116,7 @@ export function simulateRun(
   // Ganzzahlige Splitter mit Uebertrag — dieselbe Rechnung wie in main.ts.
   let shardCarry = 0;
   const grantShards = (units: number): number => {
-    shardCarry += units * shardLevelMult(arena);
+    shardCarry += units * shardLevelMult(arena) * stats.shardMult;
     const ganz = Math.floor(shardCarry);
     shardCarry -= ganz;
     return ganz;
@@ -127,7 +127,9 @@ export function simulateRun(
       sparks += v;
       sparksGross += v;
     },
-    onCover: () => {},
+    onCover: () => {
+      if (shardsActive && stats.shardPeg > 0) shards += grantShards(stats.shardPeg);
+    },
     onTouch: (direkt, marked, healMult = 1) => {
       if (!direkt) return;
       let heal = stats.healPerHit * multiBallHealFactor(stats.kinds.length) * healMult;
@@ -141,6 +143,9 @@ export function simulateRun(
     },
     onBumper: () => {
       if (shardsActive && Math.random() < stats.shardHarvest) shards += grantShards(SHARD_PER_BUMP);
+    },
+    onBarren: () => {
+      if (shardsActive && stats.shardBarren > 0) shards += grantShards(stats.shardBarren);
     },
     onFreeze: (sek) => {
       freezeT = Math.max(freezeT, sek);
@@ -263,10 +268,22 @@ const PRIORITY = [
   "whiteCombo",
   "pegBounty",
   "payoutII",
+  // ... dann die Splitter-Einnahmen. Sie standen hier frueher gar nicht, und
+  // solange das so war, hat der Bot keinen einzigen davon gekauft — was
+  // leicht als „die Knoten lohnen sich nicht" zu lesen war, obwohl er sie nur
+  // nie in die Hand genommen hat. Wer das Splitter-Einkommen messen will,
+  // muss es auch ausgeben lassen.
+  "shardLuck",
+  "shardHarvest",
+  "shardPeg",
+  "shardBarren",
+  "markShard",
   // ... und zuletzt die bodenlosen Senken.
   "payMult",
   "yieldAll",
+  "shardMult",
   "yieldAllII",
+  "shardMultII",
 ];
 
 const nodeById = new Map(NODES.map((n) => [n.id, n]));

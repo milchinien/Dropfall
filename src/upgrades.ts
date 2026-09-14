@@ -218,8 +218,30 @@ const startSparks = (l: number) => 120 * l;
 const upgradeDiscount = (l: number) => Math.pow(0.8341, l);
 const ballCap = (l: number) => 10 * l;
 const ballCapII = (l: number) => 16 * l;
-const shardLuck = (l: number) => 0.175 * l;
-const shardHarvest = (l: number) => 0.28 * l;
+const shardLuck = (l: number) => 0.1 * l;
+const shardHarvest = (l: number) => 0.18 * l;
+
+/*
+ * DIE MULTIPLIKATIVE ACHSE DER SPLITTER
+ *
+ * Geld hatte sie immer (`Ausbeute`, `Boerse`), Splitter hatten sie nie: ihr
+ * Einkommen bestand aus drei Chance-Knoten je Treffer und wuchs damit
+ * LINEAR mit der Trefferzahl, waehrend ihre Kosten geometrisch wuchsen.
+ * Gemessen hat der Bot deshalb keinen einzigen der drei je gekauft — sie
+ * amortisierten sich nie.
+ *
+ * `Splitterader` ist das Gegenstueck zu `Ausbeute` und aus demselben Grund
+ * lang: sie ist die Senke ohne Boden fuer spaetes GELD, und was sie
+ * ausschuettet, ist die Waehrung, die man dann noch braucht. Damit hat
+ * spaetes Geld zwei Ziele statt einem, und Splitter haengen nicht mehr
+ * allein an der Frage, wie oft die Kugel aufkommt.
+ */
+const shardFactor = (l: number) => Math.pow(1.03, l);
+const shardFactorII = (l: number) => Math.pow(1.05, l);
+/** Splitter je in diesem Lauf erstmals abgedecktem Peg. */
+const shardPeg = (l: number) => 0.15 * l;
+/** Splitter je zerschlagenem Barren. */
+const shardBarren = (l: number) => 3 * l;
 
 /*
  * GELD KOMMT AUS FUNKEN, NICHT AUS ABDECKUNG.
@@ -558,8 +580,8 @@ export const NODES: TreeNodeDef[] = [
     icon: "⋄",
     color: "pink",
     max: 4,
-    baseCost: 4400,
-    growth: 3.2,
+    baseCost: 850,
+    growth: 2.6,
     req: [["workshop", 1]],
     desc: (l) =>
       `Jeder direkte Peg-Treffer hat eine Chance, einen <b>zweiten Splitter</b> abzuwerfen.<br><br>Chance: <b>${pct(shardLuck(l))}</b>`,
@@ -570,12 +592,62 @@ export const NODES: TreeNodeDef[] = [
     icon: "◈",
     color: "pink",
     max: 3,
-    baseCost: 1500,
-    growth: 1.73,
+    baseCost: 520,
+    growth: 1.7,
     currency: "shard",
     req: [["shardLuck", 1]],
     desc: (l) =>
       `Auch <b>Bumper</b> werfen Splitter ab &mdash; bisher tun das nur Pegs.<br><br>Chance je Bumper: <b>${pct(shardHarvest(l))}</b>`,
+  },
+  {
+    id: "shardMult",
+    title: "Splitterader",
+    icon: "◇",
+    color: "pink",
+    max: 12,
+    baseCost: 2600,
+    growth: 1.42,
+    req: [["shardHarvest", 1]],
+    desc: (l) =>
+      `Jeder Splitter z&auml;hlt <b>3 %</b> mehr &mdash; egal, ob er von einem Peg, einem Bumper oder einem Barren kommt. Stapelt praktisch ohne Obergrenze: hier landet sp&auml;tes Geld, wenn der Rest des Baums steht.<br><br>Faktor: <b>${shardFactor(l).toFixed(2)}x</b>`,
+  },
+  {
+    id: "shardMultII",
+    title: "Pochwerk",
+    icon: "⌗",
+    color: "pink",
+    max: 4,
+    baseCost: 5200,
+    growth: 1.9,
+    currency: "shard",
+    req: [["shardMult", 4]],
+    desc: (l) =>
+      `Jeder Splitter z&auml;hlt <b>5 %</b> mehr.${TWIN}<br><br>Faktor: <b>${shardFactorII(l).toFixed(2)}x</b>`,
+  },
+  {
+    id: "shardPeg",
+    title: "Splitterlese",
+    icon: "⁘",
+    color: "pink",
+    max: 4,
+    baseCost: 1800,
+    growth: 2.4,
+    req: [["shardHarvest", 1]],
+    desc: (l) =>
+      `Jeder Peg, den du in diesem Lauf zum ersten Mal abdeckst, wirft Splitter ab.<br><br>Je neuem Peg: <b>${shardPeg(l).toFixed(2)} ◈</b>`,
+  },
+  {
+    id: "shardBarren",
+    title: "Scherben",
+    icon: "⬟",
+    color: "pink",
+    max: 3,
+    baseCost: 1900,
+    growth: 1.8,
+    currency: "shard",
+    req: [["shardPeg", 1]],
+    desc: (l) =>
+      `Ein zerschlagener <b>Barren</b> zerf&auml;llt in Splitter. Sie fallen sofort an, nicht erst in der Auswertung.<br><br>Je Barren: <b>${shardBarren(l).toFixed(1)} ◈</b>`,
   },
   {
     id: "ballMastery",
@@ -700,7 +772,7 @@ export const NODES: TreeNodeDef[] = [
     icon: "◎",
     color: "teal",
     max: 1,
-    baseCost: 3000,
+    baseCost: 1200,
     growth: 1.0,
     req: [["whiteBall", 1]],
     desc: () =>
@@ -930,7 +1002,7 @@ export const NODES: TreeNodeDef[] = [
     icon: "▲",
     color: "magenta",
     max: 1,
-    baseCost: 11,
+    baseCost: 6,
     growth: 1.0,
     currency: "crown",
     req: [["bounceValueII", 2]],
@@ -1162,7 +1234,7 @@ export const NODES: TreeNodeDef[] = [
     icon: "✦",
     color: "magenta",
     max: 1,
-    baseCost: 11,
+    baseCost: 4,
     growth: 1.0,
     currency: "crown",
     req: [["bounceValue", 1]],
@@ -1305,7 +1377,7 @@ export const NODES: TreeNodeDef[] = [
     icon: "◈",
     color: "amber",
     max: 4,
-    baseCost: 450,
+    baseCost: 130,
     growth: 1.667,
     currency: "shard",
     req: [["dropSpeed", 2]],
@@ -1362,7 +1434,7 @@ export const NODES: TreeNodeDef[] = [
     icon: "◈",
     color: "magenta",
     max: 1,
-    baseCost: 11,
+    baseCost: 5,
     growth: 1.0,
     currency: "crown",
     req: [["dropSpeed", 1]],
@@ -1437,7 +1509,7 @@ export const NODES: TreeNodeDef[] = [
     icon: "◈",
     color: "teal",
     max: 4,
-    baseCost: 900,
+    baseCost: 480,
     growth: 1.667,
     currency: "shard",
     req: [["markValueII", 1]],
@@ -1465,7 +1537,7 @@ export const NODES: TreeNodeDef[] = [
     icon: "⚡",
     color: "amber",
     max: 1,
-    baseCost: 5,
+    baseCost: 2,
     growth: 1.0,
     currency: "crown",
     req: [["dropSpeedII", 1]],
@@ -1933,6 +2005,12 @@ export interface Stats {
   shardLuck: number;
   /** Chance auf einen Splitter je Bumper-Kontakt. */
   shardHarvest: number;
+  /** Faktor auf JEDEN Splitter, egal aus welcher Quelle. */
+  shardMult: number;
+  /** Splitter je in diesem Lauf erstmals abgedecktem Peg. */
+  shardPeg: number;
+  /** Splitter je zerschlagenem Barren. */
+  shardBarren: number;
   /** Geld je verdientem Funken (vor dem Levelfaktor). */
   moneyPerSpark: number;
   /** Geld je in diesem Lauf erstmals abgedecktem Peg. */
@@ -2015,6 +2093,9 @@ export function deriveStats(lv: Levels, enchant: EnchantState = emptyEnchant()):
       BASE_BALL_CAP + ballCap(L("ballMastery")) + ballCapII(L("ballMasteryII")),
     shardLuck: shardLuck(L("shardLuck")),
     shardHarvest: shardHarvest(L("shardHarvest")),
+    shardMult: shardFactor(L("shardMult")) * shardFactorII(L("shardMultII")),
+    shardPeg: shardPeg(L("shardPeg")),
+    shardBarren: shardBarren(L("shardBarren")),
     moneyPerSpark:
       moneyPerSpark(L("payout")) +
       moneyPerSparkII(L("payoutII")) +

@@ -24,7 +24,7 @@ import {
 import { decorBoe, decorZeiger, drawDecorBack, drawDecorFront, type Rahmen } from "./decor";
 import { grafik, initGrafik, setGrafik } from "./skin";
 import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
-import { drawArenaMiniature } from "./machine";
+import { drawArenaMiniature, hudMasse, hudSchmal } from "./machine";
 import { BARREN_BOUNTY } from "./currency";
 import { edelBonus, emptyEnchant } from "./enchant";
 import { ForgeView } from "./forge";
@@ -326,7 +326,7 @@ const shardsActive = () => run.arena + 1 >= SHARD_FROM_LEVEL;
  */
 let shardCarry = 0;
 function grantShards(units: number): number {
-  shardCarry += units * shardLevelMult(run.arena);
+  shardCarry += units * shardLevelMult(run.arena) * stats.shardMult;
   const ganz = Math.floor(shardCarry);
   shardCarry -= ganz;
   return ganz;
@@ -340,7 +340,12 @@ const machine = new Machine({
     gainedThisFrame += v;
   },
   onCover: () => {
-    /* Abschluss wird am Laufende ausgewertet, nicht mittendrin. */
+    /* Der ABSCHLUSS wird am Laufende ausgewertet, nicht mittendrin — die
+       Splitter der `Splitterlese` fallen dagegen sofort an. */
+    if (!run.active || !shardsActive() || stats.shardPeg <= 0) return;
+    const n = grantShards(stats.shardPeg);
+    run.shards += n;
+    state.shards += n;
   },
   onTouch: (direkt, marked, healMult = 1) => {
     if (!run.active) return;
@@ -386,6 +391,12 @@ const machine = new Machine({
     if (!run.active || !shardsActive()) return;
     if (Math.random() >= stats.shardHarvest) return;
     const n = grantShards(SHARD_PER_BUMP);
+    run.shards += n;
+    state.shards += n;
+  },
+  onBarren: () => {
+    if (!run.active || !shardsActive() || stats.shardBarren <= 0) return;
+    const n = grantShards(stats.shardBarren);
     run.shards += n;
     state.shards += n;
   },
@@ -1351,11 +1362,22 @@ function showTooltip(def: TreeNodeDef | null, sx: number, sy: number): void {
   const missing = tree.missingReq(def);
   const preis = `${currencyIcon(cur)} ${fmt(cost)}`;
 
+  /*
+   * Am Zeiger heisst es KAUFEN, denn der naechste Klick kauft. Am Finger
+   * kauft erst das ZWEITE Tippen — das erste hat ja gerade diesen Tooltip
+   * geoeffnet. Stuende dort auch „KAUFEN", sieht das erste Tippen aus, als
+   * haette es nicht funktioniert, und genau so hat es sich auch angefuehlt.
+   * Der Hinweis bleibt nach dem Kauf stehen: der Tooltip geht nicht zu, man
+   * legt einfach die naechste Stufe nach.
+   */
+  const tippen = document.documentElement.dataset.hud === "schmal";
   let footer: string;
   if (maxed) footer = `<div class="tt-cost tt-cost--max">${def.max === 1 ? "FREIGESCHALTET" : "MAX"}</div>`;
   else if (!unlocked) footer = `<div class="tt-cost tt-cost--no">GESPERRT</div>`;
   else if (affordable)
-    footer = `<div class="tt-cost tt-cost--ok">${cost === 0 ? "GRATIS" : preis} &nbsp;·&nbsp; KAUFEN</div>`;
+    footer = `<div class="tt-cost tt-cost--ok">${cost === 0 ? "GRATIS" : preis} &nbsp;·&nbsp; ${
+      tippen ? "NOCHMAL TIPPEN" : "KAUFEN"
+    }</div>`;
   else footer = `<div class="tt-cost tt-cost--no">${preis}</div>`;
 
   // Immer als Zähler: eine Zahl liest man schneller als "Nicht freigeschaltet".
@@ -1377,6 +1399,18 @@ function showTooltip(def: TreeNodeDef | null, sx: number, sy: number): void {
   if (desc) markNumbers(desc);
 
   elTooltip.classList.remove("hidden");
+
+  /*
+   * Hochkant schlaegt der Tooltip unten an und wird nicht gesetzt — die
+   * Lage steht dann allein im CSS. Am Finger folgt er nicht dem Zeiger,
+   * denn der Zeiger IST der Finger: der Tooltip laege genau unter der
+   * Hand und verdeckte den Knopf, ueber den er spricht.
+   */
+  if (document.documentElement.dataset.hud === "schmal") {
+    elTooltip.style.left = "";
+    elTooltip.style.top = "";
+    return;
+  }
 
   const r = elTooltip.getBoundingClientRect();
   let x = sx + 26;
@@ -1702,6 +1736,20 @@ function resize(): void {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = window.innerWidth;
   const h = window.innerHeight;
+  /*
+   * Die HUD-Anordnung steht als Attribut am <html>, nicht als @media-Regel
+   * im CSS. Sie haengt am Seitenverhaeltnis, und dieselbe Entscheidung
+   * trifft `machine.bounds()` fuer die Arena — stuenden beide getrennt
+   * voneinander da, liefen Panel-Anordnung und freigehaltene Flaeche
+   * irgendwann auseinander, und die Panels laegen auf der Arena. So gibt es
+   * genau eine Quelle: `hudSchmal()` in machine.ts.
+   */
+  document.documentElement.dataset.hud = hudSchmal(w, h) ? "schmal" : "breit";
+  // Dieselben Masse, die die Arena freihalten, stehen dem CSS als Variablen
+  // zur Verfuegung — siehe `hudMasse()`.
+  const masse = hudMasse(w, h);
+  document.documentElement.style.setProperty("--hud-oben", `${masse.oben}px`);
+  document.documentElement.style.setProperty("--hud-unten", `${masse.unten}px`);
   if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
     canvas.width = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
@@ -1712,6 +1760,26 @@ function resize(): void {
 }
 
 /* ------------------------------------------------------- Interaktion --- */
+
+/*
+ * ZWEI FINGER AUF DEM BAUM
+ *
+ * Der Skill Tree ist 1600 x 1800 Einheiten gross; ohne Zoom sieht man auf
+ * einem Telefon immer nur einen Ast. Am PC macht das Mausrad diese Arbeit,
+ * hier die Spreizgeste. Gesammelt werden die Zeiger selbst, statt
+ * `touchstart` zu benutzen: der Rest der Ansicht haengt schon an
+ * Pointer-Events, und zwei Ereignisquellen fuer dieselbe Hand geraten
+ * unweigerlich aus dem Tritt.
+ */
+const zeiger = new Map<number, { x: number; y: number }>();
+let pinchDist = 0;
+let pinchX = 0;
+let pinchY = 0;
+
+const zeigerMitte = () => {
+  const [a, b] = [...zeiger.values()];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) };
+};
 
 canvas.addEventListener("pointerdown", (e) => {
   // Im Lauf ist der Klick auf die Arena die MARKIERUNG. Die Maschine rechnet
@@ -1725,6 +1793,17 @@ canvas.addEventListener("pointerdown", (e) => {
     return;
   }
   if (state.view !== "tree") return;
+  zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (zeiger.size === 2) {
+    // Der zweite Finger beendet das Ziehen des ersten: aus dem Schieben
+    // wird eine Spreizgeste, und der angefasste Knopf darf nicht kaufen.
+    const m = zeigerMitte();
+    pinchDist = m.d;
+    pinchX = m.x;
+    pinchY = m.y;
+    tree.clearHover();
+    return;
+  }
   tree.pointerDown(e.clientX, e.clientY);
   try {
     canvas.setPointerCapture(e.pointerId);
@@ -1737,6 +1816,18 @@ canvas.addEventListener("pointermove", (e) => {
   // Der Zeiger weht das Laub — in jeder Ansicht, das Laub liegt ja ueberall.
   decorZeiger(e.clientX, e.clientY);
   if (state.view !== "tree") return;
+  if (zeiger.has(e.pointerId)) zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (zeiger.size === 2) {
+    const m = zeigerMitte();
+    if (pinchDist > 0) tree.pinch(m.x, m.y, m.d / pinchDist);
+    // Zwei Finger schieben auch: sonst muesste man zum Verschieben jedes Mal
+    // absetzen, und genau das tut beim Zoomen niemand.
+    tree.pan(m.x - pinchX, m.y - pinchY);
+    pinchDist = m.d;
+    pinchX = m.x;
+    pinchY = m.y;
+    return;
+  }
   tree.pointerMove(e.clientX, e.clientY);
 });
 
@@ -1754,12 +1845,27 @@ canvas.addEventListener(
   { passive: false }
 );
 
+function zeigerWeg(e: PointerEvent): void {
+  zeiger.delete(e.pointerId);
+  if (zeiger.size < 2) pinchDist = 0;
+}
+
 canvas.addEventListener("pointerup", (e) => {
   if (state.view !== "tree") return;
-  tree.pointerUp(e.clientX, e.clientY);
-  tree.pointerMove(e.clientX, e.clientY);
+  const warPinch = zeiger.size >= 2;
+  zeigerWeg(e);
+  // Nach einer Spreizgeste darf der letzte losgelassene Finger nichts
+  // kaufen — er hat gezoomt, nicht getippt.
+  if (warPinch) return;
+  // Ein grober Zeiger (Finger, Stift) waehlt erst aus und kauft beim
+  // zweiten Tippen. Siehe TreeView.pointerUp.
+  const grob = e.pointerType !== "mouse";
+  tree.pointerUp(e.clientX, e.clientY, grob);
+  if (!grob) tree.pointerMove(e.clientX, e.clientY);
   save();
 });
+
+canvas.addEventListener("pointercancel", zeigerWeg);
 
 /* ------------------------------------------------------------ Esse --- */
 
