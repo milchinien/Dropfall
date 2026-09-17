@@ -425,30 +425,30 @@ const bondTime = (l: number) => (l > 0 ? 1.5 + 0.9 * l : 0);
 const headStart = (l: number) => 3 * l;
 
 /* ---------------------------------------------------- kleine Texthelfer --- */
-const pct = (v: number, d = 0) => `${(v * 100).toFixed(d)} %`;
+const pct = (v: number, d = 0) => `${(v * 100).toFixed(d)}%`;
 const sec = (v: number, d = 1) => `${v.toFixed(d)} s`;
 
 /** Standardhinweis unter einem Zwilling. */
-const TWIN = `<br><br><i>Der schwere Zwilling &mdash; dieselbe Wirkung, deutlich mehr je Stufe.</i>`;
+const TWIN = `<br><br><i>The heavy twin &mdash; the same effect, much more per level.</i>`;
 
 export const NODES: TreeNodeDef[] = [
   /* ================================================= Start ============= */
   {
     id: "whiteBall",
-    title: "Wei&szlig;e Kugel",
+    title: "White Ball",
     icon: "●",
     color: "teal",
     max: 1,
     baseCost: 0,
     growth: 1.0,
     desc: () =>
-      `Deine erste Kugel. Sie f&auml;llt durch die Arena, prallt an Pegs ab und sammelt bei jedem Kontakt <b>Funken</b>.<br><br><b>Ohne sie passiert in der Arena nichts.</b>`,
+      `Your first ball. It falls through the arena, bounces off pegs and collects <b>Sparks</b> on every contact.<br><br><b>Without it, nothing happens in the arena.</b>`,
   },
 
   /* ======================================== Ast: Wei&szlig;e Kugel ===== */
   {
     id: "whiteValue",
-    title: "Mehr Wert",
+    title: "More Value",
     icon: "◆",
     color: "teal",
     max: 5,
@@ -456,11 +456,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["whiteBall", 1]],
     desc: (l) =>
-      `Die wei&szlig;e Kugel ist pro Kontakt <b>25 %</b> mehr wert. Wirkt nur auf sie.<br><br>Faktor: <b>${whiteFactor(l).toFixed(2)}x</b>`,
+      `The White Ball is worth <b>25%</b> more per contact. Affects only this ball.<br><br>Multiplier: <b>${whiteFactor(l).toFixed(2)}x</b>`,
   },
   {
     id: "whiteValueII",
-    title: "Klarer Schliff",
+    title: "Clear Cut",
     icon: "◈",
     color: "teal",
     max: 4,
@@ -469,11 +469,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["whiteValue", 2]],
     desc: (l) =>
-      `Die wei&szlig;e Kugel ist pro Kontakt <b>37 %</b> mehr wert.${TWIN}<br><br>Faktor: <b>${whiteFactorII(l).toFixed(2)}x</b>`,
+      `The White Ball is worth <b>37%</b> more per contact.${TWIN}<br><br>Multiplier: <b>${whiteFactorII(l).toFixed(2)}x</b>`,
   },
   {
     id: "whiteValueIII",
-    title: "Politur",
+    title: "Polish",
     icon: "✧",
     color: "teal",
     max: 4,
@@ -482,11 +482,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["whiteValueII", 2]],
     desc: (l) =>
-      `Die wei&szlig;e Kugel ist pro Kontakt <b>15 %</b> mehr wert.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Faktor: <b>${whiteFactorIII(l).toFixed(2)}x</b>`,
+      `The White Ball is worth <b>15%</b> more per contact.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Multiplier: <b>${whiteFactorIII(l).toFixed(2)}x</b>`,
   },
   {
     id: "whiteCombo",
-    title: "Serie",
+    title: "Streak",
     icon: "≡",
     color: "amber",
     max: 4,
@@ -494,11 +494,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["whiteValue", 1]],
     desc: (l) =>
-      `Jeder <b>direkte</b> Treffer der wei&szlig;en Kugel macht ihren n&auml;chsten Treffer wertvoller. F&auml;llt sie in den Abfluss, beginnt die Serie von vorn.<br><br>Zuwachs je Treffer: <b>${pct(comboStep(l), 1)}</b>`,
+      `Every <b>direct</b> hit of the White Ball makes its next hit worth more. If it falls into the drain, the streak starts over.<br><br>Gain per hit: <b>${pct(comboStep(l), 1)}</b>`,
   },
   {
     id: "whiteComboCap",
-    title: "Beharrlichkeit",
+    title: "Persistence",
     icon: "≣",
     color: "amber",
     max: 4,
@@ -507,11 +507,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["whiteCombo", 1]],
     desc: (l) =>
-      `Die <b>Serie</b> z&auml;hlt weiter hoch, bevor sie stehen bleibt.<br><br>H&ouml;chste Serie: <b>${comboCap(l)} Treffer</b>`,
+      `The <b>Streak</b> keeps counting higher before it stops.<br><br>Max streak: <b>${comboCap(l)} hits</b>`,
   },
   {
     id: "whiteRest",
-    title: "Wucht",
+    title: "Impact",
     icon: "◍",
     color: "teal",
     max: 4,
@@ -519,11 +519,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["whiteBall", 1]],
     desc: (l) =>
-      `Die wei&szlig;e Kugel prallt <b>elastischer</b> ab und bleibt damit l&auml;nger im Feld &mdash; mehr Kontakte je Fall.<br><br>Zus&auml;tzliche Abprallkraft: <b>+${whiteRest(l).toFixed(3)}</b>`,
+      `The White Ball bounces <b>more elastically</b> and stays on the field longer &mdash; more contacts per drop.<br><br>Extra bounce: <b>+${whiteRest(l).toFixed(3)}</b>`,
   },
   {
     id: "whiteReturn",
-    title: "Heimkehr",
+    title: "Homecoming",
     icon: "⤒",
     color: "amber",
     max: 4,
@@ -531,11 +531,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["whiteRest", 1]],
     desc: (l) =>
-      `Nur die wei&szlig;e Kugel kehrt schneller aus der R&ouml;hre zur&uuml;ck.<br><br>Verz&ouml;gerung: <b>${pct(whiteReturn(l))}</b> der normalen`,
+      `Only the White Ball returns from the tube faster.<br><br>Delay: <b>${pct(whiteReturn(l))}</b> of normal`,
   },
   {
     id: "whiteSeek",
-    title: "Sp&uuml;rsinn",
+    title: "Instinct",
     icon: "⊹",
     color: "pink",
     max: 4,
@@ -544,13 +544,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["whiteValueII", 1]],
     desc: (l) =>
-      `Die wei&szlig;e Kugel wird im Fall leicht zu Pegs gezogen, die in diesem Lauf <b>noch nicht getroffen</b> wurden. Der direkte Weg zur Abdeckung.<br><br>Sog: <b>${whiteSeek(l)} px/s&sup2;</b>`,
+      `While falling, the White Ball is pulled slightly toward pegs <b>not yet hit</b> this run. The direct route to coverage.<br><br>Pull: <b>${whiteSeek(l)} px/s&sup2;</b>`,
   },
 
   /* ================================ Ast: Lauf-Oekonomie (Splitter) ===== */
   {
     id: "sparkStart",
-    title: "Startkapital",
+    title: "Seed Capital",
     icon: "✦",
     color: "teal",
     max: 4,
@@ -559,11 +559,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["whiteBall", 1]],
     desc: (l) =>
-      `Jeder Lauf beginnt mit Funken auf der Hand &mdash; die ersten Kugel-Stufen stehen damit sofort.<br><br>Startkapital: <b>${startSparks(l)} Funken</b>`,
+      `Every run starts with Sparks in hand &mdash; your first ball levels are ready right away.<br><br>Starting Sparks: <b>${startSparks(l)}</b>`,
   },
   {
     id: "workshop",
-    title: "Werkstatt",
+    title: "Workshop",
     icon: "⚙",
     color: "amber",
     max: 4,
@@ -572,11 +572,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["sparkStart", 1]],
     desc: (l) =>
-      `Alle <b>Kugel-Upgrades im Lauf</b> kosten <b>17 %</b> weniger je Stufe.<br><br>Kosten: <b>${pct(upgradeDiscount(l))}</b>`,
+      `All <b>in-run ball upgrades</b> cost <b>17%</b> less per level.<br><br>Cost: <b>${pct(upgradeDiscount(l))}</b>`,
   },
   {
     id: "shardLuck",
-    title: "Splittergl&uuml;ck",
+    title: "Shard Luck",
     icon: "⋄",
     color: "pink",
     max: 4,
@@ -584,11 +584,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 2.6,
     req: [["workshop", 1]],
     desc: (l) =>
-      `Jeder direkte Peg-Treffer hat eine Chance, einen <b>zweiten Splitter</b> abzuwerfen.<br><br>Chance: <b>${pct(shardLuck(l))}</b>`,
+      `Every direct peg hit has a chance to drop a <b>second Shard</b>.<br><br>Chance: <b>${pct(shardLuck(l))}</b>`,
   },
   {
     id: "shardHarvest",
-    title: "Splitterernte",
+    title: "Shard Harvest",
     icon: "◈",
     color: "pink",
     max: 3,
@@ -597,11 +597,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["shardLuck", 1]],
     desc: (l) =>
-      `Auch <b>Bumper</b> werfen Splitter ab &mdash; bisher tun das nur Pegs.<br><br>Chance je Bumper: <b>${pct(shardHarvest(l))}</b>`,
+      `<b>Bumpers</b> drop Shards too &mdash; so far only pegs do.<br><br>Chance per bumper: <b>${pct(shardHarvest(l))}</b>`,
   },
   {
     id: "shardMult",
-    title: "Splitterader",
+    title: "Shard Vein",
     icon: "◇",
     color: "pink",
     max: 12,
@@ -609,11 +609,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 1.42,
     req: [["shardHarvest", 1]],
     desc: (l) =>
-      `Jeder Splitter z&auml;hlt <b>3 %</b> mehr &mdash; egal, ob er von einem Peg, einem Bumper oder einem Barren kommt. Stapelt praktisch ohne Obergrenze: hier landet sp&auml;tes Geld, wenn der Rest des Baums steht.<br><br>Faktor: <b>${shardFactor(l).toFixed(2)}x</b>`,
+      `Every Shard counts <b>3%</b> more &mdash; whether it comes from a peg, a bumper or an ingot. Stacks with practically no cap: this is where late Money goes once the rest of the tree is done.<br><br>Multiplier: <b>${shardFactor(l).toFixed(2)}x</b>`,
   },
   {
     id: "shardMultII",
-    title: "Pochwerk",
+    title: "Stamp Mill",
     icon: "⌗",
     color: "pink",
     max: 4,
@@ -622,11 +622,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["shardMult", 4]],
     desc: (l) =>
-      `Jeder Splitter z&auml;hlt <b>5 %</b> mehr.${TWIN}<br><br>Faktor: <b>${shardFactorII(l).toFixed(2)}x</b>`,
+      `Every Shard counts <b>5%</b> more.${TWIN}<br><br>Multiplier: <b>${shardFactorII(l).toFixed(2)}x</b>`,
   },
   {
     id: "shardPeg",
-    title: "Splitterlese",
+    title: "Gleaning",
     icon: "⁘",
     color: "pink",
     max: 4,
@@ -634,11 +634,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 2.4,
     req: [["shardHarvest", 1]],
     desc: (l) =>
-      `Jeder Peg, den du in diesem Lauf zum ersten Mal abdeckst, wirft Splitter ab.<br><br>Je neuem Peg: <b>${shardPeg(l).toFixed(2)} ◈</b>`,
+      `Every peg you cover for the first time this run drops Shards.<br><br>Per new peg: <b>${shardPeg(l).toFixed(2)} ◈</b>`,
   },
   {
     id: "shardBarren",
-    title: "Scherben",
+    title: "Fragments",
     icon: "⬟",
     color: "pink",
     max: 3,
@@ -647,11 +647,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["shardPeg", 1]],
     desc: (l) =>
-      `Ein zerschlagener <b>Barren</b> zerf&auml;llt in Splitter. Sie fallen sofort an, nicht erst in der Auswertung.<br><br>Je Barren: <b>${shardBarren(l).toFixed(1)} ◈</b>`,
+      `A smashed <b>Ingot</b> breaks into Shards. You get them immediately, not on the results screen.<br><br>Per ingot: <b>${shardBarren(l).toFixed(1)} ◈</b>`,
   },
   {
     id: "ballMastery",
-    title: "Meisterschaft",
+    title: "Mastery",
     icon: "★",
     color: "amber",
     max: 3,
@@ -659,11 +659,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["sparkStart", 1]],
     desc: (l) =>
-      `Im Lauf lassen sich <b>1 Kugel-Stufen mehr</b> je Kugel kaufen. Hebt die Decke, gegen die ein langer Lauf sonst l&auml;uft.<br><br>H&ouml;chste Stufe: <b>${BASE_BALL_CAP + ballCap(l)}</b>`,
+      `You can buy <b>10 more ball levels</b> per ball during a run. Raises the ceiling a long run would otherwise hit.<br><br>Max level: <b>${BASE_BALL_CAP + ballCap(l)}</b>`,
   },
   {
     id: "ballMasteryII",
-    title: "Vollendung",
+    title: "Perfection",
     icon: "✷",
     color: "amber",
     max: 3,
@@ -672,13 +672,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["ballMastery", 2]],
     desc: (l) =>
-      `Nochmals <b>16 Kugel-Stufen mehr</b> je Kugel und Lauf.${TWIN}<br><br>Zus&auml;tzlich: <b>+${ballCapII(l)}</b>`,
+      `Another <b>16 ball levels</b> per ball and run.${TWIN}<br><br>Extra: <b>+${ballCapII(l)}</b>`,
   },
 
   /* ================================================ Ast: Auszahlung ==== */
   {
     id: "payout",
-    title: "Zoll",
+    title: "Toll",
     icon: "◆",
     color: "amber",
     max: 4,
@@ -686,11 +686,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["sparkStart", 1]],
     desc: (l) =>
-      `Am Laufende wird ein gr&ouml;&szlig;erer Teil der verdienten Funken in Geld umgerechnet.<br><br>Ertrag: <b>${pct(moneyPerSpark(l), 1)}</b> je Funken`,
+      `At the end of a run, a larger share of the Sparks you earned is converted into Money.<br><br>Rate: <b>${pct(moneyPerSpark(l), 1)}</b> per Spark`,
   },
   {
     id: "payoutII",
-    title: "Auszahlung",
+    title: "Payout",
     icon: "◈",
     color: "amber",
     max: 4,
@@ -699,11 +699,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["payout", 1]],
     desc: (l) =>
-      `Nochmals mehr Geld je verdientem Funken.${TWIN}<br><br>Zus&auml;tzlich: <b>+${pct(moneyPerSparkII(l), 1)}</b> je Funken`,
+      `Even more Money per Spark earned.${TWIN}<br><br>Extra: <b>+${pct(moneyPerSparkII(l), 1)}</b> per Spark`,
   },
   {
     id: "payoutIII",
-    title: "Rendite",
+    title: "Returns",
     icon: "◈",
     color: "amber",
     max: 4,
@@ -712,11 +712,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["payoutII", 2]],
     desc: (l) =>
-      `Jeder verdiente Funken bringt nochmals <b>1,3 %</b> mehr Geld je Stufe.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${pct(moneyPerSparkIII(l), 1)}</b> je Funken`,
+      `Every Spark earned brings another <b>1.3%</b> more Money per level.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${pct(moneyPerSparkIII(l), 1)}</b> per Spark`,
   },
   {
     id: "pegBounty",
-    title: "Pr&auml;mie",
+    title: "Reward",
     icon: "◇",
     color: "teal",
     max: 4,
@@ -724,11 +724,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["payout", 1]],
     desc: (l) =>
-      `Jeder Peg, den ein Lauf <b>zum ersten Mal</b> abdeckt, zahlt mehr Geld.<br><br>Je neuem Peg: <b>${pegBounty(l)} Geld</b>`,
+      `Every peg a run covers <b>for the first time</b> pays more Money.<br><br>Per new peg: <b>${pegBounty(l)} Money</b>`,
   },
   {
     id: "pegBountyII",
-    title: "Kopfgeld",
+    title: "Bounty",
     icon: "◈",
     color: "teal",
     max: 4,
@@ -737,11 +737,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["pegBounty", 1]],
     desc: (l) =>
-      `Nochmals mehr Geld je neu abgedecktem Peg.${TWIN}<br><br>Zus&auml;tzlich: <b>+${pegBountyII(l)}</b> je Peg`,
+      `Even more Money per newly covered peg.${TWIN}<br><br>Extra: <b>+${pegBountyII(l)}</b> per peg`,
   },
   {
     id: "payMult",
-    title: "Handelsposten",
+    title: "Trading Post",
     icon: "⌂",
     color: "amber",
     max: 5,
@@ -749,11 +749,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["payoutII", 1]],
     desc: (l) =>
-      `Die gesamte Auszahlung eines Laufs steigt um <b>15 %</b> je Stufe &mdash; egal, woher das Geld kommt.<br><br>Faktor: <b>${payMult(l).toFixed(2)}x</b>`,
+      `A run's entire payout rises by <b>15%</b> per level &mdash; no matter where the Money comes from.<br><br>Multiplier: <b>${payMult(l).toFixed(2)}x</b>`,
   },
   {
     id: "payMultII",
-    title: "B&ouml;rse",
+    title: "Exchange",
     icon: "◈",
     color: "amber",
     max: 12,
@@ -762,13 +762,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["payMult", 2]],
     desc: (l) =>
-      `Die gesamte Auszahlung steigt um <b>12 %</b> je Stufe.${TWIN}<br><br>Faktor: <b>${payMultII(l).toFixed(2)}x</b>`,
+      `The entire payout rises by <b>12%</b> per level.${TWIN}<br><br>Multiplier: <b>${payMultII(l).toFixed(2)}x</b>`,
   },
 
   /* ==================================================== Ast: Puls ====== */
   {
     id: "pulseBall",
-    title: "Puls-Kugel",
+    title: "Pulse Ball",
     icon: "◎",
     color: "teal",
     max: 1,
@@ -776,11 +776,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 1.0,
     req: [["whiteBall", 1]],
     desc: () =>
-      `Eine zweite Kugel betritt die Arena. Sie l&ouml;st in festem Takt einen Puls aus, der <b>alle Pegs im Umkreis</b> gleichzeitig trifft und daf&uuml;r zahlt.<br><br>Der Puls <b>deckt Pegs ab</b>, die eine fallende Kugel kaum erreicht &mdash; er ist der Schl&uuml;ssel zu den Abdeckungszielen.`,
+      `A second ball enters the arena. At a steady beat it emits a pulse that hits <b>all pegs in its radius</b> at once and pays for them.<br><br>The pulse <b>covers pegs</b> a falling ball can barely reach &mdash; it is the key to the coverage goals.`,
   },
   {
     id: "pulseTempo",
-    title: "Taktgeber",
+    title: "Pacemaker",
     icon: "◔",
     color: "teal",
     max: 4,
@@ -788,11 +788,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["pulseBall", 1]],
     desc: (l) =>
-      `Der Puls schl&auml;gt <b>33 %</b> \u00f6fter je Stufe.<br><br>Takt: <b>${sec(PULSE_INTERVAL / (1 + pulseTempo(l)), 2)}</b> statt ${sec(PULSE_INTERVAL, 2)}`,
+      `The pulse fires <b>33%</b> more often per level.<br><br>Interval: <b>${sec(PULSE_INTERVAL / (1 + pulseTempo(l)), 2)}</b> instead of ${sec(PULSE_INTERVAL, 2)}`,
   },
   {
     id: "pulseTempoII",
-    title: "Metronom",
+    title: "Metronome",
     icon: "◈",
     color: "teal",
     max: 4,
@@ -801,11 +801,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["pulseTempo", 1]],
     desc: (l) =>
-      `Der Puls schl&auml;gt <b>35 %</b> \u00f6fter je Stufe.${TWIN}<br><br>Zuschlag auf die Puls-Rate: <b>+${(pulseTempoII(l) * 100).toFixed(0)} %</b>`,
+      `The pulse fires <b>35%</b> more often per level.${TWIN}<br><br>Pulse rate bonus: <b>+${(pulseTempoII(l) * 100).toFixed(0)}%</b>`,
   },
   {
     id: "pulseRange",
-    title: "Weite",
+    title: "Reach",
     icon: "◯",
     color: "amber",
     max: 4,
@@ -813,11 +813,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["pulseBall", 1]],
     desc: (l) =>
-      `Der Puls greift <b>0,51 Prozentpunkte</b> der Arenabreite weiter je Stufe.<br><br>Radius: <b>${pct(Math.min(PULSE_RADIUS_SHARE_MAX, PULSE_RADIUS_SHARE + pulseRangeAdd(l)), 1)}</b> der Breite`,
+      `The pulse reaches <b>0.51 percentage points</b> of the arena width further per level.<br><br>Radius: <b>${pct(Math.min(PULSE_RADIUS_SHARE_MAX, PULSE_RADIUS_SHARE + pulseRangeAdd(l)), 1)}</b> of the width`,
   },
   {
     id: "pulseRangeII",
-    title: "Schallmauer",
+    title: "Sound Barrier",
     icon: "◈",
     color: "amber",
     max: 4,
@@ -826,11 +826,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["pulseRange", 1]],
     desc: (l) =>
-      `Der Puls greift <b>0,88 Prozentpunkte</b> der Arenabreite weiter je Stufe.${TWIN}<br><br>Zus&auml;tzlich: <b>+${pct(pulseRangeAddII(l), 1)}</b> der Breite`,
+      `The pulse reaches <b>0.88 percentage points</b> of the arena width further per level.${TWIN}<br><br>Extra: <b>+${pct(pulseRangeAddII(l), 1)}</b> of the width`,
   },
   {
     id: "pulseRangeIII",
-    title: "Ausgriff",
+    title: "Outreach",
     icon: "◎",
     color: "amber",
     max: 4,
@@ -839,11 +839,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["pulseRangeII", 2]],
     desc: (l) =>
-      `Der Puls greift <b>0,39 Prozentpunkte</b> der Arenabreite weiter je Stufe.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${pct(pulseRangeAddIII(l), 1)}</b> der Breite`,
+      `The pulse reaches <b>0.39 percentage points</b> of the arena width further per level.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${pct(pulseRangeAddIII(l), 1)}</b> of the width`,
   },
   {
     id: "pulsePush",
-    title: "Druckwelle",
+    title: "Shockwave",
     icon: "»",
     color: "amber",
     max: 4,
@@ -851,11 +851,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["pulseRange", 1]],
     desc: (l) =>
-      `Der Puls <b>schubst andere Kugeln</b> in seiner Reichweite von sich weg. Sie fallen unruhiger und treffen dadurch mehr Pegs.<br><br>Sto&szlig;kraft: <b>${pulsePush(l)}</b>`,
+      `The pulse <b>pushes other balls</b> in its range away. They fall more erratically and hit more pegs.<br><br>Push force: <b>${pulsePush(l)}</b>`,
   },
   {
     id: "pulseValue",
-    title: "Resonanz",
+    title: "Resonance",
     icon: "≈",
     color: "teal",
     max: 4,
@@ -863,11 +863,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["pulseTempoII", 1]],
     desc: (l) =>
-      `Ein Puls trifft viele Pegs auf einmal und zahlt deshalb nur anteilig. Diese <b>Abnahme wird kleiner</b>.<br><br>Wert je Peg: <b>${(PULSE_VALUE_FACTOR + pulseValueAdd(l)).toFixed(2)}x</b>`,
+      `A pulse hits many pegs at once, so it only pays a fraction per peg. This <b>penalty shrinks</b>.<br><br>Value per peg: <b>${(PULSE_VALUE_FACTOR + pulseValueAdd(l)).toFixed(2)}x</b>`,
   },
   {
     id: "pulseEcho",
-    title: "Nachhall",
+    title: "Echo",
     icon: "◍",
     color: "pink",
     max: 3,
@@ -876,11 +876,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["pulseValue", 1]],
     desc: (l) =>
-      `Kurz nach jedem Puls folgt ein <b>zweiter, schw&auml;cherer</b>. Er deckt ab und zahlt wie ein normaler Puls.<br><br>St&auml;rke des Nachhalls: <b>${pct(pulseEcho(l))}</b>`,
+      `Shortly after each pulse comes a <b>second, weaker one</b>. It covers and pays like a normal pulse.<br><br>Echo strength: <b>${pct(pulseEcho(l))}</b>`,
   },
   {
     id: "pulseCharge",
-    title: "Bannkreis",
+    title: "Ward",
     icon: "◉",
     color: "pink",
     max: 4,
@@ -889,13 +889,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["pulseValue", 1]],
     desc: (l) =>
-      `Pegs, die ein Puls trifft, bleiben <b>${sec(CHARGE_TIME, 0)} geladen</b>. Ein direkter Kugeltreffer auf einen geladenen Peg zahlt mehr.<br><br>Bonus auf geladene Pegs: <b>+${pct(pulseCharge(l))}</b>`,
+      `Pegs hit by a pulse stay <b>charged for ${sec(CHARGE_TIME, 0)}</b>. A direct ball hit on a charged peg pays more.<br><br>Bonus on charged pegs: <b>+${pct(pulseCharge(l))}</b>`,
   },
 
   /* ====================================== Ast: Abpraller & Ausbeute ==== */
   {
     id: "bounceValue",
-    title: "Abpraller-Wert",
+    title: "Bounce Value",
     icon: "○",
     color: "amber",
     max: 5,
@@ -903,11 +903,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["whiteBall", 1]],
     desc: (l) =>
-      `Erh&ouml;ht den Grundwert <b>jedes</b> Abprallers &mdash; f&uuml;r alle Kugeln.<br><br>Grundwert: <b>${bounceBase(l).toFixed(1)}</b>`,
+      `Raises the base value of <b>every</b> bounce &mdash; for all balls.<br><br>Base value: <b>${bounceBase(l).toFixed(1)}</b>`,
   },
   {
     id: "bounceValueII",
-    title: "R&uuml;cksto&szlig;",
+    title: "Recoil",
     icon: "◈",
     color: "amber",
     max: 4,
@@ -916,11 +916,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["bounceValue", 2]],
     desc: (l) =>
-      `Nochmals <b>2,73</b> mehr Grundwert je Stufe, f&uuml;r alle Kugeln.${TWIN}<br><br>Zus&auml;tzlich: <b>+${bounceBaseII(l).toFixed(1)}</b>`,
+      `Another <b>2.73</b> base value per level, for all balls.${TWIN}<br><br>Extra: <b>+${bounceBaseII(l).toFixed(1)}</b>`,
   },
   {
     id: "bounceValueIII",
-    title: "Schwungmasse",
+    title: "Flywheel",
     icon: "⬤",
     color: "amber",
     max: 4,
@@ -929,11 +929,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["bounceValueII", 2]],
     desc: (l) =>
-      `Nochmals <b>1,16</b> mehr Grundwert je Stufe, f&uuml;r alle Kugeln.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${bounceBaseIII(l).toFixed(1)}</b>`,
+      `Another <b>1.16</b> base value per level, for all balls.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${bounceBaseIII(l).toFixed(1)}</b>`,
   },
   {
     id: "bumperValue",
-    title: "Bumper-Wert",
+    title: "Bumper Value",
     icon: "⇑",
     color: "amber",
     max: 4,
@@ -941,11 +941,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["bounceValue", 1]],
     desc: (l) =>
-      `Die gro&szlig;en <b>Bumper</b> zahlen <b>7 %</b> mehr je Stufe.<br><br>Faktor: <b>${bumperValue(l).toFixed(2)}x</b>`,
+      `The big <b>Bumpers</b> pay <b>7%</b> more per level.<br><br>Multiplier: <b>${bumperValue(l).toFixed(2)}x</b>`,
   },
   {
     id: "bumperKick",
-    title: "Schleuder",
+    title: "Slingshot",
     icon: "⇈",
     color: "pink",
     max: 3,
@@ -954,11 +954,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["bumperValue", 1]],
     desc: (l) =>
-      `Bumper sto&szlig;en Kugeln <b>h&auml;rter</b> zur&uuml;ck. Die Kugel steigt wieder auf und f&auml;llt ein zweites Mal durchs Feld.<br><br>Zus&auml;tzliche Abprallkraft: <b>+${bumperKick(l).toFixed(2)}</b>`,
+      `Bumpers knock balls back <b>harder</b>. The ball rises again and falls through the field a second time.<br><br>Extra bounce: <b>+${bumperKick(l).toFixed(2)}</b>`,
   },
   {
     id: "yieldAll",
-    title: "Ausbeute",
+    title: "Yield",
     icon: "✧",
     color: "teal",
     max: 60,
@@ -966,7 +966,7 @@ export const NODES: TreeNodeDef[] = [
     growth: 1.5,
     req: [["bounceValueII", 1]],
     desc: (l) =>
-      `Jeder Funken aus <b>jeder Quelle</b> ist <b>13 %</b> mehr wert. Stapelt praktisch ohne Obergrenze &mdash; hier landet sp&auml;tes Geld, wenn alles andere steht.<br><br>Faktor: <b>${yieldFactor(l).toFixed(2)}x</b>`,
+      `Every Spark from <b>every source</b> is worth <b>13%</b> more. Stacks with practically no cap &mdash; this is where late Money goes once everything else is done.<br><br>Multiplier: <b>${yieldFactor(l).toFixed(2)}x</b>`,
   },
   {
     /*
@@ -983,7 +983,7 @@ export const NODES: TreeNodeDef[] = [
      * Tausender- bis Millionenbereich bleiben und lesbar sein.
      */
     id: "yieldAllII",
-    title: "Raffinerie",
+    title: "Refinery",
     icon: "◈",
     color: "teal",
     max: 12,
@@ -992,13 +992,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["yieldAll", 10]],
     desc: (l) =>
-      `Jeder Funken ist <b>20 %</b> mehr wert.${TWIN}<br><br>Faktor: <b>${yieldFactorII(l).toFixed(2)}x</b>`,
+      `Every Spark is worth <b>20%</b> more.${TWIN}<br><br>Multiplier: <b>${yieldFactorII(l).toFixed(2)}x</b>`,
   },
 
   /* =================================================== Ast: Feuer ====== */
   {
     id: "fireBall",
-    title: "Feuer-Kugel",
+    title: "Fire Ball",
     icon: "▲",
     color: "magenta",
     max: 1,
@@ -1007,11 +1007,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "crown",
     req: [["bounceValueII", 2]],
     desc: () =>
-      `Eine Kugel, die jeden ber&uuml;hrten Peg <b>entz&uuml;ndet</b>. Brennende Pegs zahlen weiter, auch ohne Kontakt.<br><br>Ihr Ast baut an Brenndauer, Takt, der Zahl gleichzeitig brennender Pegs und der Ausbreitung.`,
+      `A ball that <b>ignites</b> every peg it touches. Burning pegs keep paying, even without contact.<br><br>Its branch improves burn duration, tick rate, how many pegs can burn at once, and spreading.`,
   },
   {
     id: "fireDur",
-    title: "Zunder",
+    title: "Tinder",
     icon: "▲",
     color: "pink",
     max: 4,
@@ -1019,11 +1019,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["fireBall", 1]],
     desc: (l) =>
-      `Ein entz&uuml;ndeter Peg brennt <b>1,17 s</b> l&auml;nger je Stufe.<br><br>Brenndauer: <b>+${sec(fireDurAdd(l))}</b>`,
+      `An ignited peg burns <b>1.17 s</b> longer per level.<br><br>Burn duration: <b>+${sec(fireDurAdd(l))}</b>`,
   },
   {
     id: "fireDurII",
-    title: "Dauerbrand",
+    title: "Slow Burn",
     icon: "◈",
     color: "pink",
     max: 4,
@@ -1032,11 +1032,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["fireDur", 1]],
     desc: (l) =>
-      `Ein entz&uuml;ndeter Peg brennt <b>2,54 s</b> l&auml;nger je Stufe.${TWIN}<br><br>Brenndauer: <b>+${sec(fireDurAddII(l))}</b>`,
+      `An ignited peg burns <b>2.54 s</b> longer per level.${TWIN}<br><br>Burn duration: <b>+${sec(fireDurAddII(l))}</b>`,
   },
   {
     id: "fireDurIII",
-    title: "Schwelbrand",
+    title: "Smolder",
     icon: "♨",
     color: "pink",
     max: 4,
@@ -1045,11 +1045,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["fireDurII", 2]],
     desc: (l) =>
-      `Ein entz&uuml;ndeter Peg brennt <b>1,04 s</b> l&auml;nger je Stufe.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Brenndauer: <b>+${sec(fireDurAddIII(l))}</b>`,
+      `An ignited peg burns <b>1.04 s</b> longer per level.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Burn duration: <b>+${sec(fireDurAddIII(l))}</b>`,
   },
   {
     id: "fireCount",
-    title: "Feuersbrunst",
+    title: "Inferno",
     icon: "▲▲",
     color: "amber",
     max: 4,
@@ -1057,11 +1057,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["fireBall", 1]],
     desc: (l) =>
-      `So viel <b>Anteil des Feldes</b> darf gleichzeitig brennen. Ist die Grenze erreicht, entz&uuml;ndet die Feuer-Kugel keinen neuen Peg mehr.<br><br>Grenze: <b>${pct(Math.min(MAX_FIRE_PEG_SHARE, BASE_FIRE_PEG_SHARE + firePegsAdd(l)))} des Feldes</b>`,
+      `This <b>share of the field</b> may burn at once. Once the limit is reached, the Fire Ball ignites no new pegs.<br><br>Limit: <b>${pct(Math.min(MAX_FIRE_PEG_SHARE, BASE_FIRE_PEG_SHARE + firePegsAdd(l)))} of the field</b>`,
   },
   {
     id: "fireCountII",
-    title: "Fl&auml;chenbrand",
+    title: "Brushfire",
     icon: "◈",
     color: "amber",
     max: 4,
@@ -1070,11 +1070,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["fireCount", 1]],
     desc: (l) =>
-      `Nochmals <b>2,81 Prozentpunkte</b> des Feldes mehr d&uuml;rfen gleichzeitig brennen.${TWIN}<br><br>Zus&auml;tzlich: <b>+${pct(firePegsAddII(l), 1)}</b> des Feldes`,
+      `Another <b>2.81 percentage points</b> of the field may burn at once.${TWIN}<br><br>Extra: <b>+${pct(firePegsAddII(l), 1)}</b> of the field`,
   },
   {
     id: "fireCountIII",
-    title: "Lauffeuer",
+    title: "Wildfire",
     icon: "🜂",
     color: "amber",
     max: 4,
@@ -1083,11 +1083,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["fireCountII", 2]],
     desc: (l) =>
-      `Nochmals <b>1,32 Prozentpunkte</b> des Feldes mehr d&uuml;rfen gleichzeitig brennen.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${pct(firePegsAddIII(l), 1)}</b> des Feldes`,
+      `Another <b>1.32 percentage points</b> of the field may burn at once.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${pct(firePegsAddIII(l), 1)}</b> of the field`,
   },
   {
     id: "fireValue",
-    title: "Glut",
+    title: "Embers",
     icon: "≋",
     color: "pink",
     max: 4,
@@ -1095,11 +1095,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["fireDurII", 1]],
     desc: (l) =>
-      `Ein Brand zahlt je Takt nur einen Bruchteil eines echten Treffers. Diese <b>Abnahme wird kleiner</b>.<br><br>Wert je Takt: <b>${(FIRE_VALUE_FACTOR + fireValueAdd(l)).toFixed(2)}x</b>`,
+      `A burn only pays a fraction of a real hit per tick. This <b>penalty shrinks</b>.<br><br>Value per tick: <b>${(FIRE_VALUE_FACTOR + fireValueAdd(l)).toFixed(2)}x</b>`,
   },
   {
     id: "fireTick",
-    title: "Zugluft",
+    title: "Draft",
     icon: "◔",
     color: "pink",
     max: 4,
@@ -1107,11 +1107,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["fireDurII", 1]],
     desc: (l) =>
-      `Brennende Pegs zahlen in <b>k&uuml;rzeren Abst&auml;nden</b> aus.<br><br>Takt: <b>${sec(FIRE_TICK * fireTickMult(l), 2)}</b>`,
+      `Burning pegs pay out at <b>shorter intervals</b>.<br><br>Tick: <b>${sec(FIRE_TICK * fireTickMult(l), 2)}</b>`,
   },
   {
     id: "fireStackFall",
-    title: "Schichtung",
+    title: "Layering",
     icon: "◈",
     color: "magenta",
     max: 4,
@@ -1120,11 +1120,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["fireValue", 1]],
     desc: (l) =>
-      `Mehrfach entz&uuml;ndete Pegs <b>stapeln</b> ihren Brand, jeder weitere Stapel zahlt aber weniger. Diese Abnahme wird kleiner.<br><br>Anteil je Stapel: <b>${pct(fireStackKeep(l))}</b>`,
+      `Pegs ignited several times <b>stack</b> their burn, but each extra stack pays less. This penalty shrinks.<br><br>Share per stack: <b>${pct(fireStackKeep(l))}</b>`,
   },
   {
     id: "fireSpread",
-    title: "&Uuml;bersprung",
+    title: "Flashover",
     icon: "⁂",
     color: "magenta",
     max: 3,
@@ -1133,13 +1133,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["fireCountII", 2]],
     desc: (l) =>
-      `Ein brennender Peg entz&uuml;ndet bei jedem Takt mit einer Chance einen <b>Nachbarn</b>. Das Feuer geht allein durchs Feld &mdash; begrenzt nur durch <i>Feuersbrunst</i>.<br><br>Chance je Takt: <b>${pct(fireSpread(l))}</b>`,
+      `On every tick, a burning peg has a chance to ignite a <b>neighbor</b>. The fire spreads through the field on its own &mdash; limited only by <i>Inferno</i>.<br><br>Chance per tick: <b>${pct(fireSpread(l))}</b>`,
   },
 
   /* =================================================== Ast: Leben ====== */
   {
     id: "lifeHeal",
-    title: "Heilung",
+    title: "Healing",
     icon: "♥",
     color: "pink",
     max: 4,
@@ -1147,11 +1147,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["bounceValue", 1]],
     desc: (l) =>
-      `Jeder <b>direkte</b> Peg-Treffer gibt der Lebensleiste mehr Zeit zur&uuml;ck. Puls und Blitz z&auml;hlen hier nicht &mdash; sie zahlen, aber sie halten dich nicht am Leben.<br><br>Heilung je Treffer: <b>${healPerHit(l).toFixed(3)} s</b>`,
+      `Every <b>direct</b> peg hit gives more time back to the life bar. Pulse and lightning don't count here &mdash; they pay, but they don't keep you alive.<br><br>Healing per hit: <b>${healPerHit(l).toFixed(3)} s</b>`,
   },
   {
     id: "lifeHealII",
-    title: "Genesung",
+    title: "Recovery",
     icon: "◈",
     color: "pink",
     max: 4,
@@ -1160,11 +1160,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["lifeHeal", 1]],
     desc: (l) =>
-      `Nochmals <b>0,078 s</b> Heilung je direktem Treffer.${TWIN}<br><br>Zus&auml;tzlich: <b>+${healPerHitII(l).toFixed(3)} s</b>`,
+      `Another <b>0.078 s</b> of healing per direct hit.${TWIN}<br><br>Extra: <b>+${healPerHitII(l).toFixed(3)} s</b>`,
   },
   {
     id: "lifeHealIII",
-    title: "Labsal",
+    title: "Solace",
     icon: "✚",
     color: "pink",
     max: 4,
@@ -1173,11 +1173,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["lifeHealII", 2]],
     desc: (l) =>
-      `Nochmals <b>0,04 s</b> Heilung je direktem Treffer.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${healPerHitIII(l).toFixed(3)} s</b>`,
+      `Another <b>0.04 s</b> of healing per direct hit.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${healPerHitIII(l).toFixed(3)} s</b>`,
   },
   {
     id: "royalLife",
-    title: "K&ouml;nigsruhe",
+    title: "Royal Rest",
     icon: "♡",
     color: "magenta",
     max: 4,
@@ -1185,11 +1185,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["lifeHeal", 1]],
     desc: (l) =>
-      `Die Lebensleiste startet und fasst <b>15 Sekunden</b> mehr.<br><br>Obergrenze: <b>${MAX_LIFE + bonusLife(l)} s</b>`,
+      `The life bar starts with and holds <b>15 seconds</b> more.<br><br>Maximum: <b>${MAX_LIFE + bonusLife(l)} s</b>`,
   },
   {
     id: "royalLifeII",
-    title: "Ewige Ruhe",
+    title: "Eternal Rest",
     icon: "◈",
     color: "magenta",
     max: 4,
@@ -1198,11 +1198,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["royalLife", 1]],
     desc: (l) =>
-      `Nochmals <b>16 Sekunden</b> mehr auf der Lebensleiste.${TWIN}<br><br>Zus&auml;tzlich: <b>+${bonusLifeII(l)} s</b>`,
+      `Another <b>16 seconds</b> on the life bar.${TWIN}<br><br>Extra: <b>+${bonusLifeII(l)} s</b>`,
   },
   {
     id: "slowDrain",
-    title: "Bremse",
+    title: "Brake",
     icon: "◐",
     color: "pink",
     max: 14,
@@ -1211,11 +1211,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["lifeHealII", 1]],
     desc: (l) =>
-      `Die <b>Leerungsrampe</b> streckt sich um <b>3 Sekunden</b> je Stufe. Die Leiste f&auml;llt sp&auml;ter in ihre steile Phase, jeder Lauf wird l&auml;nger.<br><br>Rampe: <b>${DRAIN_RAMP_S + drainRampAdd(l)} s</b>`,
+      `The <b>drain ramp</b> stretches by <b>3 seconds</b> per level. The bar enters its steep phase later, so every run lasts longer.<br><br>Ramp: <b>${DRAIN_RAMP_S + drainRampAdd(l)} s</b>`,
   },
   {
     id: "secondWind",
-    title: "Zweiter Atem",
+    title: "Second Wind",
     icon: "↻",
     color: "magenta",
     max: 3,
@@ -1224,13 +1224,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["slowDrain", 4]],
     desc: (l) =>
-      `L&auml;uft die Lebensleiste leer, f&uuml;llt sie sich noch einmal auf <b>${pct(REVIVE_FILL)}</b> &mdash; so oft, wie du Stufen hast. Danach ist der Lauf vorbei.<br><br>Rettungen je Lauf: <b>${l}</b>`,
+      `When the life bar runs empty, it refills to <b>${pct(REVIVE_FILL)}</b> &mdash; once for each level you own. After that, the run is over.<br><br>Saves per run: <b>${l}</b>`,
   },
 
   /* ==================================================== Ast: Buff ====== */
   {
     id: "buffBall",
-    title: "Buff-Kugel",
+    title: "Buff Ball",
     icon: "✦",
     color: "magenta",
     max: 1,
@@ -1239,11 +1239,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "crown",
     req: [["bounceValue", 1]],
     desc: () =>
-      `Eine Kugel, die <b>selbst nichts</b> einbringt. Stattdessen hinterl&auml;sst sie bei Kontakt einen Effekt:<br><br>auf einem <b>Peg</b> &mdash; er zahlt doppelt<br>auf einer <b>anderen Kugel</b> &mdash; sie zahlt doppelt<br><br>Ihr Ast verl&auml;ngert, verst&auml;rkt und verteilt diesen Effekt &mdash; und l&auml;sst sie am Ende selbst mitverdienen.`,
+      `A ball that earns <b>nothing itself</b>. Instead, on contact it leaves an effect:<br><br>on a <b>peg</b> &mdash; it pays double<br>on <b>another ball</b> &mdash; it pays double<br><br>Its branch extends, strengthens and spreads this effect &mdash; and finally lets it earn too.`,
   },
   {
     id: "buffDur",
-    title: "Nachwirkung",
+    title: "Aftereffect",
     icon: "◷",
     color: "magenta",
     max: 4,
@@ -1251,11 +1251,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["buffBall", 1]],
     desc: (l) =>
-      `Der Effekt der Buff-Kugel h&auml;lt <b>1,2 s</b> l&auml;nger je Stufe.<br><br>Dauer: <b>+${sec(buffDurAdd(l))}</b>`,
+      `The Buff Ball's effect lasts <b>1.2 s</b> longer per level.<br><br>Duration: <b>+${sec(buffDurAdd(l))}</b>`,
   },
   {
     id: "buffDurII",
-    title: "Langzeitwirkung",
+    title: "Lasting Effect",
     icon: "◈",
     color: "magenta",
     max: 4,
@@ -1264,11 +1264,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["buffDur", 1]],
     desc: (l) =>
-      `Der Effekt h&auml;lt <b>2,75 s</b> l&auml;nger je Stufe.${TWIN}<br><br>Dauer: <b>+${sec(buffDurAddII(l))}</b>`,
+      `The effect lasts <b>2.75 s</b> longer per level.${TWIN}<br><br>Duration: <b>+${sec(buffDurAddII(l))}</b>`,
   },
   {
     id: "buffPower",
-    title: "Verst&auml;rkung",
+    title: "Amplify",
     icon: "✧",
     color: "pink",
     max: 4,
@@ -1276,11 +1276,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["buffBall", 1]],
     desc: (l) =>
-      `Der Buff multipliziert st&auml;rker.<br><br>Faktor: <b>${(BUFF_MULT + buffPowerAdd(l)).toFixed(2)}x</b>`,
+      `The buff multiplies more strongly.<br><br>Multiplier: <b>${(BUFF_MULT + buffPowerAdd(l)).toFixed(2)}x</b>`,
   },
   {
     id: "buffPowerII",
-    title: "&Uuml;berh&ouml;hung",
+    title: "Overdrive",
     icon: "◈",
     color: "pink",
     max: 4,
@@ -1289,11 +1289,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["buffPower", 1]],
     desc: (l) =>
-      `Der Buff multipliziert nochmals <b>0,19</b> st&auml;rker je Stufe.${TWIN}<br><br>Zus&auml;tzlich: <b>+${buffPowerAddII(l).toFixed(2)}</b>`,
+      `The buff multiplies another <b>0.19</b> more strongly per level.${TWIN}<br><br>Extra: <b>+${buffPowerAddII(l).toFixed(2)}</b>`,
   },
   {
     id: "buffPowerIII",
-    title: "Rausch",
+    title: "Frenzy",
     icon: "❋",
     color: "pink",
     max: 4,
@@ -1302,11 +1302,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["buffPowerII", 2]],
     desc: (l) =>
-      `Der Buff multipliziert nochmals <b>0,08</b> st&auml;rker je Stufe.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${buffPowerAddIII(l).toFixed(2)}</b>`,
+      `The buff multiplies another <b>0.08</b> more strongly per level.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${buffPowerAddIII(l).toFixed(2)}</b>`,
   },
   {
     id: "buffSplash",
-    title: "Streuung",
+    title: "Splash",
     icon: "⁘",
     color: "amber",
     max: 4,
@@ -1314,11 +1314,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["buffPowerII", 1]],
     desc: (l) =>
-      `Die Buff-Kugel bufft nicht nur den ber&uuml;hrten Peg, sondern <b>alle im Umkreis</b>.<br><br>Radius: <b>${buffSplash(l)} px</b>`,
+      `The Buff Ball buffs not just the peg it touches, but <b>all pegs in its radius</b>.<br><br>Radius: <b>${buffSplash(l)} px</b>`,
   },
   {
     id: "buffCarry",
-    title: "Ansteckung",
+    title: "Contagion",
     icon: "⇄",
     color: "magenta",
     max: 3,
@@ -1327,11 +1327,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["buffDurII", 1]],
     desc: (l) =>
-      `Trifft eine Kugel einen <b>gebufften Peg</b>, nimmt sie den Buff mit. Der Effekt wandert durchs Feld, statt am Peg zu kleben.<br><br>&Uuml;bertragene Dauer: <b>${pct(buffCarry(l))}</b>`,
+      `When a ball hits a <b>buffed peg</b>, it takes the buff with it. The effect travels through the field instead of sticking to the peg.<br><br>Duration carried: <b>${pct(buffCarry(l))}</b>`,
   },
   {
     id: "buffSelf",
-    title: "Mitverdienst",
+    title: "Profit Share",
     icon: "◆",
     color: "amber",
     max: 4,
@@ -1339,11 +1339,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["buffSplash", 2]],
     desc: (l) =>
-      `Die Buff-Kugel verdient endlich <b>selbst</b> &mdash; anteilig zu einem normalen Treffer.<br><br>Anteil: <b>${pct(buffSelf(l))}</b>`,
+      `The Buff Ball finally earns <b>on its own</b> &mdash; a share of a normal hit.<br><br>Share: <b>${pct(buffSelf(l))}</b>`,
   },
   {
     id: "buffMark",
-    title: "Zeichen",
+    title: "Sign",
     icon: "✵",
     color: "magenta",
     max: 3,
@@ -1355,13 +1355,13 @@ export const NODES: TreeNodeDef[] = [
       ["markBall", 1],
     ],
     desc: (l) =>
-      `Trifft die Buff-Kugel deine <b>markierte</b> Kugel, h&auml;lt der Buff dort deutlich l&auml;nger.<br><br>Zus&auml;tzliche Dauer: <b>+${pct(buffMarkBonus(l))}</b>`,
+      `When the Buff Ball hits your <b>marked</b> ball, the buff lasts much longer there.<br><br>Extra duration: <b>+${pct(buffMarkBonus(l))}</b>`,
   },
 
   /* =================================================== Ast: Tempo ====== */
   {
     id: "dropSpeed",
-    title: "Drop-Tempo",
+    title: "Drop Speed",
     icon: "▼",
     color: "amber",
     max: 4,
@@ -1369,11 +1369,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["whiteBall", 1]],
     desc: (l) =>
-      `Eine verlorene Kugel kehrt schneller in die Arena zur&uuml;ck. Weil nur <b>direkte</b> Kontakte heilen, ist das der wichtigste Hebel auf die Laufzeit.<br><br>Verz&ouml;gerung: <b>${sec(respawn(l), 2)}</b>`,
+      `A lost ball returns to the arena faster. Since only <b>direct</b> contacts heal, this is the biggest lever on run time.<br><br>Delay: <b>${sec(respawn(l), 2)}</b>`,
   },
   {
     id: "dropSpeedII",
-    title: "Schnellrohr",
+    title: "Express Tube",
     icon: "◈",
     color: "amber",
     max: 4,
@@ -1382,11 +1382,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["dropSpeed", 2]],
     desc: (l) =>
-      `Die R&uuml;ckkehr dauert nochmals <b>18 %</b> weniger je Stufe.${TWIN}<br><br>Verz&ouml;gerung: <b>${pct(respawnII(l))}</b> davon`,
+      `The return takes another <b>18%</b> less time per level.${TWIN}<br><br>Delay: <b>${pct(respawnII(l))}</b> of that`,
   },
   {
     id: "launchPower",
-    title: "Startschwung",
+    title: "Launch Power",
     icon: "↯",
     color: "teal",
     max: 4,
@@ -1394,7 +1394,7 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["dropSpeed", 1]],
     desc: (l) =>
-      `Kugeln verlassen den Werfer mit mehr Schwung und gr&ouml;&szlig;erer Streuung &mdash; sie erreichen die R&auml;nder des Feldes.<br><br>Schwung: <b>${launch(l).toFixed(2)}x</b>`,
+      `Balls leave the launcher with more momentum and wider spread &mdash; they reach the edges of the field.<br><br>Momentum: <b>${launch(l).toFixed(2)}x</b>`,
   },
 
   /* ============================================== Ast: Markierung ====== */
@@ -1412,7 +1412,7 @@ export const NODES: TreeNodeDef[] = [
      * prompt als zu eng an vier Nachbarn.
      */
     id: "forge",
-    title: "Die Esse",
+    title: "The Forge",
     icon: "❈",
     color: "amber",
     max: 1,
@@ -1421,16 +1421,16 @@ export const NODES: TreeNodeDef[] = [
     currency: "crown",
     req: [["workshop", 3]],
     desc: () =>
-      `Er&ouml;ffnet die <b>Esse</b> &mdash; eine eigene Ansicht, in der du ` +
-      `<b>Verzauberungen</b> schmiedest und auf deine Kugeln steckst.<br><br>` +
-      `Jede Kugel tr&auml;gt <b>genau eine</b>, und jede Verzauberung ist ein ` +
-      `<b>Tausch</b>: sie gibt etwas und nimmt etwas. Umstecken kostet nichts.<br><br>` +
-      `Bezahlt wird dort mit <b>Siegeln</b> &mdash; der W&auml;hrung der ` +
-      `Meisterschaft.`,
+      `Opens the <b>Forge</b> &mdash; a separate view where you ` +
+      `forge <b>Enchantments</b> and attach them to your balls.<br><br>` +
+      `Each ball carries <b>exactly one</b>, and every enchantment is a ` +
+      `<b>trade-off</b>: it gives something and takes something. Swapping is free.<br><br>` +
+      `You pay there with <b>Seals</b> &mdash; the currency of ` +
+      `Mastery.`,
   },
   {
     id: "markBall",
-    title: "Markierung",
+    title: "Mark",
     icon: "◈",
     color: "magenta",
     max: 1,
@@ -1439,11 +1439,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "crown",
     req: [["dropSpeed", 1]],
     desc: () =>
-      `Du darfst im Lauf <b>eine</b> Kugel anklicken und damit markieren. Die markierte Kugel verdient mehr und fliegt schneller durch die R&uuml;cklauf-R&ouml;hre.<br><br>Es ist immer <b>h&ouml;chstens eine</b> Kugel markiert &mdash; ein Klick auf eine andere setzt die Markierung um.<br><br>Dahinter beginnt ein eigener Ast.`,
+      `During a run, you can click <b>one</b> ball to mark it. The marked ball earns more and travels through the return tube faster.<br><br>Only <b>one</b> ball can be marked at a time &mdash; clicking another moves the mark.<br><br>A branch of its own starts here.`,
   },
   {
     id: "markValue",
-    title: "Auszeichnung",
+    title: "Distinction",
     icon: "◆",
     color: "magenta",
     max: 4,
@@ -1451,11 +1451,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["markBall", 1]],
     desc: (l) =>
-      `Die markierte Kugel ist <b>19 %</b> mehr wert je Stufe.<br><br>Faktor: <b>${markValue(l).toFixed(2)}x</b>`,
+      `The marked ball is worth <b>19%</b> more per level.<br><br>Multiplier: <b>${markValue(l).toFixed(2)}x</b>`,
   },
   {
     id: "markValueII",
-    title: "Orden",
+    title: "Medal",
     icon: "◈",
     color: "magenta",
     max: 4,
@@ -1464,11 +1464,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["markValue", 1]],
     desc: (l) =>
-      `Die markierte Kugel ist <b>22 %</b> mehr wert je Stufe.${TWIN}<br><br>Faktor: <b>${markValueII(l).toFixed(2)}x</b>`,
+      `The marked ball is worth <b>22%</b> more per level.${TWIN}<br><br>Multiplier: <b>${markValueII(l).toFixed(2)}x</b>`,
   },
   {
     id: "markValueIII",
-    title: "Lorbeer",
+    title: "Laurels",
     icon: "❦",
     color: "magenta",
     max: 4,
@@ -1477,11 +1477,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["markValueII", 2]],
     desc: (l) =>
-      `Die markierte Kugel ist <b>13 %</b> mehr wert je Stufe.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${pct(markValueIII(l))}</b>`,
+      `The marked ball is worth <b>13%</b> more per level.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${pct(markValueIII(l))}</b>`,
   },
   {
     id: "markTube",
-    title: "R&uuml;ckholung",
+    title: "Recall",
     icon: "⤒",
     color: "amber",
     max: 4,
@@ -1489,11 +1489,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["markBall", 1]],
     desc: (l) =>
-      `Die markierte Kugel wird durch die R&ouml;hre <b>zur&uuml;ckgerissen</b> und ist schneller wieder im Feld.<br><br>Verz&ouml;gerung: <b>${pct(markTube(l))}</b> der normalen`,
+      `The marked ball is <b>yanked back</b> through the tube and returns to the field faster.<br><br>Delay: <b>${pct(markTube(l))}</b> of normal`,
   },
   {
     id: "markHeal",
-    title: "Brennglas",
+    title: "Burning Glass",
     icon: "♥",
     color: "pink",
     max: 4,
@@ -1501,11 +1501,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["markTube", 2]],
     desc: (l) =>
-      `Direkte Treffer der markierten Kugel geben der Lebensleiste mehr Zeit zur&uuml;ck.<br><br>Heilung: <b>${markHeal(l).toFixed(2)}x</b>`,
+      `Direct hits of the marked ball give more time back to the life bar.<br><br>Healing: <b>${markHeal(l).toFixed(2)}x</b>`,
   },
   {
     id: "markShard",
-    title: "Ehrenzeichen",
+    title: "Badge of Honor",
     icon: "◈",
     color: "teal",
     max: 4,
@@ -1514,11 +1514,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["markValueII", 1]],
     desc: (l) =>
-      `Direkte Treffer der markierten Kugel werfen mit einer Chance einen <b>zus&auml;tzlichen Splitter</b> ab.<br><br>Chance: <b>${pct(markShard(l))}</b>`,
+      `Direct hits of the marked ball have a chance to drop an <b>extra Shard</b>.<br><br>Chance: <b>${pct(markShard(l))}</b>`,
   },
   {
     id: "markGrowth",
-    title: "Beharrung",
+    title: "Tenacity",
     icon: "↑",
     color: "pink",
     max: 3,
@@ -1527,13 +1527,13 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["markHeal", 2]],
     desc: (l) =>
-      `Solange die markierte Kugel im Feld bleibt, w&auml;chst ihr Bonus mit jeder Sekunde &mdash; bis zu <b>+${pct(MARK_GROWTH_CAP)}</b>. F&auml;llt sie in den Abfluss, beginnt der Aufbau von vorn.<br><br>Zuwachs: <b>+${pct(markGrowth(l), 1)} je Sekunde</b>`,
+      `While the marked ball stays on the field, its bonus grows every second &mdash; up to <b>+${pct(MARK_GROWTH_CAP)}</b>. If it falls into the drain, the build-up starts over.<br><br>Growth: <b>+${pct(markGrowth(l), 1)} per second</b>`,
   },
 
   /* =================================================== Ast: Blitz ====== */
   {
     id: "lightningBall",
-    title: "Blitz-Kugel",
+    title: "Lightning Ball",
     icon: "⚡",
     color: "amber",
     max: 1,
@@ -1542,11 +1542,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "crown",
     req: [["dropSpeedII", 1]],
     desc: () =>
-      `Eine Kugel, die bei jedem Peg-Kontakt mit einer gewissen Chance <b>Blitze</b> schl&auml;gt. Die Blitze springen auf umliegende Pegs &uuml;ber und treffen sie mit.<br><br>Ihr Ast baut an Chance, Zielzahl, Reichweite &mdash; und daran, wie weit eine Kette springt, bevor sie erlischt.`,
+      `A ball with a chance to strike <b>lightning</b> on every peg contact. The bolts jump to nearby pegs and hit them too.<br><br>Its branch improves chance, target count, range &mdash; and how far a chain jumps before it fizzles out.`,
   },
   {
     id: "boltChance",
-    title: "Leitf&auml;higkeit",
+    title: "Conductivity",
     icon: "⚡",
     color: "amber",
     max: 4,
@@ -1554,11 +1554,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["lightningBall", 1]],
     desc: (l) =>
-      `Der Blitz l&ouml;st <b>3,3 %</b> h&auml;ufiger aus je Stufe.<br><br>Chance: <b>${pct(LIGHTNING_CHANCE + boltChance(l))}</b>`,
+      `Lightning triggers <b>3.3%</b> more often per level.<br><br>Chance: <b>${pct(LIGHTNING_CHANCE + boltChance(l))}</b>`,
   },
   {
     id: "boltChanceII",
-    title: "Ionisierung",
+    title: "Ionization",
     icon: "◈",
     color: "amber",
     max: 4,
@@ -1567,11 +1567,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["boltChance", 1]],
     desc: (l) =>
-      `Der Blitz l&ouml;st <b>5,8 %</b> h&auml;ufiger aus je Stufe.${TWIN}<br><br>Zus&auml;tzlich: <b>+${pct(boltChanceII(l))}</b>`,
+      `Lightning triggers <b>5.8%</b> more often per level.${TWIN}<br><br>Extra: <b>+${pct(boltChanceII(l))}</b>`,
   },
   {
     id: "boltChanceIII",
-    title: "Hochspannung",
+    title: "High Voltage",
     icon: "⚡",
     color: "amber",
     max: 4,
@@ -1580,11 +1580,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["boltChanceII", 2]],
     desc: (l) =>
-      `Der Blitz l&ouml;st <b>2,6 %</b> h&auml;ufiger aus je Stufe.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${pct(boltChanceIII(l))}</b>`,
+      `Lightning triggers <b>2.6%</b> more often per level.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${pct(boltChanceIII(l))}</b>`,
   },
   {
     id: "boltTargets",
-    title: "Ver&auml;stelung",
+    title: "Branching",
     icon: "⑂",
     color: "teal",
     max: 4,
@@ -1592,11 +1592,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["lightningBall", 1]],
     desc: (l) =>
-      `Ein Blitz trifft <b>1,17 Prozentpunkte</b> mehr des Feldes je Stufe.<br><br>Ziele: <b>${pct(Math.min(LIGHTNING_TARGET_SHARE_MAX, LIGHTNING_TARGET_SHARE + boltTargets(l)), 1)}</b> aller Pegs`,
+      `A bolt hits <b>1.17 percentage points</b> more of the field per level.<br><br>Targets: <b>${pct(Math.min(LIGHTNING_TARGET_SHARE_MAX, LIGHTNING_TARGET_SHARE + boltTargets(l)), 1)}</b> of all pegs`,
   },
   {
     id: "boltTargetsII",
-    title: "Gabelung",
+    title: "Fork",
     icon: "◈",
     color: "teal",
     max: 4,
@@ -1605,11 +1605,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["boltTargets", 2]],
     desc: (l) =>
-      `Ein Blitz trifft <b>2,03 Prozentpunkte</b> mehr des Feldes je Stufe.${TWIN}<br><br>Zus&auml;tzlich: <b>+${pct(boltTargetsII(l), 1)}</b> aller Pegs`,
+      `A bolt hits <b>2.03 percentage points</b> more of the field per level.${TWIN}<br><br>Extra: <b>+${pct(boltTargetsII(l), 1)}</b> of all pegs`,
   },
   {
     id: "boltTargetsIII",
-    title: "Fächer",
+    title: "Fan",
     icon: "⑂",
     color: "teal",
     max: 4,
@@ -1618,11 +1618,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["boltTargetsII", 2]],
     desc: (l) =>
-      `Ein Blitz trifft nochmals <b>0,9 Prozentpunkte</b> mehr des Feldes je Stufe.<br><br><i>Das Ende des Astes &mdash; dieselbe Wirkung ein drittes Mal, und danach zweigt hier nichts mehr ab.</i><br><br>Zus&auml;tzlich: <b>+${pct(boltTargetsIII(l), 1)}</b> aller Pegs`,
+      `A bolt hits another <b>0.9 percentage points</b> of the field per level.<br><br><i>The end of the branch &mdash; the same effect a third time, and nothing branches off after this.</i><br><br>Extra: <b>+${pct(boltTargetsIII(l), 1)}</b> of all pegs`,
   },
   {
     id: "boltRange",
-    title: "Reichweite",
+    title: "Range",
     icon: "⇢",
     color: "teal",
     max: 4,
@@ -1630,11 +1630,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["boltTargets", 1]],
     desc: (l) =>
-      `Der Blitz greift <b>32 px</b> weiter je Stufe &mdash; er findet Ziele, die sonst au&szlig;er Reichweite bleiben.<br><br>Reichweite: <b>${LIGHTNING_RANGE + boltRangeAdd(l)} px</b>`,
+      `Lightning reaches <b>32 px</b> further per level &mdash; it finds targets that would otherwise be out of range.<br><br>Range: <b>${LIGHTNING_RANGE + boltRangeAdd(l)} px</b>`,
   },
   {
     id: "boltValue",
-    title: "Spannung",
+    title: "Voltage",
     icon: "≀",
     color: "pink",
     max: 4,
@@ -1642,11 +1642,11 @@ export const NODES: TreeNodeDef[] = [
     growth: 3.2,
     req: [["boltChanceII", 1]],
     desc: (l) =>
-      `Ein Blitztreffer zahlt weniger als ein echter Kontakt. Diese <b>Abnahme wird kleiner</b>.<br><br>Wert je Blitzziel: <b>${(LIGHTNING_VALUE_FACTOR + boltValueAdd(l)).toFixed(2)}x</b>`,
+      `A lightning hit pays less than a real contact. This <b>penalty shrinks</b>.<br><br>Value per bolt target: <b>${(LIGHTNING_VALUE_FACTOR + boltValueAdd(l)).toFixed(2)}x</b>`,
   },
   {
     id: "boltFork",
-    title: "Kettenschlag",
+    title: "Chain Strike",
     icon: "⚟",
     color: "magenta",
     max: 3,
@@ -1655,11 +1655,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["boltChanceII", 2]],
     desc: (l) =>
-      `Ein getroffener Peg schl&auml;gt mit einer Chance <b>selbst weiter</b>. Aus dem einzelnen Blitz wird eine Kette, die bis zu <b>${MAX_CHAIN_DEPTH} Glieder</b> tief springt.<br><br>Chance je Glied: <b>${pct(boltFork(l))}</b>`,
+      `A struck peg has a chance to <b>strike onward</b> itself. The single bolt becomes a chain that jumps up to <b>${MAX_CHAIN_DEPTH} links</b> deep.<br><br>Chance per link: <b>${pct(boltFork(l))}</b>`,
   },
   {
     id: "boltFalloff",
-    title: "Verlustarm",
+    title: "Low Loss",
     icon: "◈",
     color: "magenta",
     max: 4,
@@ -1668,7 +1668,7 @@ export const NODES: TreeNodeDef[] = [
     currency: "shard",
     req: [["boltFork", 1]],
     desc: (l) =>
-      `Jedes weitere <b>Kettenglied</b> zahlt bisher nur die H&auml;lfte des vorigen. Dieser Verlust schrumpft.<br><br>Anteil je Glied: <b>${pct(boltChainKeep(l))}</b>`,
+      `Each further <b>chain link</b> normally pays only half of the previous one. This loss shrinks.<br><br>Share per link: <b>${pct(boltChainKeep(l))}</b>`,
   },
 
   /* ==================== Verhalten statt Prozente (Phase 4) ============= */
@@ -1686,7 +1686,7 @@ export const NODES: TreeNodeDef[] = [
      * wenn man sich traut, sie auszureizen.
      */
     id: "heartbeat",
-    title: "Herzschlag",
+    title: "Heartbeat",
     icon: "♥",
     color: "pink",
     max: 4,
@@ -1695,9 +1695,9 @@ export const NODES: TreeNodeDef[] = [
     currency: "sigil",
     req: [["slowDrain", 2]],
     desc: (l) =>
-      `Solange die Lebensleiste unter <b>${pct(HEARTBEAT_BELOW)}</b> steht, zahlt ` +
-      `<b>jeder</b> Treffer mehr &mdash; egal von welcher Kugel.<br><br>` +
-      `Zuschlag: <b>+${pct(heartbeatBonus(l))}</b>`,
+      `While the life bar is below <b>${pct(HEARTBEAT_BELOW)}</b>, ` +
+      `<b>every</b> hit pays more &mdash; from any ball.<br><br>` +
+      `Bonus: <b>+${pct(heartbeatBonus(l))}</b>`,
   },
   {
     /*
@@ -1707,7 +1707,7 @@ export const NODES: TreeNodeDef[] = [
      * diesen Schwanz, ohne den Schnitt zu erhoehen.
      */
     id: "boltPity",
-    title: "Ladung",
+    title: "Charge",
     icon: "⌁",
     color: "magenta",
     max: 4,
@@ -1717,11 +1717,11 @@ export const NODES: TreeNodeDef[] = [
     req: [["boltChanceII", 2]],
     desc: (l) =>
       l > 0
-        ? `Bleiben <b>${boltPity(l)} Kontakte</b> hintereinander ohne Blitz, ` +
-          `schl&auml;gt der n&auml;chste <b>garantiert</b> ein &mdash; und zahlt ` +
+        ? `After <b>${boltPity(l)} contacts</b> in a row without lightning, ` +
+          `the next one is a <b>guaranteed</b> strike &mdash; and pays ` +
           `<b>&times;${boltPityValue(l).toFixed(2)}</b>.`
-        : `Kontakte ohne Ausl&ouml;sung laden auf. Ist die Ladung voll, schl&auml;gt ` +
-          `der n&auml;chste Kontakt <b>garantiert</b> ein.`,
+        : `Contacts without a trigger build up charge. Once fully charged, ` +
+          `the next contact is a <b>guaranteed</b> strike.`,
   },
   {
     /*
@@ -1730,7 +1730,7 @@ export const NODES: TreeNodeDef[] = [
      * beieinander bleiben.
      */
     id: "boltArc",
-    title: "Lichtbogen",
+    title: "Arc",
     icon: "↯",
     color: "magenta",
     max: 4,
@@ -1740,10 +1740,10 @@ export const NODES: TreeNodeDef[] = [
     req: [["boltTargetsII", 2]],
     desc: (l) =>
       l > 0
-        ? `Kommt die Blitz-Kugel einer anderen n&auml;her als <b>${arcRange(l)} px</b>, ` +
-          `spannt sich ein <b>Bogen</b> zwischen beiden. Pegs auf der Strecke ` +
-          `werden getroffen.<br><br>Wert je Peg: <b>&times;${arcValue(l).toFixed(2)}</b>`
-        : `Zwei nahe Kugeln spannen einen Lichtbogen; Pegs dazwischen werden getroffen.`,
+        ? `When the Lightning Ball gets closer than <b>${arcRange(l)} px</b> to another ball, ` +
+          `an <b>arc</b> forms between them. Pegs along the line ` +
+          `are hit.<br><br>Value per peg: <b>&times;${arcValue(l).toFixed(2)}</b>`
+        : `Two nearby balls form an electric arc; pegs in between are hit.`,
   },
   {
     /*
@@ -1753,7 +1753,7 @@ export const NODES: TreeNodeDef[] = [
      * Wer Feuer bis hierher ausbaut, spielt seine Arena leer.
      */
     id: "fireMelt",
-    title: "Schmelze",
+    title: "Melt",
     icon: "☄",
     color: "amber",
     max: 4,
@@ -1763,11 +1763,11 @@ export const NODES: TreeNodeDef[] = [
     req: [["fireCountII", 2]],
     desc: (l) =>
       l > 0
-        ? `Ein Peg, der <b>${meltAfter(l)}-mal</b> ausgebrannt ist, <b>schmilzt weg</b> ` +
-          `und gilt dauerhaft als abgedeckt.<br><br>` +
-          `<i>Der Haken: er ist weg. Weniger Feld hei&szlig;t weniger Treffer und ` +
-          `weniger Heilung.</i>`
-        : `Mehrfach ausgebrannte Pegs schmelzen weg und gelten dauerhaft als abgedeckt.`,
+        ? `A peg that has burned out <b>${meltAfter(l)} times</b> <b>melts away</b> ` +
+          `and counts as covered for good.<br><br>` +
+          `<i>The catch: it's gone. Less field means fewer hits and ` +
+          `less healing.</i>`
+        : `Pegs that burn out repeatedly melt away and count as covered for good.`,
   },
   {
     /*
@@ -1776,7 +1776,7 @@ export const NODES: TreeNodeDef[] = [
      * die im Spaetspiel haengen, und laesst das Geld unberuehrt.
      */
     id: "whiteSwath",
-    title: "Schneise",
+    title: "Swath",
     icon: "╱",
     color: "teal",
     max: 4,
@@ -1786,11 +1786,11 @@ export const NODES: TreeNodeDef[] = [
     req: [["whiteComboCap", 2]],
     desc: (l) =>
       l > 0
-        ? `Ab einer Serie von <b>${swathFrom(l)}</b> zieht die wei&szlig;e Kugel eine ` +
-          `gl&uuml;hende Spur. Pegs, die sie streift, gelten als <b>abgedeckt</b>.<br><br>` +
-          `Breite: <b>${swathWidth(l) * 2} px</b><br><br>` +
-          `<i>Die Spur zahlt nichts &mdash; sie deckt nur ab.</i>`
-        : `Ab einer hohen Serie zieht die wei&szlig;e Kugel eine Spur, die Pegs abdeckt.`,
+        ? `From a streak of <b>${swathFrom(l)}</b>, the White Ball leaves a ` +
+          `glowing trail. Pegs it grazes count as <b>covered</b>.<br><br>` +
+          `Width: <b>${swathWidth(l) * 2} px</b><br><br>` +
+          `<i>The trail pays nothing &mdash; it only covers.</i>`
+        : `At a high streak, the White Ball leaves a trail that covers pegs.`,
   },
   {
     /*
@@ -1799,7 +1799,7 @@ export const NODES: TreeNodeDef[] = [
      * wird zu etwas, das man im Feld waechst.
      */
     id: "pulseNode",
-    title: "Stehende Welle",
+    title: "Standing Wave",
     icon: "◎",
     color: "teal",
     max: 4,
@@ -1809,10 +1809,10 @@ export const NODES: TreeNodeDef[] = [
     req: [["pulseCharge", 2]],
     desc: (l) =>
       l > 0
-        ? `Bleibt ein Peg l&auml;nger als <b>${sec(nodeAfter(l))}</b> geladen, wird er ` +
-          `selbst zum <b>Sender</b> und pulst mit.<br><br>` +
-          `St&auml;rke: <b>${pct(nodePower(l))}</b> eines echten Pulses`
-        : `Lange geladene Pegs werden selbst zu Sendern und pulsen mit.`,
+        ? `If a peg stays charged longer than <b>${sec(nodeAfter(l))}</b>, it becomes ` +
+          `a <b>transmitter</b> itself and pulses along.<br><br>` +
+          `Strength: <b>${pct(nodePower(l))}</b> of a real pulse`
+        : `Pegs that stay charged for a long time become transmitters and pulse along.`,
   },
   {
     /*
@@ -1821,7 +1821,7 @@ export const NODES: TreeNodeDef[] = [
      * Faehigkeit dessen, den sie beruehrt.
      */
     id: "buffBond",
-    title: "B&uuml;ndnis",
+    title: "Bond",
     icon: "⚭",
     color: "magenta",
     max: 4,
@@ -1831,10 +1831,10 @@ export const NODES: TreeNodeDef[] = [
     req: [["buffCarry", 2]],
     desc: (l) =>
       l > 0
-        ? `Ber&uuml;hrt die Buff-Kugel eine andere, &uuml;bernimmt sie ` +
-          `<b>${sec(bondTime(l))}</b> lang deren F&auml;higkeit &mdash; sie pulst, ` +
-          `z&uuml;ndet oder blitzt dann selbst.`
-        : `Die Buff-Kugel &uuml;bernimmt kurz die F&auml;higkeit der Kugel, die sie ber&uuml;hrt.`,
+        ? `When the Buff Ball touches another ball, it borrows that ball's ability ` +
+          `for <b>${sec(bondTime(l))}</b> &mdash; it pulses, ` +
+          `ignites or strikes lightning itself.`
+        : `The Buff Ball briefly borrows the ability of the ball it touches.`,
   },
   {
     /*
@@ -1843,7 +1843,7 @@ export const NODES: TreeNodeDef[] = [
      * benannter Kauf — so bleibt die Kronenregel intakt.
      */
     id: "headStart",
-    title: "Grundstock",
+    title: "Head Start",
     icon: "⬆",
     color: "amber",
     max: 3,
@@ -1852,11 +1852,11 @@ export const NODES: TreeNodeDef[] = [
     currency: "crown",
     req: [["ballMasteryII", 2]],
     desc: (l) =>
-      `Jede Kugel beginnt den Lauf bereits auf <b>Stufe ${headStart(l)}</b>, ` +
-      `statt bei null.<br><br>` +
-      `<i>Der erste Kauf, der die Anfangsminute eines Laufs verkuerzt &mdash; ` +
-      `gerade in den sp&auml;ten Arenen, wo man dieselbe Leiter jedes Mal neu ` +
-      `hochkauft.</i>`,
+      `Every ball starts the run at <b>level ${headStart(l)}</b> ` +
+      `instead of zero.<br><br>` +
+      `<i>The first purchase that shortens a run's opening minute &mdash; ` +
+      `especially in the late arenas, where you buy the same ladder ` +
+      `all over again every time.</i>`,
   },
 
 ];

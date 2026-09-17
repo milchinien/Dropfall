@@ -23,7 +23,7 @@ import {
 } from "./loader";
 import { decorBoe, decorZeiger, drawDecorBack, drawDecorFront, type Rahmen } from "./decor";
 import { grafik, initGrafik, setGrafik } from "./skin";
-import { ARENAS, GOALS_PER_ARENA, pegCount } from "./arenas";
+import { ARENAS, GOALS_PER_ARENA, arenaCharakter, arenaName, pegCount } from "./arenas";
 import { drawArenaMiniature, hudMasse, hudSchmal } from "./machine";
 import { BARREN_BOUNTY } from "./currency";
 import { edelBonus, emptyEnchant } from "./enchant";
@@ -270,7 +270,7 @@ const elLifeRing = createLoader({
   value: 1,
   center: "0.0 s",
   on: "dark",
-  label: "Leben",
+  label: "Life",
 });
 document.getElementById("lifeRing")!.appendChild(elLifeRing);
 const elLifeCover = document.getElementById("lifeCover")!;
@@ -448,7 +448,7 @@ const tree = new TreeView(NODES, {
     // Ton — die Wiederholung wird zum Fortschritt statt zum Tic.
     treeSound("buy", { level: stufe });
     if (id === "whiteBall") {
-      toast("Die <b>wei&szlig;e Kugel</b> geh&ouml;rt dir.<br>Starte unten rechts deinen ersten Lauf.", 8);
+      toast("The <b>White Ball</b> is yours.<br>Press <b>PLAY</b> to start your first run.", 8);
     }
     save();
   },
@@ -477,12 +477,12 @@ let hoveredNode: string | null = null;
 function startRun(): void {
   stats = deriveStats(state.levels, wirksameVerzauberungen());
   if (stats.kinds.length === 0) {
-    toast("Du hast noch keine Kugel. Kaufe zuerst die <b>wei&szlig;e Kugel</b>.", 6);
+    toast("You don't have a ball yet. Buy the <b>White Ball</b> first.", 6);
     return;
   }
 
   if (!playable(state.arena)) {
-    toast("Dieses Level ist noch <b>gesperrt</b>. Erf&uuml;lle zuerst weitere Ziele.", 6);
+    toast("This level is still <b>locked</b>. Complete more goals first.", 6);
     return;
   }
 
@@ -554,18 +554,18 @@ function endRun(): void {
   if (freigespielt && !state.cleared[i]) {
     state.cleared[i] = true;
     kronen++;
-    erfolge.push({ text: `${a.name} freigespielt · ${currencyIcon("crown")}`, haupt: true });
-    if (i + 1 >= ARENAS.length) erfolge.push({ text: "Letztes Level bezwungen", haupt: true });
+    erfolge.push({ text: `${arenaName(a)} cleared · ${currencyIcon("crown")}`, haupt: true });
+    if (i + 1 >= ARENAS.length) erfolge.push({ text: "Final level conquered", haupt: true });
   }
   if (gemeistert && !state.completed[i]) {
     state.completed[i] = true;
     siegel += SIGIL_PER_GOAL;
-    erfolge.push({ text: `${a.name} gemeistert · ${currencyIcon("sigil")}`, haupt: true });
+    erfolge.push({ text: `${arenaName(a)} mastered · ${currencyIcon("sigil")}`, haupt: true });
   }
   if (run.elapsed >= a.bonusSurvive && !state.bonusSurvive[i]) {
     state.bonusSurvive[i] = true;
     siegel += SIGIL_PER_GOAL;
-    erfolge.push({ text: `Ausdauer · ${currencyIcon("sigil")}`, haupt: true });
+    erfolge.push({ text: `Endurance · ${currencyIcon("sigil")}`, haupt: true });
   }
   state.crowns += kronen;
   state.sigils += siegel;
@@ -574,7 +574,7 @@ function endRun(): void {
   // auf einmal oeffnen, wenn die Zielzahl dadurch ueberschritten wird.
   refreshUnlocked();
   for (let n = vorher; n < state.unlocked; n++) {
-    erfolge.push({ text: `Level ${n + 1} · ${ARENAS[n].name} freigeschaltet`, haupt: true });
+    erfolge.push({ text: `Level ${n + 1} · ${arenaName(ARENAS[n])} unlocked`, haupt: true });
   }
 
   // Geld gibt es ausschließlich hier — im Lauf selbst ist es nicht sichtbar.
@@ -628,8 +628,8 @@ let shopRows: ShopRow[] = [];
 
 function buildShop(): void {
   elShopHint.textContent = stats.mark.unlocked
-    ? "Tasten 1–5 · Klick markiert"
-    : "Tasten 1–5";
+    ? "Keys 1–5 · click to mark"
+    : "Keys 1–5";
   elShopList.innerHTML = "";
   // Die alten Zeilen sind weg; ihre Druck-Zeitgeber wuerden sonst auf
   // Elementen laufen, die nicht mehr im Dokument haengen.
@@ -690,7 +690,7 @@ function updateShop(): void {
 
     const perk = BALL_UPGRADE[r.kind].perk(lvl, stats);
     const wert =
-      r.kind === "buff" ? "" : `Wert ×${ballValue(r.kind, lvl).toFixed(2)}`;
+      r.kind === "buff" ? "" : `Value ×${ballValue(r.kind, lvl).toFixed(2)}`;
     const effText = [wert, perk].filter(Boolean).join(" · ");
     if (r.zuletzt.eff !== effText) {
       r.zuletzt.eff = effText;
@@ -763,7 +763,7 @@ function sourceInfo(): Array<{ key: SparkSource; name: string; color: string }> 
     { key: "pulse", name: BALL_INFO.pulse.name, color: BALL_INFO.pulse.top },
     { key: "lightning", name: BALL_INFO.lightning.name, color: BALL_INFO.lightning.top },
     { key: "fire", name: BALL_INFO.fire.name, color: BALL_INFO.fire.top },
-    { key: "burn", name: "Brand", color: BALL_INFO.fire.base },
+    { key: "burn", name: "Burn", color: BALL_INFO.fire.base },
     { key: "bumper", name: "Bumper", color: C.bumper },
   ];
 }
@@ -907,7 +907,7 @@ function setResultDetails(offen: boolean, anzahl: number): void {
   resultDetailsOffen = offen;
   elResGridMore.classList.toggle("hidden", !offen);
   elResMore.setAttribute("aria-expanded", String(offen));
-  elResMore.textContent = offen ? "Weniger anzeigen" : `Mehr anzeigen (${anzahl})`;
+  elResMore.textContent = offen ? "Show less" : `Show more (${anzahl})`;
   // Ohne Nachlese waere der Schalter ein Knopf, hinter dem nichts liegt.
   elResMore.classList.toggle("hidden", anzahl === 0);
 }
@@ -947,7 +947,7 @@ function showResult(
   });
   const rechnungAb = 260 + erfolge.length * 190 + 120;
 
-  elResTitle.textContent = gemeistert ? "Level gemeistert!" : "Lauf beendet";
+  elResTitle.textContent = gemeistert ? "Level mastered!" : "Run over";
   elResTitle.classList.toggle("is-plain", !gemeistert);
 
   elResBadges.innerHTML = erfolge
@@ -980,40 +980,40 @@ function showResult(
     // Der Faktor steht im Wert, sein Name in der Ueberschrift: sonst braucht
     // die Zeile zwei Zeilen, waehrend die beiden Nachbarkarten eine haben.
     karte(
-      "Laufzeit · Ausdauer",
+      "Run time · Endurance",
       `${run.elapsed.toFixed(1)} s`,
       `×${payout.endurance.toFixed(2)}`
     ),
     karte(
-      "Pegs abgedeckt",
+      "Pegs covered",
       `${machine.runCovered} / ${machine.pegTotal}`,
-      `Ziel ${unlockGoal(run.arena)}`
+      `Goal ${unlockGoal(run.arena)}`
     ),
-    karte("Funken verdient", `${currencyIcon("spark")} ${fmt(payout.sparks)}`),
+    karte("Sparks earned", `${currencyIcon("spark")} ${fmt(payout.sparks)}`),
   ];
 
   const mehr: string[] = [
-    karte("Pegs getroffen", `${st.pegHits}`, `${currencyIcon("spark")} ${fmt(kugelFunken)}`),
-    karte("Kugel-Stufen gekauft", `${run.upgrades}`),
-    karte("Bumper", `${st.bumperHits}`, `${currencyIcon("spark")} ${fmt(st.sparks.bumper)}`),
-    karte("Lebenszeit geheilt", `+${run.healed.toFixed(1)} s`),
-    karte("Kugeln verloren", `${st.drains}`),
+    karte("Peg hits", `${st.pegHits}`, `${currencyIcon("spark")} ${fmt(kugelFunken)}`),
+    karte("Ball levels bought", `${run.upgrades}`),
+    karte("Bumper hits", `${st.bumperHits}`, `${currencyIcon("spark")} ${fmt(st.sparks.bumper)}`),
+    karte("Life time healed", `+${run.healed.toFixed(1)} s`),
+    karte("Balls lost", `${st.drains}`),
     // Reine Kennzahl, kein Ziel mehr — deshalb ohne Vorgabe darunter.
     karte(
-      "Feld voll nach",
+      "Field full after",
       machine.runFullAt === null ? "—" : `${machine.runFullAt.toFixed(1)} s`
     ),
   ];
-  if (st.pulses > 0) mehr.push(karte("Pulse ausgelöst", `${st.pulses}`, `${st.pulseHits} Pegs`));
-  if (st.strikes > 0) mehr.push(karte("Blitzeinschläge", `${st.strikes}`, `${st.strikeHits} Pegs`));
-  if (st.ignites > 0) mehr.push(karte("Pegs entzündet", `${st.ignites}`, `${currencyIcon("spark")} ${fmt(st.sparks.burn)}`));
-  if (st.buffsApplied > 0) mehr.push(karte("Buffs gesetzt", `${st.buffsApplied}`));
+  if (st.pulses > 0) mehr.push(karte("Pulses fired", `${st.pulses}`, `${st.pulseHits} pegs`));
+  if (st.strikes > 0) mehr.push(karte("Lightning strikes", `${st.strikes}`, `${st.strikeHits} pegs`));
+  if (st.ignites > 0) mehr.push(karte("Pegs ignited", `${st.ignites}`, `${currencyIcon("spark")} ${fmt(st.sparks.burn)}`));
+  if (st.buffsApplied > 0) mehr.push(karte("Buffs applied", `${st.buffsApplied}`));
   if (machine.barrenTotal > 0) {
     mehr.push(
-      karte("Barren zerschlagen", `${st.barrenBroken} / ${machine.barrenTotal}`, `${st.barrenHits} Treffer`)
+      karte("Ingots smashed", `${st.barrenBroken} / ${machine.barrenTotal}`, `${st.barrenHits} hits`)
     );
   }
-  if (run.shards > 0) mehr.push(karte("Splitter gesammelt", `${currencyIcon("shard")} ${fmt(run.shards)}`));
+  if (run.shards > 0) mehr.push(karte("Shards collected", `${currencyIcon("shard")} ${fmt(run.shards)}`));
 
   elResGrid.innerHTML = kern.join("");
   elResGridMore.innerHTML = mehr.join("");
@@ -1030,12 +1030,12 @@ function showResult(
 
   elResPayout.innerHTML =
     zeile(
-      "Funken",
-      `${currencyIcon("spark")} ${fmt(payout.sparks)} × ${(stats.moneyPerSpark * 100).toFixed(0)} %`,
+      "Sparks",
+      `${currencyIcon("spark")} ${fmt(payout.sparks)} × ${(stats.moneyPerSpark * 100).toFixed(0)}%`,
       `${currencyIcon("money")} ${fmt(payout.fromSparks)}`
     ) +
     zeile(
-      "Abgedeckte Pegs",
+      "Covered pegs",
       `${payout.newPegs} × ${fmt(stats.pegBounty)}`,
       `${currencyIcon("money")} ${fmt(payout.fromPegs)}`
     ) +
@@ -1043,7 +1043,7 @@ function showResult(
     // gab — in den ersten beiden Leveln gibt es die Zeile nicht.
     (machine.barrenTotal > 0
       ? zeile(
-          "Zerschlagene Barren",
+          "Smashed ingots",
           `${payout.barren} × ${fmt(BARREN_BOUNTY)}`,
           `${currencyIcon("money")} ${fmt(payout.fromBarren)}`
         )
@@ -1052,8 +1052,8 @@ function showResult(
     // Baum-Faktor aus `Handelsposten`/`Boerse`. Die Zeile muss das sagen,
     // sonst sucht man den Unterschied vergeblich beim Level.
     zeile(
-      "Faktor",
-      `Level ${run.arena + 1} × Baum ${stats.payMult.toFixed(2)}`,
+      "Multiplier",
+      `Level ${run.arena + 1} × Tree ${stats.payMult.toFixed(2)}`,
       `×${payout.mult.toFixed(2)}`,
       true
     ) +
@@ -1061,8 +1061,8 @@ function showResult(
     // in den Faktor eingerechnet, saehe man nur eine groessere Zahl und
     // wuesste nicht, dass das Durchhalten sie verdient hat.
     zeile(
-      "Ausdauer",
-      `Leerung nach ${run.elapsed.toFixed(1)} s`,
+      "Endurance",
+      `Drain after ${run.elapsed.toFixed(1)} s`,
       `×${payout.endurance.toFixed(2)}`,
       true
     );
@@ -1070,21 +1070,21 @@ function showResult(
   const belohnung = [
     // `reward-value--total` ist der Griff fuer das Hochzaehlen.
     `<div class="reward-item">
-       ${currencyIcon("money", "reward-icon", "Geld")}
+       ${currencyIcon("money", "reward-icon", "Money")}
        <span class="reward-value reward-value--total">${fmt(payout.total)}</span>
      </div>`,
   ];
   if (run.shards > 0) {
     belohnung.push(`<div class="reward-item">
-       ${currencyIcon("shard", "reward-icon", "Splitter")}
+       ${currencyIcon("shard", "reward-icon", "Shards")}
        <span class="reward-value">${fmt(run.shards)}</span>
      </div>`);
   }
   if (kronen > 0) {
     belohnung.push(`<div class="reward-item">
-       ${currencyIcon("crown", "reward-icon", "Krone")}
+       ${currencyIcon("crown", "reward-icon", "Crown")}
        <span class="reward-value">${kronen}</span>
-       <span class="reward-label">${kronen === 1 ? "Krone" : "Kronen"}</span>
+       <span class="reward-label">${kronen === 1 ? "Crown" : "Crowns"}</span>
      </div>`);
   }
   elResReward.innerHTML = belohnung.join("");
@@ -1122,7 +1122,7 @@ function showResult(
             </div>`;
         })
         .join("")
-    : `<div class="src-empty">In diesem Lauf sind keine Funken angefallen.</div>`;
+    : `<div class="src-empty">No Sparks were earned this run.</div>`;
 
   showOverlay(elResult);
 }
@@ -1176,7 +1176,7 @@ function openSelect(): void {
     ARENAS.slice(0, browsableCount()).map((a, i) => ({
       id: String(i),
       label: String(i + 1),
-      title: `Level ${i + 1} · ${a.name}`,
+      title: `Level ${i + 1} · ${arenaName(a)}`,
       locked: !playable(i),
       color: state.completed[i] ? C.amber : undefined,
     })),
@@ -1193,7 +1193,7 @@ function renderSelect(): void {
   const i = state.arena;
   const a = ARENAS[i];
   const offen = playable(i);
-  elSelTitle.textContent = `Level ${i + 1} · ${a.name} · ${a.charakter}`;
+  elSelTitle.textContent = `Level ${i + 1} · ${arenaName(a)} · ${arenaCharakter(a)}`;
   elSelTitle.classList.toggle("is-locked", !offen);
   elSelPrev.disabled = i <= 0;
   elSelNext.disabled = i >= browsableCount() - 1;
@@ -1229,13 +1229,13 @@ function renderSelect(): void {
     ? ""
     : karte(
         "locked",
-        "Gesperrt",
+        "Locked",
         "✖",
-        `Dieses Level verlangt <b>${a.requiredGoals} erf&uuml;llte Ziele</b>. ` +
-          `Du hast <b>${erfuellt}</b>.<br><br>` +
-          `Hol dir in fr&uuml;heren Arenen die offene <b>Meisterschaft</b>, das ` +
-          `<b>Tempo</b> oder die <b>Ausdauer</b> &mdash; alles drei ist dort ` +
-          `leichter, seit du st&auml;rker bist.`,
+        `This level requires <b>${a.requiredGoals} completed ${a.requiredGoals === 1 ? "goal" : "goals"}</b>. ` +
+          `You have <b>${erfuellt}</b>.<br><br>` +
+          `Go back to earlier arenas for any open <b>Mastery</b> or ` +
+          `<b>Endurance</b> goals &mdash; they are ` +
+          `easier there now that you are stronger.`,
         false
       );
 
@@ -1243,59 +1243,59 @@ function renderSelect(): void {
     sperre +
     karte(
       "main",
-      "Freischaltung",
+      "Unlock",
       currencyIcon("crown", "goal-currency-icon"),
-      `Decke <b>${ziel} der ${total} Pegs</b> in einem <b>einzigen Lauf</b> ab.<br>` +
+      `Cover <b>${ziel} of ${total} pegs</b> in a <b>single run</b>.<br>` +
         (letztes
-          ? `Danach gilt dieses Level als bezwungen.`
-          : `Das &ouml;ffnet <b>Level ${i + 2}</b>.`) +
+          ? `After that, this level counts as conquered.`
+          : `That opens <b>Level ${i + 2}</b>.`) +
         `<br>` +
         (state.cleared[i]
-          ? `Die <b>Krone</b> daf&uuml;r hast du bereits.`
-          : `Beim ersten Mal gibt es daf&uuml;r <b>eine Krone</b>.`),
+          ? `You already have the <b>Crown</b> for it.`
+          : `The first time earns you <b>a Crown</b>.`),
       state.cleared[i]
     ) +
     karte(
       "main",
-      "Meisterschaft",
+      "Mastery",
       currencyIcon("sigil", "goal-currency-icon"),
-      `Triff <b>alle ${total} Pegs</b> in einem <b>einzigen Lauf</b>.<br>` +
-        `Nach jedem Lauf erlischt das Feld wieder &mdash; erst der vollst&auml;ndige ` +
-        `Durchgang l&auml;sst es dauerhaft leuchten.<br>` +
+      `Hit <b>all ${total} pegs</b> in a <b>single run</b>.<br>` +
+        `The field goes dark again after every run &mdash; only a complete ` +
+        `run makes it glow for good.<br>` +
         (fertig
-          ? `Das <b>Siegel</b> daf&uuml;r hast du bereits.`
-          : `Beim ersten Mal gibt es daf&uuml;r <b>ein Siegel</b>. Kein Muss: ` +
-            `komm sp&auml;ter mit mehr Kugeln wieder.`),
+          ? `You already have the <b>Seal</b> for it.`
+          : `The first time earns you <b>a Seal</b>. No rush: ` +
+            `come back later with more balls.`),
       fertig
     ) +
     karte(
       "bonus",
-      "Ausdauer",
+      "Endurance",
       currencyIcon("sigil", "goal-currency-icon"),
-      `Halte einen Lauf <b>${a.bonusSurvive} Sekunden</b> am Leben.<br>` +
+      `Keep a run alive for <b>${a.bonusSurvive} seconds</b>.<br>` +
         (state.bonusSurvive[i]
-          ? `Das <b>Siegel</b> daf&uuml;r hast du bereits.`
-          : `Beim ersten Mal gibt es daf&uuml;r <b>ein Siegel</b>.`),
+          ? `You already have the <b>Seal</b> for it.`
+          : `The first time earns you <b>a Seal</b>.`),
       state.bonusSurvive[i]
     ) +
     karte(
       "bonus",
-      "Splitter",
+      "Shards",
       currencyIcon("shard", "goal-currency-icon"),
       i + 1 >= SHARD_FROM_LEVEL
-        ? `Jeder <b>direkte</b> Peg-Bump bringt hier <b>einen Splitter</b>.`
-        : `Ab <b>Level ${SHARD_FROM_LEVEL}</b> bringt jeder direkte Peg-Bump einen <b>Splitter</b>.`,
+        ? `Every <b>direct</b> peg bump here yields <b>one Shard</b>.`
+        : `From <b>Level ${SHARD_FROM_LEVEL}</b> on, every direct peg bump yields a <b>Shard</b>.`,
       i + 1 >= SHARD_FROM_LEVEL
     ) +
     (a.barren.length > 0
       ? karte(
           "bonus",
-          "Barren",
+          "Ingots",
           currencyIcon("money", "goal-currency-icon"),
-          `Hier stehen <b>${a.barren.length} Barren</b>. Zwei <b>direkte</b> Treffer zerschlagen ` +
-            `einen &mdash; Puls, Blitz und Feuer k&ouml;nnen ihm nichts. Jeder zerschlagene Barren ` +
-            `zahlt am Laufende <b>${BARREN_BOUNTY} &times; Levelfaktor</b> Geld.<br>` +
-            `Bleibt eine Kugel auf einem Barren liegen, bricht er nach <b>3 Sekunden</b> von selbst.`,
+          `This arena has <b>${a.barren.length} ${a.barren.length === 1 ? "ingot" : "ingots"}</b>. Two <b>direct</b> hits smash ` +
+            `one &mdash; pulse, lightning and fire can't touch it. Every smashed ingot ` +
+            `pays <b>${BARREN_BOUNTY} &times; level multiplier</b> Money at the end of the run.<br>` +
+            `If a ball comes to rest on an ingot, it breaks on its own after <b>3 seconds</b>.`,
           false
         )
       : "");
@@ -1372,11 +1372,11 @@ function showTooltip(def: TreeNodeDef | null, sx: number, sy: number): void {
    */
   const tippen = document.documentElement.dataset.hud === "schmal";
   let footer: string;
-  if (maxed) footer = `<div class="tt-cost tt-cost--max">${def.max === 1 ? "FREIGESCHALTET" : "MAX"}</div>`;
-  else if (!unlocked) footer = `<div class="tt-cost tt-cost--no">GESPERRT</div>`;
+  if (maxed) footer = `<div class="tt-cost tt-cost--max">${def.max === 1 ? "UNLOCKED" : "MAX"}</div>`;
+  else if (!unlocked) footer = `<div class="tt-cost tt-cost--no">LOCKED</div>`;
   else if (affordable)
-    footer = `<div class="tt-cost tt-cost--ok">${cost === 0 ? "GRATIS" : preis} &nbsp;·&nbsp; ${
-      tippen ? "NOCHMAL TIPPEN" : "KAUFEN"
+    footer = `<div class="tt-cost tt-cost--ok">${cost === 0 ? "FREE" : preis} &nbsp;·&nbsp; ${
+      tippen ? "TAP AGAIN" : "BUY"
     }</div>`;
   else footer = `<div class="tt-cost tt-cost--no">${preis}</div>`;
 
@@ -1569,7 +1569,7 @@ function tick(): void {
       if (run.revives > 0) {
         run.revives--;
         run.life = run.maxLife * REVIVE_FILL;
-        toast(`<b>Zweiter Atem</b> &mdash; noch ${run.revives} in Reserve.`, 3);
+        toast(`<b>Second Wind</b> &mdash; ${run.revives} left in reserve.`, 3);
       } else {
         run.life = 0;
         endRun();
@@ -1642,7 +1642,7 @@ function frame(): void {
     tick();
   } catch (err) {
     debug.lastError = err;
-    console.error("Fehler im Frame:", err);
+    console.error("Frame error:", err);
   }
   schedule();
 }
@@ -1717,15 +1717,15 @@ function updateHud(): void {
       elLifeCover,
       c >= machine.pegTotal
         ? `Pegs ${c} / ${machine.pegTotal} ✓`
-        : `Pegs ${c} / ${machine.pegTotal}  ·  Ziel ${ziel}${c >= ziel ? " ✓" : ""}`
+        : `Pegs ${c} / ${machine.pegTotal}  ·  Goal ${ziel}${c >= ziel ? " ✓" : ""}`
     );
     // Beide Seiten derselben Zahl: die Leerung ist die Bedrohung, die
     // Ausdauer der Lohn dafuer, ihr standgehalten zu haben. Sie stehen
     // nebeneinander, damit man beim Zusehen begreift, dass Durchhalten zahlt.
     setText(
       elLifeDrain,
-      `Leerung ×${drainRate(run.elapsed, stats.drainRamp).toFixed(1)}` +
-        `  ·  Ausdauer ×${enduranceMult(run.elapsed, stats.drainRamp).toFixed(2)}`
+      `Drain ×${drainRate(run.elapsed, stats.drainRamp).toFixed(1)}` +
+        `  ·  Endurance ×${enduranceMult(run.elapsed, stats.drainRamp).toFixed(2)}`
     );
   }
 }
@@ -1789,7 +1789,7 @@ canvas.addEventListener("pointerdown", (e) => {
     if (!run.active || !stats.mark.unlocked) return;
     const kind = machine.clickAt(e.clientX, e.clientY);
     updateShop();
-    if (kind) toast(`<b>${BALL_INFO[kind].name}</b> markiert.`, 2.5);
+    if (kind) toast(`<b>${BALL_INFO[kind].name}</b> marked.`, 2.5);
     return;
   }
   if (state.view !== "tree") return;
@@ -1929,14 +1929,20 @@ function setView(v: "tree" | "run"): void {
   elViewTabs.classList.toggle("hidden", inRun || !essOffen());
   if (inRun) forge.setVisible(false);
   else setReiter(essOffen() ? baumReiter : "tree");
-  elMainBtn.textContent = inRun ? "LAUF BEENDEN" : "SPIELEN";
+  elMainBtn.textContent = inRun ? "END RUN" : "PLAY";
   canvas.style.cursor = inRun ? "default" : "grab";
   // Die Panels kommen von der Seite herein, an der sie sitzen.
   togglePanel(elLifePanel, inRun, "left");
   togglePanel(elShop, inRun, "right");
   if (inRun) {
     const a = ARENAS[run.arena];
-    elArenaTitle.textContent = `ARENA ${a.id + 1} · ${a.name.toUpperCase()}`;
+    // Zwei Teile statt eines Strings: hochkant stehen Nummer und Name
+    // untereinander (siehe style.css), weil die englischen Namen neben dem
+    // Lebensring nicht in eine Zeile passen. Breit bleibt es eine Zeile.
+    elArenaTitle.innerHTML =
+      `<span class="arena-title-num">ARENA ${a.id + 1}</span>` +
+      `<span class="arena-title-sep"> · </span>` +
+      `<span class="arena-title-name">${arenaName(a).toUpperCase()}</span>`;
   }
   // Der Titel bringt sein eigenes translateX(-50%) mit.
   togglePanel(elArenaTitle, inRun, "top", "translateX(-50%)");
@@ -1976,22 +1982,24 @@ document.getElementById("closeMigrate")!.addEventListener("click", () => {
 });
 
 function zeigeUmrechnung(u: Umrechnung): void {
-  const zeile = (c: Parameters<typeof currencyIcon>[0], n: number, was: string) =>
-    `<p class="setting-hint">${currencyIcon(c)} <b>${fmt(n)} ${CURRENCY[c].name}</b> &mdash; ${was}</p>`;
+  // Einzahl und Mehrzahl stehen hier ausgeschrieben: `CURRENCY[c].name` ist
+  // die Mehrzahl, und „1 Crowns" liest sich falsch.
+  const zeile = (c: Parameters<typeof currencyIcon>[0], n: number, eins: string, was: string) =>
+    `<p class="setting-hint">${currencyIcon(c)} <b>${fmt(n)} ${n === 1 ? eins : CURRENCY[c].name}</b> &mdash; ${was}</p>`;
 
   document.getElementById("migrateBody")!.innerHTML =
     `<p class="setting-hint">` +
-    `Die Ziele zahlen jetzt andere W&auml;hrungen. Die <b>Freischaltung</b> einer ` +
-    `Arena bringt eine <b>Krone</b>, <b>Meisterschaft</b> und <b>Ausdauer</b> je ` +
-    `ein <b>Siegel</b>. Das Tempo-Ziel gibt es nicht mehr.` +
+    `Goals now pay different currencies. <b>Unlocking</b> an ` +
+    `arena earns a <b>Crown</b>; <b>Mastery</b> and <b>Endurance</b> each earn ` +
+    `a <b>Seal</b>. The Speed goal no longer exists.` +
     `</p>` +
-    zeile("crown", u.crowns, "neu berechnet aus deinen freigespielten Arenen, abz&uuml;glich dessen, was du bereits ausgegeben hast") +
-    zeile("sigil", u.sigils, "f&uuml;r jede Meisterschaft und jedes Ausdauer-Ziel, das du schon hast") +
+    zeile("crown", u.crowns, "Crown", "recalculated from the arenas you have cleared, minus what you have already spent") +
+    zeile("sigil", u.sigils, "Seal", "for every Mastery and Endurance goal you already have") +
     `<p class="setting-hint">` +
     (u.fehlbetrag > 0
-      ? `Du hast ${u.fehlbetrag} Kronen mehr ausgegeben, als die neue Rechnung ergeben ` +
-        `h&auml;tte. <b>Behalten darfst du alles</b> &mdash; es wird nichts zur&uuml;ckgenommen.`
-      : `Alle gekauften Knoten bleiben unver&auml;ndert.`) +
+      ? `You spent ${u.fehlbetrag} ${u.fehlbetrag === 1 ? "Crown" : "Crowns"} more than the new calculation ` +
+        `would have given you. <b>You get to keep everything</b> &mdash; nothing is taken back.`
+      : `All purchased nodes stay exactly as they were.`) +
     `</p>`;
   showOverlay(elMigrate);
 }
@@ -2017,8 +2025,8 @@ const bankBtns = Array.from(
 function renderAudioSettings(): void {
   const pct = Math.round(audio.getVolume() * 100);
   elVol.value = String(pct);
-  elVolValue.innerHTML = `${pct}&nbsp;%`;
-  elMute.textContent = audio.isMuted() ? "Ton an" : "Ton aus";
+  elVolValue.textContent = `${pct}%`;
+  elMute.textContent = audio.isMuted() ? "Unmute" : "Mute";
   elModalCard.classList.toggle("is-muted", audio.isMuted());
   for (const b of bankBtns) b.classList.toggle("is-on", b.dataset.bank === audio.getBank());
 }

@@ -1678,3 +1678,53 @@ const frei = FREI.map((f) => f()).sort(
 export const ARENAS: ArenaDef[] = [...ERZAEHLT.map((f) => f()), ...frei, herzkammer()].map(
   (a, i) => ({ ...a, id: i, ...goals(i), unlockCover: Math.min(COVER[i], a.coverMax ?? 1) })
 );
+
+/* ------------------------------------------------------- Anzeigenamen --- */
+
+/**
+ * Englische Anzeige fuer Name und Charakter, nach dem deutschen `name`.
+ *
+ * `name` und `charakter` bleiben deutsch und werden NICHT uebersetzt: `name`
+ * ist zugleich der Gleichstand-Brecher in der Sortierung von `FREI` oben.
+ * Aendert sich dort ein Wort, kann eine Arena den Platz tauschen — und die
+ * Ziele in jedem Spielstand haengen am Platz, nicht am Motiv. Die Werkzeuge
+ * in tools/ geben weiter die deutschen Namen aus.
+ */
+const ANZEIGE: Record<string, readonly [name: string, charakter: string]> = {
+  Kammer: ["Chamber", "the box"],
+  Schacht: ["Shaft", "the plunge"],
+  Kessel: ["Cauldron", "the belly"],
+  Turm: ["Tower", "the floors"],
+  Halle: ["Hall", "the expanse"],
+  Kaskade: ["Cascade", "the slope"],
+  Schlund: ["Maw", "the squeeze"],
+  Kathedrale: ["Cathedral", "the height"],
+  Abgrund: ["Abyss", "the rift"],
+  Mahlwerk: ["Grinder", "the motion"],
+  Zitadelle: ["Citadel", "the layers"],
+  Kern: ["Core", "the density"],
+  Wabe: ["Honeycomb", "the abundance"],
+  Geflecht: ["Lattice", "the cross"],
+  Karussell: ["Carousel", "the circle"],
+  Sternwarte: ["Observatory", "the rays"],
+  Schmelze: ["Meltdown", "the decay"],
+  Irrgarten: ["Maze", "the path"],
+  Uhrwerk: ["Clockwork", "the beat"],
+  Orgel: ["Organ", "the pipes"],
+  Walzwerk: ["Rolling Mill", "the track"],
+  Krater: ["Crater", "the bowl"],
+  Dornenfeld: ["Thornfield", "the spikes"],
+  Katakombe: ["Catacomb", "the chambers"],
+  Wirbel: ["Vortex", "the pull"],
+  Hochofen: ["Blast Furnace", "the embers"],
+  Konstellation: ["Constellation", "the islands"],
+  Presse: ["Press", "the stroke"],
+  Kaleidoskop: ["Kaleidoscope", "the reflection"],
+  Herzkammer: ["Heart Chamber", "the return"],
+};
+
+/** Anzeigename einer Arena. Faellt auf `name` zurueck, falls einer fehlt. */
+export const arenaName = (a: ArenaDef): string => ANZEIGE[a.name]?.[0] ?? a.name;
+
+/** Anzeige des Raumgefuehls. Faellt auf `charakter` zurueck. */
+export const arenaCharakter = (a: ArenaDef): string => ANZEIGE[a.name]?.[1] ?? a.charakter;

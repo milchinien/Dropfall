@@ -2039,16 +2039,32 @@ html[data-hud="schmal"] .panel--views {
  * grossen Knopf, nicht der Anzeige.
  */
 html[data-hud="schmal"] .arena-title {
-  top: calc(max(8px, env(safe-area-inset-top)) + 52px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 55px);
   left: 12px;
-  right: 150px;
+  /* Der Lebensring daneben ist rund 215 px breit. Mit 150 px lag die
+     rechte Haelfte des Titels UNTER ihm, und die Auslassungspunkte waren nie
+     zu sehen. */
+  right: 230px;
   bottom: auto;
   transform: none;
-  font-size: 14px;
-  letter-spacing: 0.1em;
-  line-height: 42px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  line-height: 18px;
   opacity: 0.8;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hochkant: Nummer oben, Name darunter. „ARENA 25 · CONSTELLATION" passt
+   neben dem Lebensring in keine Zeile, getrennt passt jeder Name. */
+html[data-hud="schmal"] .arena-title-sep {
+  display: none;
+}
+
+html[data-hud="schmal"] .arena-title-num,
+html[data-hud="schmal"] .arena-title-name {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
 }

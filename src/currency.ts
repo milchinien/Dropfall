@@ -39,11 +39,11 @@ export interface CurrencyInfo {
 }
 
 export const CURRENCY: Record<Currency, CurrencyInfo> = {
-  spark: { name: "Funken", glyph: "✦", icon: "assets/currency-icons/spark.png", color: "#2ed3ae", css: "glyph--teal" },
-  money: { name: "Geld", glyph: "◆", icon: "assets/currency-icons/money.png", color: "#edb443", css: "glyph--amber" },
-  shard: { name: "Splitter", glyph: "◈", icon: "assets/currency-icons/shard.png", color: "#6fa8ff", css: "glyph--blue" },
-  crown: { name: "Krone", glyph: "♛", icon: "assets/currency-icons/crown.png", color: "#e4348f", css: "glyph--magenta" },
-  sigil: { name: "Siegel", glyph: "❈", icon: "assets/currency-icons/sigil.png", color: "#e8e4f2", css: "glyph--silver" },
+  spark: { name: "Sparks", glyph: "✦", icon: "assets/currency-icons/spark.png", color: "#2ed3ae", css: "glyph--teal" },
+  money: { name: "Money", glyph: "◆", icon: "assets/currency-icons/money.png", color: "#edb443", css: "glyph--amber" },
+  shard: { name: "Shards", glyph: "◈", icon: "assets/currency-icons/shard.png", color: "#6fa8ff", css: "glyph--blue" },
+  crown: { name: "Crowns", glyph: "♛", icon: "assets/currency-icons/crown.png", color: "#e4348f", css: "glyph--magenta" },
+  sigil: { name: "Seals", glyph: "❈", icon: "assets/currency-icons/sigil.png", color: "#e8e4f2", css: "glyph--silver" },
 };
 
 /**

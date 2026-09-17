@@ -42,35 +42,35 @@ export interface BallInfo {
 export const BALL_INFO: Record<BallKind, BallInfo> = {
   white: {
     kind: "white",
-    name: "Weiße Kugel",
+    name: "White Ball",
     top: "#f4f1fa",
     base: "#9b93b0",
     glyph: "",
   },
   pulse: {
     kind: "pulse",
-    name: "Puls-Kugel",
+    name: "Pulse Ball",
     top: "#2ed3ae",
     base: "#1b9c80",
     glyph: "◎",
   },
   lightning: {
     kind: "lightning",
-    name: "Blitz-Kugel",
+    name: "Lightning Ball",
     top: "#6fa8ff",
     base: "#3c6dc0",
     glyph: "⚡",
   },
   fire: {
     kind: "fire",
-    name: "Feuer-Kugel",
+    name: "Fire Ball",
     top: "#ff7a3d",
     base: "#c04d18",
     glyph: "▲",
   },
   buff: {
     kind: "buff",
-    name: "Buff-Kugel",
+    name: "Buff Ball",
     top: "#e4348f",
     base: "#a61f66",
     glyph: "✦",
@@ -209,7 +209,7 @@ export const BALL_UPGRADE: Record<BallKind, BallUpgradeDef> = {
     growth: 1.5,
     value: (l) => 1 + 0.3 * l,
     perk: (_l, s) =>
-      s.white.comboCap > 0 ? `Serie bis ${s.white.comboCap}` : "",
+      s.white.comboCap > 0 ? `Streak up to ${s.white.comboCap}` : "",
   },
   pulse: {
     base: 16,
@@ -220,7 +220,7 @@ export const BALL_UPGRADE: Record<BallKind, BallUpgradeDef> = {
     // Radius steht als Anteil da, weil er von der Arena abhaengt und die
     // Leiste keine kennt — die absolute Zahl waere je Level eine andere.
     perk: (l, s) =>
-      `alle ${pulseInterval(l, s.pulse).toFixed(2)} s · Radius ${Math.round(pulseRadiusShare(l, s.pulse) * 100)} %`,
+      `every ${pulseInterval(l, s.pulse).toFixed(2)} s · radius ${Math.round(pulseRadiusShare(l, s.pulse) * 100)}%`,
   },
   lightning: {
     base: 20,
@@ -228,7 +228,7 @@ export const BALL_UPGRADE: Record<BallKind, BallUpgradeDef> = {
     // Stufe zahlt zusaetzlich Ausloesechance und Ziele.
     value: (l) => 1 + 0.1 * l,
     perk: (l, s) =>
-      `${Math.round(lightningChance(l, s.bolt) * 100)} % · ${Math.round(lightningTargetShare(l, s.bolt) * 100)} % Ziele`,
+      `${Math.round(lightningChance(l, s.bolt) * 100)}% · ${Math.round(lightningTargetShare(l, s.bolt) * 100)}% targets`,
   },
   fire: {
     base: 20,
@@ -236,7 +236,7 @@ export const BALL_UPGRADE: Record<BallKind, BallUpgradeDef> = {
     // Stufe zahlt zusaetzlich Brenndauer und Stapel.
     value: (l) => 1 + 0.12 * l,
     perk: (l, s) =>
-      `${fireDuration(l, s.fire).toFixed(1)} s Brand · ${fireStacks(l)} Stapel`,
+      `${fireDuration(l, s.fire).toFixed(1)} s burn · ${fireStacks(l)} stacks`,
   },
   buff: {
     base: 24,

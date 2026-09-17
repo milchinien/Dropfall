@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -27,7 +27,7 @@
     <style id="miwale-loader-style">#miwale-loader{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:radial-gradient(circle at 50% 22%,#12536b 0,#082c3b 42%,#03151e 100%);color:#edf9fc;font-family:"Segoe UI",system-ui,sans-serif;transition:opacity .45s ease,visibility .45s ease}#miwale-loader.mw-done{opacity:0;visibility:hidden;pointer-events:none}.mw-loader-inner{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}.mw-loader-mark{font-size:clamp(42px,8vw,76px);font-weight:800;letter-spacing:-.07em;line-height:1}.mw-loader-mark span{color:#7fe0ee}.mw-loader-copy{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,249,252,.65)}@media(prefers-reduced-motion:reduce){#miwale-loader{transition:none}}</style>
   </head>
   <body>
-    <div id="miwale-loader" role="status" aria-label="Spiel wird geladen">
+    <div id="miwale-loader" role="status" aria-label="Loading game">
       <div class="mw-loader-inner">
         <div class="mw-loader-mark">mi<span>wa</span>le</div>
         <div class="ldr ldr--md ldr--on-dark ldr--bare">
@@ -38,7 +38,7 @@
             <div class="ldr__ring ldr__ring--accent"></div>
           </div>
         </div>
-        <div class="mw-loader-copy">Spiel wird geladen</div>
+        <div class="mw-loader-copy">Loading game</div>
       </div>
     </div>
     <canvas id="stage"></canvas>
@@ -47,11 +47,11 @@
       <!-- Waehrungen. Im Lauf zaehlen nur Funken (und Splitter ab Level 3),
            im Skill Tree nur das Bleibende — die Zeilen schalten sich um. -->
       <div class="panel panel--res">
-        <div class="res-row" id="rowMoney"><img class="currency-icon" src="./assets/currency-icons/money.png" alt="Geld"><span id="money">0</span></div>
-        <div class="res-row" id="rowCrowns"><img class="currency-icon" src="./assets/currency-icons/crown.png" alt="Kronen"><span id="crowns">0</span></div>
-        <div class="res-row" id="rowSigils"><img class="currency-icon" src="./assets/currency-icons/sigil.png" alt="Siegel"><span id="sigils">0</span></div>
-        <div class="res-row" id="rowShards"><img class="currency-icon" src="./assets/currency-icons/shard.png" alt="Splitter"><span id="shards">0</span></div>
-        <div class="res-row" id="rowSparks"><img class="currency-icon" src="./assets/currency-icons/spark.png" alt="Funken"><span id="sparks">0</span></div>
+        <div class="res-row" id="rowMoney"><img class="currency-icon" src="./assets/currency-icons/money.png" alt="Money"><span id="money">0</span></div>
+        <div class="res-row" id="rowCrowns"><img class="currency-icon" src="./assets/currency-icons/crown.png" alt="Crowns"><span id="crowns">0</span></div>
+        <div class="res-row" id="rowSigils"><img class="currency-icon" src="./assets/currency-icons/sigil.png" alt="Seals"><span id="sigils">0</span></div>
+        <div class="res-row" id="rowShards"><img class="currency-icon" src="./assets/currency-icons/shard.png" alt="Shards"><span id="shards">0</span></div>
+        <div class="res-row" id="rowSparks"><img class="currency-icon" src="./assets/currency-icons/spark.png" alt="Sparks"><span id="sparks">0</span></div>
         <div class="res-row res-row--sub" id="rowRate"><span class="glyph glyph--teal">&#9650;</span><span id="rate">0 /s</span></div>
       </div>
 
@@ -59,12 +59,12 @@
            eine Ansicht gibt — vorher waere ein Reiter ohne Auswahl nur Zierat. -->
       <div class="panel panel--views hidden" id="viewTabs">
         <button class="view-tab is-on" id="viewTree">Skill Tree</button>
-        <button class="view-tab" id="viewForge">Esse</button>
+        <button class="view-tab" id="viewForge">Forge</button>
       </div>
 
-      <div class="arena-title hidden" id="arenaTitle">ARENA 1 &middot; KAMMER</div>
+      <div class="arena-title hidden" id="arenaTitle">ARENA 1 &middot; CHAMBER</div>
 
-      <button class="icon-btn" id="settings" title="Einstellungen">&#9881;</button>
+      <button class="icon-btn" id="settings" title="Settings" aria-label="Settings">&#9881;</button>
 
       <!-- Lebensanzeige, nur w&auml;hrend eines Laufs. Der Ring ist dasselbe
            Bauteil wie der Ladeschirm, nur im Wert-Modus; die Restzeit steht
@@ -73,22 +73,22 @@
       <div class="panel panel--life hidden" id="lifePanel">
         <div class="life-ring" id="lifeRing"></div>
         <div class="life-info">
-          <span class="life-label">LEBEN</span>
+          <span class="life-label">LIFE</span>
           <span id="lifeCover">Pegs 0 / 0</span>
-          <span id="lifeDrain">Leerung &times;1.0</span>
+          <span id="lifeDrain">Drain &times;1.0</span>
         </div>
       </div>
 
       <!-- Kugel-Upgrades, nur w&auml;hrend eines Laufs. Gekauft wird mit Funken. -->
       <div class="panel panel--shop hidden" id="shopPanel">
         <div class="shop-head">
-          <span class="shop-title">KUGEL-UPGRADES</span>
-          <span class="shop-hint">Tasten 1&ndash;5</span>
+          <span class="shop-title">BALL UPGRADES</span>
+          <span class="shop-hint">Keys 1&ndash;5</span>
         </div>
         <div id="shopList"></div>
       </div>
 
-      <button class="big-btn" id="mainBtn">SPIELEN</button>
+      <button class="big-btn" id="mainBtn">PLAY</button>
     </div>
 
     <div class="tooltip hidden" id="tooltip"></div>
@@ -98,26 +98,26 @@
     <div class="overlay hidden" id="select">
       <div class="select-card">
         <div class="select-left">
-          <h3 class="select-kicker">Spielmodus</h3>
-          <div class="select-mode">Regul&auml;r</div>
-          <p class="select-modedesc">Die Hauptkampagne des Spiels.</p>
+          <h3 class="select-kicker">Game mode</h3>
+          <div class="select-mode">Regular</div>
+          <p class="select-modedesc">The main campaign.</p>
 
-          <h3 class="select-kicker">Ziele<span class="goal-tally" id="goalTally"></span></h3>
+          <h3 class="select-kicker">Goals<span class="goal-tally" id="goalTally"></span></h3>
           <div id="goalList"></div>
         </div>
 
         <div class="select-right">
           <div class="select-title" id="selTitle">Level 1</div>
           <div class="select-preview">
-            <button class="prev-nav prev-nav--left" id="selPrev">&#8592;</button>
+            <button class="prev-nav prev-nav--left" id="selPrev" aria-label="Previous level">&#8592;</button>
             <canvas id="selCanvas" width="360" height="440"></canvas>
-            <button class="prev-nav prev-nav--right" id="selNext">&#8594;</button>
+            <button class="prev-nav prev-nav--right" id="selNext" aria-label="Next level">&#8594;</button>
           </div>
           <!-- Levelleiste: der gleitende Pill zeigt, wo man steht -->
           <div class="select-tabs" id="selTabs"></div>
 
           <div class="select-actions">
-            <button class="big-btn big-btn--inline" id="selClose">Schlie&szlig;en</button>
+            <button class="big-btn big-btn--inline" id="selClose">Close</button>
             <button class="big-btn big-btn--inline big-btn--go" id="selStart">Start</button>
           </div>
         </div>
@@ -128,7 +128,7 @@
     <div class="overlay hidden" id="result">
       <div class="result-card">
         <div class="result-main">
-          <h2 class="result-title" id="resTitle">Lauf beendet</h2>
+          <h2 class="result-title" id="resTitle">Run over</h2>
           <div class="result-badges" id="resBadges"></div>
           <!-- Die Kernkarten stehen immer da, alles Weitere klappt auf. Nach
                einem Lauf will man drei Dinge sofort wissen; der Rest ist
@@ -141,24 +141,24 @@
               type="button"
               aria-expanded="false"
               aria-controls="resGridMore"
-            >Mehr anzeigen</button>
+            >Show more</button>
             <div class="result-grid result-grid--more hidden" id="resGridMore"></div>
           </div>
 
           <div class="result-reward">
-            <div class="result-kicker">Gesamtbelohnung</div>
+            <div class="result-kicker">Total reward</div>
             <div class="payout" id="resPayout"></div>
             <div class="result-reward-box" id="resReward"></div>
           </div>
 
           <div class="result-actions">
-            <button class="big-btn big-btn--inline big-btn--go" id="resAgain">Erneut spielen</button>
+            <button class="big-btn big-btn--inline big-btn--go" id="resAgain">Play again</button>
             <button class="big-btn big-btn--inline" id="resUpgrades">Upgrades</button>
           </div>
         </div>
 
         <div class="result-side">
-          <h3 class="result-sidetitle">Funken nach Quelle</h3>
+          <h3 class="result-sidetitle">Sparks by source</h3>
           <div id="resSources"></div>
         </div>
       </div>
@@ -171,7 +171,7 @@
          haelt sich hier laenger auf und wechselt bewusst hin und zurueck. -->
     <div class="forge hidden" id="forge">
       <div class="forge-inner">
-        <h2 class="forge-title">Die Esse</h2>
+        <h2 class="forge-title">The Forge</h2>
         <p class="forge-sub" id="forgeSub"></p>
         <div class="forge-balls" id="forgeBalls"></div>
         <div class="forge-elements" id="forgeElements"></div>
@@ -180,19 +180,19 @@
 
     <div class="modal hidden" id="migrate">
       <div class="modal-card">
-        <h2>Dein Spielstand wurde umgestellt</h2>
-        <p class="modal-sub">Nichts ging verloren &mdash; alles Gekaufte ist geblieben.</p>
+        <h2>Your save has been converted</h2>
+        <p class="modal-sub">Nothing was lost &mdash; everything you bought is still yours.</p>
         <div id="migrateBody"></div>
-        <button class="ghost-btn" id="closeMigrate">Weiter</button>
+        <button class="ghost-btn" id="closeMigrate">Continue</button>
       </div>
     </div>
 
     <div class="modal hidden" id="modal">
       <div class="modal-card">
-        <h2>Einstellungen</h2>
+        <h2>Settings</h2>
         <p class="modal-sub">Dropfall v0.4</p>
 
-        <div class="tabs" id="setTabs" role="tablist" aria-label="Einstellungen">
+        <div class="tabs" id="setTabs" role="tablist" aria-label="Settings">
           <button
             class="tab is-on"
             id="tab-grafik"
@@ -200,7 +200,7 @@
             aria-controls="pane-grafik"
             aria-selected="true"
           >
-            Grafik
+            Graphics
           </button>
           <button
             class="tab"
@@ -220,91 +220,91 @@
             aria-selected="false"
             tabindex="-1"
           >
-            Spiel
+            Game
           </button>
         </div>
 
         <div class="pane" id="pane-grafik" role="tabpanel" aria-labelledby="tab-grafik">
           <div class="setting">
-            <div class="setting-row"><span class="setting-label">Aussehen</span></div>
-            <div class="seg" id="skin" role="group" aria-label="Aussehen">
-              <button class="seg-btn" data-skin="herbst">Herbst</button>
-              <button class="seg-btn" data-skin="klassisch">Klassisch</button>
+            <div class="setting-row"><span class="setting-label">Look</span></div>
+            <div class="seg" id="skin" role="group" aria-label="Look">
+              <button class="seg-btn" data-skin="herbst">Autumn</button>
+              <button class="seg-btn" data-skin="klassisch">Classic</button>
             </div>
             <p class="setting-hint">
-              Beide Fassungen sind derselbe Spielstand &mdash; es &auml;ndert sich nur
-              das Bild, nie eine Zahl.
+              Both looks share the same save &mdash; only the visuals change,
+              never a number.
             </p>
           </div>
 
           <div class="setting" id="setHimmel">
-            <div class="setting-row"><span class="setting-label">Abendhimmel</span></div>
-            <div class="seg" id="himmel" role="group" aria-label="Abendhimmel">
-              <button class="seg-btn" data-himmel="baender">B&auml;nder</button>
-              <button class="seg-btn" data-himmel="einfarbig">Einfarbig</button>
-              <button class="seg-btn" data-himmel="verlauf">Verlauf</button>
+            <div class="setting-row"><span class="setting-label">Evening sky</span></div>
+            <div class="seg" id="himmel" role="group" aria-label="Evening sky">
+              <button class="seg-btn" data-himmel="baender">Bands</button>
+              <button class="seg-btn" data-himmel="einfarbig">Solid</button>
+              <button class="seg-btn" data-himmel="verlauf">Gradient</button>
             </div>
           </div>
 
           <div class="setting" id="setLaub">
-            <div class="setting-row"><span class="setting-label">Laub</span></div>
-            <div class="seg" id="laub" role="group" aria-label="Laub">
-              <button class="seg-btn" data-laub="aus">Aus</button>
-              <button class="seg-btn" data-laub="wenig">Wenig</button>
+            <div class="setting-row"><span class="setting-label">Leaves</span></div>
+            <div class="seg" id="laub" role="group" aria-label="Leaves">
+              <button class="seg-btn" data-laub="aus">Off</button>
+              <button class="seg-btn" data-laub="wenig">Few</button>
               <button class="seg-btn" data-laub="normal">Normal</button>
             </div>
           </div>
 
           <div class="setting" id="setBewegung">
-            <div class="setting-row"><span class="setting-label">Bewegung</span></div>
-            <div class="seg" id="bewegung" role="group" aria-label="Bewegung">
-              <button class="seg-btn" data-bewegung="an">An</button>
-              <button class="seg-btn" data-bewegung="aus">Aus</button>
+            <div class="setting-row"><span class="setting-label">Motion</span></div>
+            <div class="seg" id="bewegung" role="group" aria-label="Motion">
+              <button class="seg-btn" data-bewegung="an">On</button>
+              <button class="seg-btn" data-bewegung="aus">Off</button>
             </div>
             <p class="setting-hint">
-              Fallendes Laub und wandernde Strahlen. Aus l&auml;sst alles stillstehen.
+              Falling leaves and drifting rays. Off keeps everything still.
             </p>
           </div>
 
           <p class="setting-hint pane-note" id="skinNote">
-            Himmel, Laub und Bewegung geh&ouml;ren zum Herbst und sind im klassischen
-            Aussehen ohne Wirkung.
+            Sky, leaves and motion belong to the Autumn look and have no effect
+            in the Classic look.
           </p>
         </div>
 
         <div class="pane hidden" id="pane-audio" role="tabpanel" aria-labelledby="tab-audio">
           <div class="setting">
             <div class="setting-row">
-              <label class="setting-label" for="vol">Lautst&auml;rke</label>
-              <span class="setting-value" id="volValue">70&nbsp;%</span>
+              <label class="setting-label" for="vol">Volume</label>
+              <span class="setting-value" id="volValue">70%</span>
             </div>
             <input class="slider" type="range" id="vol" min="0" max="100" step="1" value="70" />
           </div>
-          <button class="ghost-btn" id="mute">Ton aus</button>
+          <button class="ghost-btn" id="mute">Mute</button>
 
           <div class="setting">
             <div class="setting-row">
-              <span class="setting-label">Klangbank</span>
+              <span class="setting-label">Sound bank</span>
             </div>
-            <div class="seg" id="bank" role="group" aria-label="Klangbank">
-              <button class="seg-btn" data-bank="assets">Aufnahmen</button>
-              <button class="seg-btn" data-bank="generated">Synthetisch</button>
+            <div class="seg" id="bank" role="group" aria-label="Sound bank">
+              <button class="seg-btn" data-bank="assets">Recorded</button>
+              <button class="seg-btn" data-bank="generated">Synthetic</button>
             </div>
             <p class="setting-hint">
-              Hover und Herzschlag klingen in beiden gleich.
+              Hover and heartbeat sound the same in both.
             </p>
           </div>
         </div>
 
         <div class="pane hidden" id="pane-spiel" role="tabpanel" aria-labelledby="tab-spiel">
-          <button class="ghost-btn" id="wipe">Spielstand l&ouml;schen</button>
+          <button class="ghost-btn" id="wipe">Delete save</button>
           <p class="setting-hint">
-            Setzt Baum, W&auml;hrungen und Ziele zur&uuml;ck. Das gew&auml;hlte Aussehen
-            bleibt &mdash; es h&auml;ngt nicht am Spielstand.
+            Resets the tree, currencies and goals. Your chosen look stays &mdash;
+            it isn't part of the save.
           </p>
         </div>
 
-        <button class="ghost-btn" id="closeModal">Schlie&szlig;en</button>
+        <button class="ghost-btn" id="closeModal">Close</button>
       </div>
     </div>
     </div>

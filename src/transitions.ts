@@ -287,7 +287,7 @@ export class SmoothTabs {
     this.root = document.createElement("div");
     this.root.className = "smooth-tabs";
     this.root.setAttribute("role", "tablist");
-    this.root.setAttribute("aria-label", opts.ariaLabel ?? "Auswahl");
+    this.root.setAttribute("aria-label", opts.ariaLabel ?? "Selection");
     if (opts.activeColor) this.root.style.setProperty("--tab-accent", opts.activeColor);
 
     this.pill = document.createElement("div");

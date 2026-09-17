@@ -70,10 +70,10 @@ export class ForgeView {
     if (this.ziel && !kinds.includes(this.ziel)) this.ziel = null;
 
     this.sub.innerHTML =
-      `Jede Kugel tr&auml;gt <b>genau eine</b> Verzauberung, und jede ist ein ` +
-      `<b>Tausch</b>. Umstecken kostet nichts &mdash; ` +
-      `w&auml;hle eine Kugel, dann ein Element.<br>` +
-      `Du hast ${icon(this.hooks.sigils())}.`;
+      `Each ball carries <b>exactly one</b> enchantment, and each one is a ` +
+      `<b>trade-off</b>. Swapping is free &mdash; ` +
+      `pick a ball, then an element.<br>` +
+      `You have ${icon(this.hooks.sigils())}.`;
 
     this.renderBalls(st, kinds);
     this.renderElements(st);
@@ -90,7 +90,7 @@ export class ForgeView {
         `<div class="forge-ball-name">${BALL_INFO[kind].name}</div>` +
         `<div class="forge-ball-el" style="color:${def ? def.color : "var(--muted)"}">` +
         `<span class="glyph">${def ? def.glyph : "·"}</span>` +
-        `<span>${def ? `${def.name} ${ROEMISCH[st.besessen[el!]?.stufe ?? 1]}` : "ohne"}</span>` +
+        `<span>${def ? `${def.name} ${ROEMISCH[st.besessen[el!]?.stufe ?? 1]}` : "none"}</span>` +
         `</div>`;
       btn.addEventListener("click", () => {
         // Eine bereits gewaehlte Kugel noch einmal anzuklicken nimmt ihre
@@ -130,9 +130,9 @@ export class ForgeView {
         `<span class="forge-el-name">${def.name}</span>` +
         `<span class="forge-el-stufe">` +
         (besitz
-          ? `Stufe ${ROEMISCH[stufe]}${besitz.anzahl > 1 ? ` &middot; ${besitz.anzahl} St&uuml;ck` : ""}` +
-            ` &middot; getragen ${getragenVon(st, id)}/${besitz.anzahl}`
-          : "noch nicht geschmiedet") +
+          ? `Tier ${ROEMISCH[stufe]}${besitz.anzahl > 1 ? ` &middot; ${besitz.anzahl} copies` : ""}` +
+            ` &middot; equipped ${getragenVon(st, id)}/${besitz.anzahl}`
+          : "not forged yet") +
         `</span></div>`;
 
       card.innerHTML =
@@ -146,7 +146,7 @@ export class ForgeView {
 
       if (!besitz) {
         actions.append(
-          this.knopf(`Schmieden ${icon(schmiedeKosten(besessenAnzahl))}`, () => {
+          this.knopf(`Forge ${icon(schmiedeKosten(besessenAnzahl))}`, () => {
             if (!this.hooks.pay(schmiedeKosten(besessenAnzahl))) return false;
             st.besessen[id] = { anzahl: 1, stufe: 1 };
             return true;
@@ -159,8 +159,8 @@ export class ForgeView {
           actions.append(
             this.knopf(
               traegtSchon
-                ? `Von ${BALL_INFO[this.ziel].name} abnehmen`
-                : `Auf ${BALL_INFO[this.ziel].name}`,
+                ? `Remove from ${BALL_INFO[this.ziel].name}`
+                : `Put on ${BALL_INFO[this.ziel].name}`,
               () => stecke(st, this.ziel!, id),
               !kannStecken
             )
@@ -168,7 +168,7 @@ export class ForgeView {
         }
         if (stufe < MAX_STUFE) {
           actions.append(
-            this.knopf(`Stufe ${ROEMISCH[stufe + 1]} ${icon(aufstiegKosten(stufe))}`, () => {
+            this.knopf(`Tier ${ROEMISCH[stufe + 1]} ${icon(aufstiegKosten(stufe))}`, () => {
               if (!this.hooks.pay(aufstiegKosten(stufe))) return false;
               besitz.stufe++;
               return true;
@@ -176,7 +176,7 @@ export class ForgeView {
           );
         }
         actions.append(
-          this.knopf(`Zweites St&uuml;ck ${icon(duplikatKosten(besitz.anzahl))}`, () => {
+          this.knopf(`Extra copy ${icon(duplikatKosten(besitz.anzahl))}`, () => {
             if (!this.hooks.pay(duplikatKosten(besitz.anzahl))) return false;
             besitz.anzahl++;
             return true;

@@ -295,7 +295,7 @@ export class TreeView {
     for (const [id, lvl] of def.req) {
       if (this.hooks.getLevel(id) < lvl) {
         const r = this.byId.get(id);
-        return r ? `Benötigt: ${r.title}${lvl > 1 ? ` (Stufe ${lvl})` : ""}` : null;
+        return r ? `Requires: ${r.title}${lvl > 1 ? ` (level ${lvl})` : ""}` : null;
       }
     }
     return null;

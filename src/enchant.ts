@@ -384,7 +384,7 @@ export interface ElementDef {
   haken: string;
 }
 
-const pct = (v: number) => `${Math.round(v * 100)} %`;
+const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 export const ELEMENTS: Record<ElementId, ElementDef> = {
   wind: {
@@ -392,70 +392,70 @@ export const ELEMENTS: Record<ElementId, ElementDef> = {
     name: "Wind",
     glyph: "≈",
     color: "#8fd6ff",
-    kurz: "Auftrieb. Sie f&auml;llt langsam und wird seitlich getragen.",
+    kurz: "Lift. It falls slowly and drifts sideways.",
     vorteil: (l) =>
-      `Schwerkraft <b>${pct(windSchwerkraft(l))}</b>, Wert <b>&times;${windWert(l).toFixed(2)}</b>. ` +
-      `Sie bleibt lange im Feld und flie&szlig;t viel seltener ab.`,
-    haken: "Sie trifft deutlich seltener und deckt das Feld schlechter ab.",
+      `Gravity <b>${pct(windSchwerkraft(l))}</b>, value <b>&times;${windWert(l).toFixed(2)}</b>. ` +
+      `It stays on the field a long time and drains far less often.`,
+    haken: "It hits much less often and covers the field worse.",
   },
   frost: {
     id: "frost",
     name: "Frost",
     glyph: "❄",
     color: "#a9e4ee",
-    kurz: "Ruhe im Feld. Sie springt kaum und sinkt langsam.",
+    kurz: "Calm. It barely bounces and sinks slowly.",
     vorteil: (l) =>
-      `Schwerkraft <b>${pct(frostSchwerkraft(l))}</b>, Abprall <b>${pct(frostAbprall(l))}</b>, ` +
-      `Wert <b>&times;${frostWert(l).toFixed(2)}</b>. Dazu ` +
-      `<b>${(frostChance(l) * 100).toFixed(1)} %</b> Chance je Treffer, die ` +
-      `<b>Lebensleiste ${FROST_DAUER} s einzufrieren</b>.`,
-    haken: "Wenige Treffer je Sekunde — die Abdeckung leidet.",
+      `Gravity <b>${pct(frostSchwerkraft(l))}</b>, bounce <b>${pct(frostAbprall(l))}</b>, ` +
+      `value <b>&times;${frostWert(l).toFixed(2)}</b>. Plus a ` +
+      `<b>${(frostChance(l) * 100).toFixed(1)}%</b> chance per hit to ` +
+      `<b>freeze the life bar for ${FROST_DAUER} s</b>.`,
+    haken: "Few hits per second — coverage suffers.",
   },
   feuer: {
     id: "feuer",
-    name: "Feuer",
+    name: "Fire",
     glyph: "▲",
     color: "#ff9a4d",
-    kurz: "Hitze. Sie gl&uuml;ht sich hoch, solange sie im Feld bleibt.",
+    kurz: "Heat. It glows hotter the longer it stays on the field.",
     vorteil: (l) =>
-      `<b>+${pct(feuerHitze(l))}</b> Wert je Sekunde im Feld, bis <b>+${pct(feuerDeckel(l))}</b>. ` +
-      `Beim Abfluss f&auml;ngt sie wieder bei null an.`,
-    haken: `Ab +${pct(FEUER_SCHWELLE)} Hitze heilen ihre Treffer nicht mehr, sie kosten Lebenszeit.`,
+      `<b>+${pct(feuerHitze(l))}</b> value per second on the field, up to <b>+${pct(feuerDeckel(l))}</b>. ` +
+      `It starts over from zero when it drains.`,
+    haken: `Above +${pct(FEUER_SCHWELLE)} heat, its hits stop healing and cost life time instead.`,
   },
   erde: {
     id: "erde",
-    name: "Erde",
+    name: "Earth",
     glyph: "◆",
     color: "#c9a06a",
-    kurz: "Masse. Sie pfl&uuml;gt durch dichte Felder, statt abzuprallen.",
+    kurz: "Mass. It plows through dense fields instead of bouncing off.",
     vorteil: (l) =>
-      `Schwerkraft <b>${pct(erdeSchwerkraft(l))}</b>, Abprall <b>${pct(erdeAbprall(l))}</b>. ` +
-      `Sie l&auml;sst sich von Pegs kaum ablenken und rammt sich eine Bahn ` +
-      `durch die dichteste Stelle.`,
-    haken: "Sie f&auml;llt fast senkrecht und ist entsprechend schnell im Abfluss.",
+      `Gravity <b>${pct(erdeSchwerkraft(l))}</b>, bounce <b>${pct(erdeAbprall(l))}</b>. ` +
+      `Pegs barely deflect it, and it rams a path ` +
+      `through the densest spot.`,
+    haken: "It falls almost straight down and reaches the drain just as quickly.",
   },
   weisheit: {
     id: "weisheit",
-    name: "Weisheit",
+    name: "Wisdom",
     glyph: "◉",
     color: "#b9a6ff",
-    kurz: "Erfahrung. Sie steigt im Lauf von allein auf.",
+    kurz: "Experience. It levels up on its own during a run.",
     vorteil: (l) =>
-      `Je <b>${weisheitTreffer(l)} direkte Treffer</b> eine <b>kostenlose Kugel-Stufe</b>. ` +
-      `Sie w&auml;chst, ohne dass du einen Funken ausgibst.`,
-    haken: "Ihre gekauften Stufen kosten deutlich mehr.",
+      `Every <b>${weisheitTreffer(l)} direct hits</b> grant a <b>free ball level</b>. ` +
+      `It grows without you spending a single Spark.`,
+    haken: "Its purchased levels cost much more.",
   },
   edel: {
     id: "edel",
-    name: "Edel",
+    name: "Noble",
     glyph: "◈",
     color: "#f0d27a",
-    kurz: "Auszahlung. Was sie verdient, z&auml;hlt am Laufende mehr.",
+    kurz: "Payout. What it earns counts for more at the end of the run.",
     vorteil: (l) =>
-      `Ihre Funken sind am Laufende <b>&times;${edelAuszahlung(l).toFixed(2)}</b> wert. ` +
-      `In der Arena &auml;ndert sich nichts &mdash; der Gewinn steht in der Auswertung.`,
+      `Its Sparks are worth <b>&times;${edelAuszahlung(l).toFixed(2)}</b> at the end of the run. ` +
+      `Nothing changes in the arena &mdash; the gain shows up in the results.`,
     haken:
-      "Ihre Treffer z&auml;hlen nicht f&uuml;r die Abdeckung: " +
-      "weder f&uuml;r die Freischaltung noch f&uuml;r die Meisterschaft.",
+      "Its hits don't count toward coverage: " +
+      "neither for Unlock nor for Mastery.",
   },
 };
