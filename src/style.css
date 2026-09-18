@@ -1822,6 +1822,15 @@ body {
   font-size: 16px;
 }
 
+/* Das Siegel in "You have ... 12." hat keine eigene Klasse und stand sonst
+   in voller Bildgroesse im Satz. */
+.forge-sub img {
+  width: 1.15em;
+  height: 1.15em;
+  object-fit: contain;
+  vertical-align: -0.28em;
+}
+
 /* Die sieben Kugeln in einer Reihe: hier steckt man um. */
 .forge-balls {
   display: flex;
